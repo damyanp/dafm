@@ -1,5 +1,3 @@
-use std::collections::HashSet;
-
 use bevy::prelude::*;
 use bevy_ecs_tilemap::prelude::*;
 use serde::{Deserialize, Serialize};
@@ -105,52 +103,7 @@ impl TileSetInfo {
 }
 
 #[derive(Component)]
-struct MapGeneration {}
-
-impl MapGeneration {
-    fn new(
-        commands: &mut Commands,
-        map_size: &TilemapSize,
-        grid_size: &TilemapGridSize,
-        tile_size: &TilemapTileSize,
-        map_type: &TilemapType,
-    ) -> Self {
-        // Add labels
-        for y in 0..map_size.y {
-            for x in 0..map_size.x {
-                let tile_pos = TilePos { x, y };
-
-                let world_pos = tile_pos.center_in_world(
-                    map_size,
-                    grid_size,
-                    tile_size,
-                    map_type,
-                    &TilemapAnchor::Center,
-                );
-            }
-        }
-
-        MapGeneration {}
-
-        // let text_font = TextFont {
-        //     font_size: 10.0,
-        //     ..default()
-        // };
-        // let text_color = TextColor(Color::WHITE);
-
-        // // Calculate world position for the text label
-        // let world_pos = tile_pos.center_in_world(&map_size, &grid_size, &tile_size, &map_type, &TilemapAnchor::Center);
-
-        // // Spawn text label showing coordinates
-        // commands.spawn((
-        //     Text2d::new(format!("{},{}", x, y)),
-        //     text_font.clone(),
-        //     text_color,
-        //     Transform::from_xyz(world_pos.x, world_pos.y, 1.0),
-        //     tile_pos
-        // ));
-    }
-}
+struct MapGeneration;
 
 fn update(
     mut commands: Commands,
@@ -173,8 +126,16 @@ fn update(
             commands.entity(entity).insert(MapGeneration {});
         }
 
-        for (entity, set_info, storage, map_size, grid_size, tile_size, map_type, generation) in
-            tile_maps.iter_mut()
+        for (
+            entity, //
+            set_info,
+            storage,
+            map_size,
+            grid_size,
+            tile_size,
+            map_type,
+            generation,
+        ) in tile_maps.iter_mut()
         {
             info!("Run step for {:?}", entity);
         }
@@ -250,7 +211,7 @@ fn initialize_map_generation(
 
             commands
                 .entity(*tile_entity)
-                .insert(MapGenOptions::new(&set_info, label));
+                .insert(MapGenOptions::new(set_info, label));
         }
     }
 }
