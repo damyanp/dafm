@@ -121,7 +121,6 @@ fn update(
 ) {
     for _ in run_step_event.read() {
         for entity in new_tile_maps.iter() {
-            info!("Adding new MapGeneration for {entity:?}");
             commands.entity(entity).insert(MapGeneration {});
         }
 
@@ -173,20 +172,16 @@ fn update(
 
         let mut remaining = vec![selected_entity];
 
-        while !remaining.is_empty() {
-            let tile_entity = remaining.pop().unwrap();
+        while let Some(tile_entity) = remaining.pop() {
             let (state, _, pos, _) = query.get(tile_entity).unwrap();
-
-            // info!("Updating from {pos:?}");
 
             let options = state.options.clone();
             let neighbors = Neighbors::get_square_neighboring_positions(pos, map_size, false)
                 .entities(tile_storage);
 
             for (direction, neighbor) in neighbors.iter_with_direction() {
-                if let Ok((mut neighbor_state, _, neighbor_pos, _)) = query.get_mut(*neighbor) {
+                if let Ok((mut neighbor_state, _, _, _)) = query.get_mut(*neighbor) {
                     if !neighbor_state.collapsed {
-                        // info!("  neighbor {direction:?} {neighbor_pos:?}");
                         let changed =
                             neighbor_state.constrain(&tile_set_info.combos, &options, direction);
 
@@ -204,7 +199,7 @@ impl MapGenState {
     fn constrain(
         &mut self,
         combos: &TileCombos,
-        from_options: &Vec<u32>,
+        from_options: &[u32],
         from_direction: SquareDirection,
     ) -> bool {
         assert!(!self.collapsed);
@@ -213,36 +208,24 @@ impl MapGenState {
             SquareDirection::East | SquareDirection::West => &combos.horizontal,
             SquareDirection::North | SquareDirection::South => &combos.vertical,
             _ => panic!("Unexpected direction"),
-        };    
+        };
 
         let new_options: Vec<u32> = self
             .options
             .iter()
             .cloned()
             .filter(|option| {
-                // info!("   checking {option}");
-                combos.iter().any(|[a, b]| {
-                    let result = match from_direction {
-                        SquareDirection::West | SquareDirection::North => {
-                            a == option && from_options.contains(b)
-                        }
-                        SquareDirection::East | SquareDirection::South => {
-                            from_options.contains(a) && (b == option)
-                        }
-                        _ => panic!(),
-                    };
-
-                    if result {
-                        // info!("     - match for {a},{b}");
+                combos.iter().any(|[a, b]| match from_direction {
+                    SquareDirection::West | SquareDirection::North => {
+                        a == option && from_options.contains(b)
                     }
-                    result
+                    SquareDirection::East | SquareDirection::South => {
+                        from_options.contains(a) && (b == option)
+                    }
+                    _ => panic!(),
                 })
             })
             .collect();
-
-        if new_options.is_empty() {
-            // info!("{:?} couldn't find any options for {:?} {:?}", self.options, from_options, from_direction);
-        }
 
         if new_options.len() != self.options.len() {
             self.options = new_options;
@@ -270,6 +253,7 @@ impl MapGenState {
     }
 }
 
+#[allow(clippy::type_complexity)]
 fn initialize_map_generation(
     mut commands: Commands,
     tile_maps: Query<
@@ -300,8 +284,6 @@ fn initialize_map_generation(
         _,
     ) in tile_maps
     {
-        info!("Initializing MapGeneration");
-
         for tile_entity in storage.iter().flatten() {
             let tile_pos = tiles.get(*tile_entity).unwrap();
             let tile_center = tile_pos
