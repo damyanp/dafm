@@ -159,10 +159,10 @@ fn update(
             let random_index = state.options[rand::rng().random_range(0..state.options.len())];
             texture_index.0 = random_index;
 
-            // if let Some(label) = state.label {
-            //     commands.entity(label).despawn();
-            //     state.label = None;
-            // }
+            if let Some(label) = state.label {
+                commands.entity(label).despawn();
+                state.label = None;
+            }
             state.options = vec![random_index];
             state.collapsed = true;
         }
@@ -213,7 +213,7 @@ impl MapGenState {
             SquareDirection::East | SquareDirection::West => &combos.horizontal,
             SquareDirection::North | SquareDirection::South => &combos.vertical,
             _ => panic!("Unexpected direction"),
-        };
+        };    
 
         let new_options: Vec<u32> = self
             .options
@@ -239,6 +239,10 @@ impl MapGenState {
                 })
             })
             .collect();
+
+        if new_options.is_empty() {
+            // info!("{:?} couldn't find any options for {:?} {:?}", self.options, from_options, from_direction);
+        }
 
         if new_options.len() != self.options.len() {
             self.options = new_options;

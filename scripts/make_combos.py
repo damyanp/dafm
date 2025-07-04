@@ -100,8 +100,6 @@ horizontal_combos = []
 vertical_combos = []
 
 for (a, b) in combos:
-    if done.__contains__((b, a)):
-        continue
     done.add((a, b))
 
     # layouts for a & b
@@ -115,7 +113,7 @@ for (a, b) in combos:
     b_l = lb[0] + lb[2]
 
     if a_r == b_l:
-        horizontal_combos.append((a, b))
+        horizontal_combos.append((a, b))        
 
     # bottom edge of a
     a_r = la[2] + la[3]
