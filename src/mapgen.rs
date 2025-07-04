@@ -13,14 +13,24 @@ pub struct MapGenPlugin;
 #[derive(Event)]
 pub struct RunStepEvent;
 
+#[derive(Event)]
+pub struct ResetEvent;
+
 impl Plugin for MapGenPlugin {
     fn build(&self, app: &mut App) {
-        app.add_systems(Startup, startup);
-        app.add_event::<RunStepEvent>();
-        app.add_systems(
-            Update,
-            (initialize_map_generation, update, update_labels).chain(),
-        );
+        app.add_systems(Startup, startup)
+            .add_event::<RunStepEvent>()
+            .add_event::<ResetEvent>()
+            .add_systems(
+                Update,
+                (
+                    reset_map_generation,
+                    initialize_map_generation,
+                    run_steps,
+                    update_labels,
+                )
+                    .chain(),
+            );
     }
 }
 
@@ -111,7 +121,7 @@ impl TileSetInfo {
 #[derive(Component)]
 struct MapGeneration;
 
-fn update(
+fn run_steps(
     mut commands: Commands,
     mut run_step_event: EventReader<RunStepEvent>,
     mut query: Query<(&mut MapGenState, &mut TileTextureIndex, &TilePos, Entity)>,
@@ -308,6 +318,29 @@ fn initialize_map_generation(
                 .entity(*tile_entity)
                 .insert(MapGenState::new(set_info, label));
         }
+    }
+}
+
+fn reset_map_generation(
+    mut commands: Commands,
+    mut event: EventReader<ResetEvent>,
+    tile_maps: Query<(Entity, &MapGenState)>,
+    map_generate: Query<Entity, With<MapGeneration>>,
+) {
+    if event.is_empty() {
+        return;
+    }
+    event.clear();
+
+    for (entity, state) in tile_maps {
+        if let Some(label) = state.label {
+            commands.entity(label).despawn();
+        }
+        commands.entity(entity).remove::<MapGenState>();
+    }
+
+    for m in map_generate {
+        commands.entity(m).remove::<MapGeneration>();
     }
 }
 

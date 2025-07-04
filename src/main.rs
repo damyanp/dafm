@@ -11,7 +11,7 @@ fn main() {
         .add_plugins(MapGenPlugin)
         .add_systems(Startup, startup)
         .add_systems(Update, update_labels)
-        .add_systems(Update, mapgen_step_on_space)
+        .add_systems(Update, mapgen_controls)
         .run();
 }
 
@@ -19,12 +19,17 @@ fn startup(mut commands: Commands) {
     commands.spawn(Camera2d);
 }
 
-fn mapgen_step_on_space(
+fn mapgen_controls(
     keys: Res<ButtonInput<KeyCode>>,
     mut run_step_event: EventWriter<mapgen::RunStepEvent>,
+    mut reset_event: EventWriter<mapgen::ResetEvent>,
 ) {
     if keys.just_pressed(KeyCode::Space) {
         run_step_event.write(mapgen::RunStepEvent);
+    }
+
+    if keys.just_pressed(KeyCode::KeyR) {
+        reset_event.write(mapgen::ResetEvent);
     }
 }
 
