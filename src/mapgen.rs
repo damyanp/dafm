@@ -1,6 +1,12 @@
 use bevy::prelude::*;
-use bevy_ecs_tilemap::prelude::*;
+use bevy_ecs_tilemap::{
+    helpers::square_grid::neighbors::{Neighbors, SquareDirection},
+    prelude::*,
+};
+use rand::Rng;
 use serde::{Deserialize, Serialize};
+
+// https://robertheaton.com/2018/12/17/wavefunction-collapse-algorithm/
 
 pub struct MapGenPlugin;
 
@@ -21,7 +27,7 @@ impl Plugin for MapGenPlugin {
 fn startup(mut commands: Commands, asset_server: Res<AssetServer>) {
     let texture = asset_server.load("kentangpixel/SummerFloor.png");
 
-    let map_size = TilemapSize { x: 32, y: 32 };
+    let map_size = TilemapSize { x: 16, y: 16 };
 
     let tilemap_entity = commands.spawn_empty().id();
 
@@ -108,17 +114,10 @@ struct MapGeneration;
 fn update(
     mut commands: Commands,
     mut run_step_event: EventReader<RunStepEvent>,
-    mut tile_maps: Query<(
-        Entity,
-        &TileSetInfo,
-        &TileStorage,
-        &TilemapSize,
-        &TilemapGridSize,
-        &TilemapTileSize,
-        &TilemapType,
-        &MapGeneration,
-    )>,
+    mut query: Query<(&mut MapGenState, &mut TileTextureIndex, &TilePos, Entity)>,
     new_tile_maps: Query<Entity, (With<TileSetInfo>, Without<MapGeneration>)>,
+    tiles: Query<&TilemapId>,
+    tile_maps: Query<(&TileStorage, &TileSetInfo, &TilemapSize), With<MapGeneration>>,
 ) {
     for _ in run_step_event.read() {
         for entity in new_tile_maps.iter() {
@@ -126,33 +125,143 @@ fn update(
             commands.entity(entity).insert(MapGeneration {});
         }
 
-        for (
-            entity, //
-            set_info,
-            storage,
-            map_size,
-            grid_size,
-            tile_size,
-            map_type,
-            generation,
-        ) in tile_maps.iter_mut()
+        // This assumes there's only one tilemap.  But we could check TilemapId
+        // on the tile entities to separate out different tilemaps.
+
+        // Figure out which tile we're going to consider - this will be one
+        // chosen randomly from all the ones that have the fewest options.
+        //
+        // Note: real versions of this use "Shannon Entropy", and take into
+        // consideration a weighted "how much we want this type of tile to
+        // appear" value.
+        let min_entropy = query
+            .iter()
+            .filter(|(s, _, _, _)| !s.collapsed)
+            .map(|(s, _, _, _)| s.options.len())
+            .min()
+            .unwrap_or(usize::MAX);
+
+        let candidates: Vec<_> = query
+            .iter()
+            .filter(|(s, _, _, _)| !s.collapsed && s.options.len() == min_entropy)
+            .map(|(_, _, _, e)| e)
+            .collect();
+
+        if candidates.is_empty() {
+            continue;
+        }
+
+        // "Collapse" this entity
+        let selected_entity = candidates[rand::rng().random_range(0..candidates.len())];
         {
-            info!("Run step for {:?}", entity);
+            let (mut state, mut texture_index, _, _) = query.get_mut(selected_entity).unwrap();
+
+            let random_index = state.options[rand::rng().random_range(0..state.options.len())];
+            texture_index.0 = random_index;
+
+            // if let Some(label) = state.label {
+            //     commands.entity(label).despawn();
+            //     state.label = None;
+            // }
+            state.options = vec![random_index];
+            state.collapsed = true;
+        }
+
+        // Update options for neighbors (and their neighbors etc.)
+        let tile_map_id = tiles.get(selected_entity).unwrap();
+        let (tile_storage, tile_set_info, map_size) = tile_maps.get(tile_map_id.0).unwrap();
+
+        let mut remaining = vec![selected_entity];
+
+        while !remaining.is_empty() {
+            let tile_entity = remaining.pop().unwrap();
+            let (state, _, pos, _) = query.get(tile_entity).unwrap();
+
+            // info!("Updating from {pos:?}");
+
+            let options = state.options.clone();
+            let neighbors = Neighbors::get_square_neighboring_positions(pos, map_size, false)
+                .entities(tile_storage);
+
+            for (direction, neighbor) in neighbors.iter_with_direction() {
+                if let Ok((mut neighbor_state, _, neighbor_pos, _)) = query.get_mut(*neighbor) {
+                    if !neighbor_state.collapsed {
+                        // info!("  neighbor {direction:?} {neighbor_pos:?}");
+                        let changed =
+                            neighbor_state.constrain(&tile_set_info.combos, &options, direction);
+
+                        if changed {
+                            remaining.push(*neighbor);
+                        }
+                    }
+                }
+            }
+        }
+    }
+}
+
+impl MapGenState {
+    fn constrain(
+        &mut self,
+        combos: &TileCombos,
+        from_options: &Vec<u32>,
+        from_direction: SquareDirection,
+    ) -> bool {
+        assert!(!self.collapsed);
+
+        let combos = match from_direction {
+            SquareDirection::East | SquareDirection::West => &combos.horizontal,
+            SquareDirection::North | SquareDirection::South => &combos.vertical,
+            _ => panic!("Unexpected direction"),
+        };
+
+        let new_options: Vec<u32> = self
+            .options
+            .iter()
+            .cloned()
+            .filter(|option| {
+                // info!("   checking {option}");
+                combos.iter().any(|[a, b]| {
+                    let result = match from_direction {
+                        SquareDirection::West | SquareDirection::North => {
+                            a == option && from_options.contains(b)
+                        }
+                        SquareDirection::East | SquareDirection::South => {
+                            from_options.contains(a) && (b == option)
+                        }
+                        _ => panic!(),
+                    };
+
+                    if result {
+                        // info!("     - match for {a},{b}");
+                    }
+                    result
+                })
+            })
+            .collect();
+
+        if new_options.len() != self.options.len() {
+            self.options = new_options;
+            true
+        } else {
+            false
         }
     }
 }
 
 #[derive(Component)]
-struct MapGenOptions {
+struct MapGenState {
+    collapsed: bool,
     options: Vec<u32>,
-    label: Entity,
+    label: Option<Entity>,
 }
 
-impl MapGenOptions {
+impl MapGenState {
     fn new(tile_set_info: &TileSetInfo, label: Entity) -> Self {
-        MapGenOptions {
+        MapGenState {
+            collapsed: false,
             options: tile_set_info.tiles.clone(),
-            label,
+            label: Some(label),
         }
     }
 }
@@ -211,14 +320,27 @@ fn initialize_map_generation(
 
             commands
                 .entity(*tile_entity)
-                .insert(MapGenOptions::new(set_info, label));
+                .insert(MapGenState::new(set_info, label));
         }
     }
 }
 
-fn update_labels(mut labels: Query<&mut Text2d>, map_gens: Query<&MapGenOptions>) {
-    for map_gen_options in map_gens.iter() {
-        let mut label = labels.get_mut(map_gen_options.label).unwrap();
-        label.0 = format!("{}", map_gen_options.options.len());
+fn update_labels(mut labels: Query<&mut Text2d>, states: Query<&MapGenState>) {
+    for state in states.iter() {
+        if let Some(label) = state.label {
+            let mut label = labels.get_mut(label).unwrap();
+            if !state.collapsed {
+                label.0 = format!("{}", state.options.len());
+            } else {
+                label.0 = format!(
+                    "[{}]",
+                    if state.options.is_empty() {
+                        0
+                    } else {
+                        state.options[0]
+                    }
+                );
+            }
+        }
     }
 }
