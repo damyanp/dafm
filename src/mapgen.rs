@@ -1,3 +1,5 @@
+use std::ops::ControlFlow;
+
 use bevy::prelude::*;
 use bevy_ecs_tilemap::{
     helpers::square_grid::neighbors::{Neighbors, SquareDirection},
@@ -14,16 +16,22 @@ pub struct MapGenPlugin;
 pub struct RunStepEvent;
 
 #[derive(Event)]
+pub struct AutoBuildEvent;
+
+#[derive(Event)]
 pub struct ResetEvent;
 
 impl Plugin for MapGenPlugin {
     fn build(&self, app: &mut App) {
         app.add_systems(Startup, startup)
+            .add_event::<AutoBuildEvent>()
             .add_event::<RunStepEvent>()
             .add_event::<ResetEvent>()
+            .insert_resource(AutoBuild(false))
             .add_systems(
                 Update,
                 (
+                    auto_build,
                     reset_map_generation,
                     initialize_map_generation,
                     run_steps,
@@ -121,87 +129,140 @@ impl TileSetInfo {
 #[derive(Component)]
 struct MapGeneration;
 
+#[derive(Resource)]
+struct AutoBuild(bool);
+
 fn run_steps(
     mut commands: Commands,
     mut run_step_event: EventReader<RunStepEvent>,
+    auto_build: Res<AutoBuild>,
     mut query: Query<(&mut MapGenState, &mut TileTextureIndex, &TilePos, Entity)>,
     new_tile_maps: Query<Entity, (With<TileSetInfo>, Without<MapGeneration>)>,
     tiles: Query<&TilemapId>,
     tile_maps: Query<(&TileStorage, &TileSetInfo, &TilemapSize), With<MapGeneration>>,
+    mut reset_event: EventWriter<ResetEvent>,
 ) {
+    if run_step_event.is_empty() && auto_build.0 {
+        generation_step(
+            &mut commands,
+            &mut query,
+            new_tile_maps,
+            tiles,
+            tile_maps,
+            &mut reset_event,
+        );
+        return;
+    }
+    
     for _ in run_step_event.read() {
-        for entity in new_tile_maps.iter() {
-            commands.entity(entity).insert(MapGeneration {});
+        generation_step(
+            &mut commands,
+            &mut query,
+            new_tile_maps,
+            tiles,
+            tile_maps,
+            &mut reset_event,
+        );
+    }
+}
+
+fn generation_step(
+    commands: &mut Commands,
+    query: &mut Query<(&mut MapGenState, &mut TileTextureIndex, &TilePos, Entity)>,
+    new_tile_maps: Query<Entity, (With<TileSetInfo>, Without<MapGeneration>)>,
+    tiles: Query<&TilemapId>,
+    tile_maps: Query<(&TileStorage, &TileSetInfo, &TilemapSize), With<MapGeneration>>,
+    reset_event: &mut EventWriter<ResetEvent>,
+) {
+    for entity in new_tile_maps.iter() {
+        commands.entity(entity).insert(MapGeneration {});
+    }
+
+    // This assumes there's only one tilemap.  But we could check TilemapId on
+    // the tile entities to separate out different tilemaps.
+
+    // Figure out which tile we're going to consider - this will be one chosen
+    // randomly from all the ones that have the fewest options.
+    //
+    // Note: real versions of this use "Shannon Entropy", and take into
+    // consideration a weighted "how much we want this type of tile to appear"
+    // value.
+    let min_entropy = query
+        .iter()
+        .filter(|(s, _, _, _)| !s.collapsed)
+        .map(|(s, _, _, _)| s.options.len())
+        .min()
+        .unwrap_or(usize::MAX);
+
+    let candidates: Vec<_> = query
+        .iter()
+        .filter(|(s, _, _, _)| !s.collapsed && s.options.len() == min_entropy)
+        .map(|(_, _, _, e)| e)
+        .collect();
+
+    if candidates.is_empty() {
+        return;
+    }
+
+    // "Collapse" this entity
+    let selected_entity = candidates[rand::rng().random_range(0..candidates.len())];
+    {
+        let (mut state, mut texture_index, _, _) = query.get_mut(selected_entity).unwrap();
+
+        let random_index = state.options[rand::rng().random_range(0..state.options.len())];
+        texture_index.0 = random_index;
+
+        if let Some(label) = state.label {
+            commands.entity(label).despawn();
+            state.label = None;
         }
+        state.options = vec![random_index];
+        state.collapsed = true;
+    }
 
-        // This assumes there's only one tilemap.  But we could check TilemapId
-        // on the tile entities to separate out different tilemaps.
+    // Update options for neighbors (and their neighbors etc.)
+    let tile_map_id = tiles.get(selected_entity).unwrap();
+    let (tile_storage, tile_set_info, map_size) = tile_maps.get(tile_map_id.0).unwrap();
 
-        // Figure out which tile we're going to consider - this will be one
-        // chosen randomly from all the ones that have the fewest options.
-        //
-        // Note: real versions of this use "Shannon Entropy", and take into
-        // consideration a weighted "how much we want this type of tile to
-        // appear" value.
-        let min_entropy = query
-            .iter()
-            .filter(|(s, _, _, _)| !s.collapsed)
-            .map(|(s, _, _, _)| s.options.len())
-            .min()
-            .unwrap_or(usize::MAX);
+    let mut remaining = vec![selected_entity];
 
-        let candidates: Vec<_> = query
-            .iter()
-            .filter(|(s, _, _, _)| !s.collapsed && s.options.len() == min_entropy)
-            .map(|(_, _, _, e)| e)
-            .collect();
+    while let Some(tile_entity) = remaining.pop() {
+        let (state, _, pos, _) = query.get(tile_entity).unwrap();
 
-        if candidates.is_empty() {
-            continue;
-        }
+        let options = state.options.clone();
+        let neighbors = Neighbors::get_square_neighboring_positions(pos, map_size, false)
+            .entities(tile_storage);
 
-        // "Collapse" this entity
-        let selected_entity = candidates[rand::rng().random_range(0..candidates.len())];
-        {
-            let (mut state, mut texture_index, _, _) = query.get_mut(selected_entity).unwrap();
+        for (direction, neighbor) in neighbors.iter_with_direction() {
+            if let Ok((mut neighbor_state, _, _, _)) = query.get_mut(*neighbor) {
+                if !neighbor_state.collapsed {
+                    let changed =
+                        neighbor_state.constrain(&tile_set_info.combos, &options, direction);
 
-            let random_index = state.options[rand::rng().random_range(0..state.options.len())];
-            texture_index.0 = random_index;
-
-            if let Some(label) = state.label {
-                commands.entity(label).despawn();
-                state.label = None;
-            }
-            state.options = vec![random_index];
-            state.collapsed = true;
-        }
-
-        // Update options for neighbors (and their neighbors etc.)
-        let tile_map_id = tiles.get(selected_entity).unwrap();
-        let (tile_storage, tile_set_info, map_size) = tile_maps.get(tile_map_id.0).unwrap();
-
-        let mut remaining = vec![selected_entity];
-
-        while let Some(tile_entity) = remaining.pop() {
-            let (state, _, pos, _) = query.get(tile_entity).unwrap();
-
-            let options = state.options.clone();
-            let neighbors = Neighbors::get_square_neighboring_positions(pos, map_size, false)
-                .entities(tile_storage);
-
-            for (direction, neighbor) in neighbors.iter_with_direction() {
-                if let Ok((mut neighbor_state, _, _, _)) = query.get_mut(*neighbor) {
-                    if !neighbor_state.collapsed {
-                        let changed =
-                            neighbor_state.constrain(&tile_set_info.combos, &options, direction);
-
-                        if changed {
-                            remaining.push(*neighbor);
-                        }
+                    if changed {
+                        remaining.push(*neighbor);
                     }
                 }
             }
         }
+    }
+    // This assumes there's only one tilemap.  But we could check TilemapId
+    // on the tile entities to separate out different tilemaps.
+
+    // Figure out which tile we're going to consider - this will be one
+    // chosen randomly from all the ones that have the fewest options.
+    //
+    // Note: real versions of this use "Shannon Entropy", and take into
+    // consideration a weighted "how much we want this type of tile to
+    // appear" value.
+
+    // "Collapse" this entity
+
+    // Update options for neighbors (and their neighbors etc.)
+
+    if query.iter().all(|(s, _, _, _)| s.collapsed) {
+        // we're done!
+        reset_event.write(ResetEvent);
     }
 }
 
@@ -326,6 +387,7 @@ fn reset_map_generation(
     mut event: EventReader<ResetEvent>,
     tile_maps: Query<(Entity, &MapGenState)>,
     map_generate: Query<Entity, With<MapGeneration>>,
+    mut auto_build: ResMut<AutoBuild>,
 ) {
     if event.is_empty() {
         return;
@@ -342,6 +404,8 @@ fn reset_map_generation(
     for m in map_generate {
         commands.entity(m).remove::<MapGeneration>();
     }
+
+    auto_build.0 = false;
 }
 
 fn update_labels(mut labels: Query<&mut Text2d>, states: Query<&MapGenState>) {
@@ -360,6 +424,21 @@ fn update_labels(mut labels: Query<&mut Text2d>, states: Query<&MapGenState>) {
                     }
                 );
             }
+        }
+    }
+}
+
+fn auto_build(
+    mut commands: Commands,
+    mut auto_build_event: EventReader<AutoBuildEvent>,
+    mut tile_texture_indices: Query<&mut TileTextureIndex>,
+    mut auto_build: ResMut<AutoBuild>,
+) {
+    if !auto_build_event.is_empty() && !auto_build.0 {
+        auto_build.0 = true;
+
+        for mut t in &mut tile_texture_indices {
+            t.0 = 0;
         }
     }
 }

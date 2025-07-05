@@ -23,9 +23,14 @@ fn mapgen_controls(
     keys: Res<ButtonInput<KeyCode>>,
     mut run_step_event: EventWriter<mapgen::RunStepEvent>,
     mut reset_event: EventWriter<mapgen::ResetEvent>,
+    mut auto_build_event: EventWriter<mapgen::AutoBuildEvent>
 ) {
     if keys.just_pressed(KeyCode::Space) {
         run_step_event.write(mapgen::RunStepEvent);
+    }
+
+    if keys.just_pressed(KeyCode::Enter) {
+        auto_build_event.write(mapgen::AutoBuildEvent);
     }
 
     if keys.just_pressed(KeyCode::KeyR) {
