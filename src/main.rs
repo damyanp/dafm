@@ -2,7 +2,8 @@ use bevy::prelude::*;
 use bevy_ecs_tilemap::prelude::*;
 
 mod mapgen;
-use mapgen::MapGenPlugin;
+mod mapgen_viz;
+use mapgen_viz::MapGenPlugin;
 
 fn main() {
     App::new()
@@ -21,20 +22,22 @@ fn startup(mut commands: Commands) {
 
 fn mapgen_controls(
     keys: Res<ButtonInput<KeyCode>>,
-    mut run_step_event: EventWriter<mapgen::RunStepEvent>,
-    mut reset_event: EventWriter<mapgen::ResetEvent>,
-    mut auto_build_event: EventWriter<mapgen::AutoBuildEvent>
+    mut control_event: EventWriter<mapgen_viz::MapGenControlEvent>,
 ) {
     if keys.just_pressed(KeyCode::Space) {
-        run_step_event.write(mapgen::RunStepEvent);
+        control_event.write(mapgen_viz::MapGenControlEvent::Step);
     }
 
     if keys.just_pressed(KeyCode::Enter) {
-        auto_build_event.write(mapgen::AutoBuildEvent);
+        control_event.write(mapgen_viz::MapGenControlEvent::AutoStep);
     }
 
     if keys.just_pressed(KeyCode::KeyR) {
-        reset_event.write(mapgen::ResetEvent);
+        control_event.write(mapgen_viz::MapGenControlEvent::Reset);
+    }
+
+    if keys.just_pressed(KeyCode::KeyB) {
+        control_event.write(mapgen_viz::MapGenControlEvent::Build);
     }
 }
 

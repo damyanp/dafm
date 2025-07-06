@@ -1,272 +1,168 @@
-use std::ops::ControlFlow;
-
-use bevy::prelude::*;
 use bevy_ecs_tilemap::{
     helpers::square_grid::neighbors::{Neighbors, SquareDirection},
-    prelude::*,
+    map::TilemapSize,
+    tiles::TilePos,
 };
 use rand::Rng;
 use serde::{Deserialize, Serialize};
 
-// https://robertheaton.com/2018/12/17/wavefunction-collapse-algorithm/
+// Based on Wave Function Collapse Algorithm.  See for example:
+//   https://robertheaton.com/2018/12/17/wavefunction-collapse-algorithm/
 
-pub struct MapGenPlugin;
-
-#[derive(Event)]
-pub struct RunStepEvent;
-
-#[derive(Event)]
-pub struct AutoBuildEvent;
-
-#[derive(Event)]
-pub struct ResetEvent;
-
-impl Plugin for MapGenPlugin {
-    fn build(&self, app: &mut App) {
-        app.add_systems(Startup, startup)
-            .add_event::<AutoBuildEvent>()
-            .add_event::<RunStepEvent>()
-            .add_event::<ResetEvent>()
-            .insert_resource(AutoBuild(false))
-            .add_systems(
-                Update,
-                (
-                    auto_build,
-                    reset_map_generation,
-                    initialize_map_generation,
-                    run_steps,
-                    update_labels,
-                )
-                    .chain(),
-            );
-    }
+pub struct Generator {
+    size: TilemapSize,
+    tile_set: TileSet,
+    grid: Vec<MapEntry>,
 }
 
-fn startup(mut commands: Commands, asset_server: Res<AssetServer>) {
-    let texture = asset_server.load("kentangpixel/SummerFloor.png");
+pub struct Tile {
+    pub pos: TilePos,
+    pub state: TileState,
+}
 
-    let map_size = TilemapSize { x: 16, y: 16 };
+pub enum TileState {
+    Collapsed(u32),
+    Options(usize),
+}
 
-    let tilemap_entity = commands.spawn_empty().id();
+impl Generator {
+    pub fn new(size: TilemapSize) -> Self {
+        let tile_set = TileSet::load();
 
-    let mut tile_storage = TileStorage::empty(map_size);
+        let mut grid = Vec::new();
+        grid.resize_with(size.count(), || MapEntry::new(&tile_set.tiles));
 
-    let tile_size = TilemapTileSize { x: 32.0, y: 32.0 };
-    let grid_size = tile_size.into();
-    let map_type = TilemapType::default();
-
-    for x in 0..map_size.x {
-        for y in 0..map_size.y {
-            let tile_pos = TilePos { x, y };
-            let tile_entity = commands
-                .spawn(TileBundle {
-                    position: tile_pos,
-                    tilemap_id: TilemapId(tilemap_entity),
-                    texture_index: TileTextureIndex(0),
-                    ..default()
-                })
-                .id();
-            tile_storage.set(&tile_pos, tile_entity);
+        Generator {
+            size,
+            tile_set,
+            grid,
         }
     }
 
-    commands
-        .entity(tilemap_entity)
-        .insert(TilemapBundle {
-            grid_size,
-            map_type,
-            size: map_size,
-            storage: tile_storage,
-            texture: TilemapTexture::Single(texture),
-            tile_size,
-            anchor: TilemapAnchor::Center,
-            ..default()
-        })
-        .insert(TileSetInfo::load());
-}
-
-#[derive(Debug, Deserialize, Serialize)]
-struct TileCombos {
-    horizontal: Vec<[u32; 2]>,
-    vertical: Vec<[u32; 2]>,
-}
-
-#[allow(dead_code)]
-#[derive(Component)]
-struct TileSetInfo {
-    combos: TileCombos,
-    tiles: Vec<u32>,
-}
-
-impl TileSetInfo {
-    fn load() -> Self {
-        // Load and parse the combos.json file
-        let combos_json = std::fs::read_to_string("assets/kentangpixel/combos.json")
-            .expect("Failed to read combos.json file");
-        let combos: TileCombos =
-            serde_json::from_str(&combos_json).expect("Failed to parse combos.json");
-
-        let tiles: Vec<u32> = combos
-            .horizontal
+    pub fn get(&self) -> Vec<Tile> {
+        self.grid
             .iter()
-            .chain(combos.vertical.iter())
-            .flat_map(|pair| [pair[0], pair[1]])
-            .collect::<std::collections::HashSet<_>>()
-            .into_iter()
+            .enumerate()
+            .map(|(index, entry)| Tile {
+                pos: self.index_to_pos(index),
+                state: if entry.collapsed {
+                    TileState::Collapsed(entry.options[0])
+                } else {
+                    TileState::Options(entry.options.len())
+                },
+            })
+            .collect()
+    }
+
+    pub fn step(&mut self) -> bool {
+        let Some(tile) = self.pick_tile_to_update() else {
+            // No tiles to update: we're done!
+            return true;
+        };
+
+        self.collapse(tile);
+        self.update_options(tile);
+
+        self.grid.iter().all(|e| e.collapsed)
+    }
+
+    fn pick_tile_to_update(&self) -> Option<TilePos> {
+        // Figure out which tile we're going to consider - this will be one
+        // chosen randomly from all the ones that have the fewest options.
+        //
+        // Note: real versions of this use "Shannon Entropy", and take into
+        // consideration a weighted "how much we want this type of tile to
+        // appear" value.
+        let min_entropy = self
+            .grid
+            .iter()
+            .filter(|e| !e.collapsed)
+            .map(|e| e.options.len())
+            .min()
+            .unwrap_or(usize::MAX);
+
+        let candidates: Vec<usize> = self
+            .grid
+            .iter()
+            .enumerate()
+            .filter(|(_, e)| !e.collapsed && e.options.len() == min_entropy)
+            .map(|(i, _)| i)
             .collect();
 
-        println!(
-            "Loaded {} horizontal combos and {} vertical combos out of {} unique ids",
-            combos.horizontal.len(),
-            combos.vertical.len(),
-            tiles.len()
-        );
-
-        TileSetInfo { combos, tiles }
-    }
-}
-
-#[derive(Component)]
-struct MapGeneration;
-
-#[derive(Resource)]
-struct AutoBuild(bool);
-
-fn run_steps(
-    mut commands: Commands,
-    mut run_step_event: EventReader<RunStepEvent>,
-    auto_build: Res<AutoBuild>,
-    mut query: Query<(&mut MapGenState, &mut TileTextureIndex, &TilePos, Entity)>,
-    new_tile_maps: Query<Entity, (With<TileSetInfo>, Without<MapGeneration>)>,
-    tiles: Query<&TilemapId>,
-    tile_maps: Query<(&TileStorage, &TileSetInfo, &TilemapSize), With<MapGeneration>>,
-    mut reset_event: EventWriter<ResetEvent>,
-) {
-    if run_step_event.is_empty() && auto_build.0 {
-        generation_step(
-            &mut commands,
-            &mut query,
-            new_tile_maps,
-            tiles,
-            tile_maps,
-            &mut reset_event,
-        );
-        return;
-    }
-    
-    for _ in run_step_event.read() {
-        generation_step(
-            &mut commands,
-            &mut query,
-            new_tile_maps,
-            tiles,
-            tile_maps,
-            &mut reset_event,
-        );
-    }
-}
-
-fn generation_step(
-    commands: &mut Commands,
-    query: &mut Query<(&mut MapGenState, &mut TileTextureIndex, &TilePos, Entity)>,
-    new_tile_maps: Query<Entity, (With<TileSetInfo>, Without<MapGeneration>)>,
-    tiles: Query<&TilemapId>,
-    tile_maps: Query<(&TileStorage, &TileSetInfo, &TilemapSize), With<MapGeneration>>,
-    reset_event: &mut EventWriter<ResetEvent>,
-) {
-    for entity in new_tile_maps.iter() {
-        commands.entity(entity).insert(MapGeneration {});
-    }
-
-    // This assumes there's only one tilemap.  But we could check TilemapId on
-    // the tile entities to separate out different tilemaps.
-
-    // Figure out which tile we're going to consider - this will be one chosen
-    // randomly from all the ones that have the fewest options.
-    //
-    // Note: real versions of this use "Shannon Entropy", and take into
-    // consideration a weighted "how much we want this type of tile to appear"
-    // value.
-    let min_entropy = query
-        .iter()
-        .filter(|(s, _, _, _)| !s.collapsed)
-        .map(|(s, _, _, _)| s.options.len())
-        .min()
-        .unwrap_or(usize::MAX);
-
-    let candidates: Vec<_> = query
-        .iter()
-        .filter(|(s, _, _, _)| !s.collapsed && s.options.len() == min_entropy)
-        .map(|(_, _, _, e)| e)
-        .collect();
-
-    if candidates.is_empty() {
-        return;
-    }
-
-    // "Collapse" this entity
-    let selected_entity = candidates[rand::rng().random_range(0..candidates.len())];
-    {
-        let (mut state, mut texture_index, _, _) = query.get_mut(selected_entity).unwrap();
-
-        let random_index = state.options[rand::rng().random_range(0..state.options.len())];
-        texture_index.0 = random_index;
-
-        if let Some(label) = state.label {
-            commands.entity(label).despawn();
-            state.label = None;
+        if candidates.is_empty() {
+            return None;
         }
-        state.options = vec![random_index];
-        state.collapsed = true;
+
+        let index = candidates[rand::rng().random_range(0..candidates.len())];
+        Some(self.index_to_pos(index))
     }
 
-    // Update options for neighbors (and their neighbors etc.)
-    let tile_map_id = tiles.get(selected_entity).unwrap();
-    let (tile_storage, tile_set_info, map_size) = tile_maps.get(tile_map_id.0).unwrap();
+    fn collapse(&mut self, tile: TilePos) {
+        let index = tile.to_index(&self.size);
+        self.grid[index].collapse();
+    }
 
-    let mut remaining = vec![selected_entity];
+    fn update_options(&mut self, starting_tile: TilePos) {
+        let mut remaining = vec![starting_tile];
 
-    while let Some(tile_entity) = remaining.pop() {
-        let (state, _, pos, _) = query.get(tile_entity).unwrap();
+        while let Some(tile_pos) = remaining.pop() {
+            let neighbors =
+                Neighbors::get_square_neighboring_positions(&tile_pos, &self.size, false);
+            for (direction, neighbor_pos) in neighbors.iter_with_direction() {
+                // Slight dance to get multiple references from the vector,
+                // where neighbor is mutable.
+                let [tile, neighbor] = self
+                    .grid
+                    .get_disjoint_mut([
+                        tile_pos.to_index(&self.size),
+                        neighbor_pos.to_index(&self.size),
+                    ])
+                    .expect("tile_pos != neighbor_pos");
 
-        let options = state.options.clone();
-        let neighbors = Neighbors::get_square_neighboring_positions(pos, map_size, false)
-            .entities(tile_storage);
+                if neighbor.collapsed {
+                    continue;
+                }
 
-        for (direction, neighbor) in neighbors.iter_with_direction() {
-            if let Ok((mut neighbor_state, _, _, _)) = query.get_mut(*neighbor) {
-                if !neighbor_state.collapsed {
-                    let changed =
-                        neighbor_state.constrain(&tile_set_info.combos, &options, direction);
-
-                    if changed {
-                        remaining.push(*neighbor);
-                    }
+                let changed = neighbor.constrain(&self.tile_set.combos, &tile.options, direction);
+                if changed {
+                    remaining.push(*neighbor_pos);
                 }
             }
         }
     }
-    // This assumes there's only one tilemap.  But we could check TilemapId
-    // on the tile entities to separate out different tilemaps.
 
-    // Figure out which tile we're going to consider - this will be one
-    // chosen randomly from all the ones that have the fewest options.
-    //
-    // Note: real versions of this use "Shannon Entropy", and take into
-    // consideration a weighted "how much we want this type of tile to
-    // appear" value.
-
-    // "Collapse" this entity
-
-    // Update options for neighbors (and their neighbors etc.)
-
-    if query.iter().all(|(s, _, _, _)| s.collapsed) {
-        // we're done!
-        reset_event.write(ResetEvent);
+    fn index_to_pos(&self, index: usize) -> TilePos {
+        let index = u32::try_from(index).unwrap();
+        TilePos {
+            x: index % self.size.x,
+            y: index / self.size.y,
+        }
     }
 }
 
-impl MapGenState {
+struct MapEntry {
+    // When collapsed=true there's only one option. Maybe we should just
+    // immediately collapsed any with one option and remove the collapsed field?
+    collapsed: bool,
+    options: Vec<u32>,
+}
+
+impl MapEntry {
+    fn new(tiles: &Vec<u32>) -> Self {
+        MapEntry {
+            collapsed: false,
+            options: tiles.clone(),
+        }
+    }
+
+    fn collapse(&mut self) {
+        assert!(!self.collapsed);
+
+        let random_index = rand::rng().random_range(0..self.options.len());
+        self.options = vec![self.options[random_index]];
+        self.collapsed = true;
+    }
+
     fn constrain(
         &mut self,
         combos: &TileCombos,
@@ -307,138 +203,36 @@ impl MapGenState {
     }
 }
 
-#[derive(Component)]
-struct MapGenState {
-    collapsed: bool,
-    options: Vec<u32>,
-    label: Option<Entity>,
+struct TileSet {
+    combos: TileCombos,
+    tiles: Vec<u32>,
 }
 
-impl MapGenState {
-    fn new(tile_set_info: &TileSetInfo, label: Entity) -> Self {
-        MapGenState {
-            collapsed: false,
-            options: tile_set_info.tiles.clone(),
-            label: Some(label),
-        }
-    }
+#[derive(Debug, Deserialize, Serialize)]
+struct TileCombos {
+    horizontal: Vec<[u32; 2]>,
+    vertical: Vec<[u32; 2]>,
 }
 
-#[allow(clippy::type_complexity)]
-fn initialize_map_generation(
-    mut commands: Commands,
-    tile_maps: Query<
-        (
-            &TileSetInfo,
-            &TileStorage,
-            &Transform,
-            &TilemapSize,
-            &TilemapGridSize,
-            &TilemapTileSize,
-            &TilemapType,
-            &TilemapAnchor,
-            &MapGeneration,
-        ),
-        Added<MapGeneration>,
-    >,
-    tiles: Query<&TilePos>,
-) {
-    for (
-        set_info, //
-        storage,
-        transform,
-        map_size,
-        grid_size,
-        tile_size,
-        map_type,
-        anchor,
-        _,
-    ) in tile_maps
-    {
-        for tile_entity in storage.iter().flatten() {
-            let tile_pos = tiles.get(*tile_entity).unwrap();
-            let tile_center = tile_pos
-                .center_in_world(map_size, grid_size, tile_size, map_type, anchor)
-                .extend(1.0);
-            let transform = *transform * Transform::from_translation(tile_center);
+impl TileSet {
+    fn load() -> Self {
+        // Load and parse the combos.json file
+        let combos_json = std::fs::read_to_string("assets/kentangpixel/combos.json")
+            .expect("Failed to read combos.json file");
+        let combos: TileCombos =
+            serde_json::from_str(&combos_json).expect("Failed to parse combos.json");
 
-            let label = commands
-                .spawn((
-                    Text2d::new("-"),
-                    TextFont {
-                        font_size: 10.0,
-                        ..default()
-                    },
-                    TextColor(Color::WHITE),
-                    TextLayout::new_with_justify(JustifyText::Center),
-                    transform,
-                ))
-                .id();
+        // Infer all the possible tiles from those mentioned in the list of
+        // valid combinations
+        let tiles: Vec<u32> = combos
+            .horizontal
+            .iter()
+            .chain(combos.vertical.iter())
+            .flat_map(|pair| [pair[0], pair[1]])
+            .collect::<std::collections::HashSet<_>>()
+            .into_iter()
+            .collect();
 
-            commands
-                .entity(*tile_entity)
-                .insert(MapGenState::new(set_info, label));
-        }
-    }
-}
-
-fn reset_map_generation(
-    mut commands: Commands,
-    mut event: EventReader<ResetEvent>,
-    tile_maps: Query<(Entity, &MapGenState)>,
-    map_generate: Query<Entity, With<MapGeneration>>,
-    mut auto_build: ResMut<AutoBuild>,
-) {
-    if event.is_empty() {
-        return;
-    }
-    event.clear();
-
-    for (entity, state) in tile_maps {
-        if let Some(label) = state.label {
-            commands.entity(label).despawn();
-        }
-        commands.entity(entity).remove::<MapGenState>();
-    }
-
-    for m in map_generate {
-        commands.entity(m).remove::<MapGeneration>();
-    }
-
-    auto_build.0 = false;
-}
-
-fn update_labels(mut labels: Query<&mut Text2d>, states: Query<&MapGenState>) {
-    for state in states.iter() {
-        if let Some(label) = state.label {
-            let mut label = labels.get_mut(label).unwrap();
-            if !state.collapsed {
-                label.0 = format!("{}", state.options.len());
-            } else {
-                label.0 = format!(
-                    "[{}]",
-                    if state.options.is_empty() {
-                        0
-                    } else {
-                        state.options[0]
-                    }
-                );
-            }
-        }
-    }
-}
-
-fn auto_build(
-    mut commands: Commands,
-    mut auto_build_event: EventReader<AutoBuildEvent>,
-    mut tile_texture_indices: Query<&mut TileTextureIndex>,
-    mut auto_build: ResMut<AutoBuild>,
-) {
-    if !auto_build_event.is_empty() && !auto_build.0 {
-        auto_build.0 = true;
-
-        for mut t in &mut tile_texture_indices {
-            t.0 = 0;
-        }
+        TileSet { combos, tiles }
     }
 }
