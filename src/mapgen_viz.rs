@@ -31,7 +31,7 @@ impl Plugin for MapGenPlugin {
 fn startup(mut commands: Commands, asset_server: Res<AssetServer>) {
     let texture = asset_server.load("kentangpixel/SummerFloor.png");
 
-    let map_size = TilemapSize { x: 16, y: 16 };
+    let map_size = TilemapSize { x: 100, y: 60 };
 
     let tilemap_entity = commands.spawn_empty().id();
 
@@ -228,12 +228,12 @@ fn update(
                 match generated_tile.state {
                     mapgen::TileState::Collapsed(i) => {
                         texture_index.0 = i;
-                        // commands.entity(*label).insert(Visibility::Hidden);
+                        commands.entity(*label).insert(Visibility::Hidden);
                         labels.get_mut(*label).unwrap().0 = format!("{}", i);
                     }
                     mapgen::TileState::Options(count) => {
                         commands.entity(*label).insert(Visibility::Visible);
-                        labels.get_mut(*label).unwrap().0 = format!("{}", count);
+                        labels.get_mut(*label).unwrap().0 = format!("{:.0}", count*100.0);
                     }
                 }
             }

@@ -12,11 +12,20 @@ fn main() {
         .add_plugins(MapGenPlugin)
         // .add_plugins(map::MapPlugin)
         .add_systems(Startup, startup)
+        .add_systems(Update, camera)
         .run();
 }
 
 fn startup(mut commands: Commands) {
     commands.spawn(Camera2d);
+}
+
+fn camera(mut camera: Query<&mut Transform, With<Camera2d>>) {
+    let Ok(mut camera) = camera.single_mut() else {
+        return;
+    };
+
+    camera.scale = Vec3::splat(3.0);
 }
 
 mod map {

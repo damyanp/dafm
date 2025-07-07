@@ -1,4 +1,4 @@
-use bevy::log::info;
+use bevy::{log::info, math::ops::ln};
 use bevy_ecs_tilemap::{
     helpers::square_grid::neighbors::{Neighbors, SquareDirection},
     map::TilemapSize,
@@ -28,7 +28,7 @@ pub struct Tile {
 #[derive(PartialEq)]
 pub enum TileState {
     Collapsed(u32),
-    Options(usize),
+    Options(f32),
 }
 
 impl Generator {
@@ -61,7 +61,7 @@ impl Generator {
                 state: if entry.collapsed {
                     TileState::Collapsed(entry.options[0].index)
                 } else {
-                    TileState::Options(entry.options.len())
+                    TileState::Options(entry.entropy)
                 },
             })
             .collect()
@@ -90,15 +90,15 @@ impl Generator {
             .grid
             .iter()
             .filter(|e| !e.collapsed)
-            .map(|e| e.options.len())
-            .min()
-            .unwrap_or(usize::MAX);
+            .map(|e| e.entropy)
+            .reduce(f32::min)
+            .unwrap_or(f32::MAX);
 
         let candidates: Vec<usize> = self
             .grid
             .iter()
             .enumerate()
-            .filter(|(_, e)| !e.collapsed && e.options.len() == min_entropy)
+            .filter(|(_, e)| !e.collapsed && e.entropy == min_entropy)
             .map(|(i, _)| i)
             .collect();
 
@@ -118,8 +118,6 @@ impl Generator {
     fn update_options(&mut self, starting_tile: TilePos) {
         let mut remaining = vec![starting_tile];
 
-        let mut count = 0;
-
         while let Some(tile_pos) = remaining.pop() {
             let neighbors =
                 Neighbors::get_square_neighboring_positions(&tile_pos, &self.size, false);
@@ -138,22 +136,19 @@ impl Generator {
                     continue;
                 }
 
-                count = count + 1;
                 let changed = neighbor.constrain(&self.tile_set.combos, &tile.options, direction);
                 if changed {
                     remaining.push(*neighbor_pos);
                 }
             }
         }
-
-        info!("Updated {count}");
     }
 
     fn index_to_pos(&self, index: usize) -> TilePos {
         let index = u32::try_from(index).unwrap();
         TilePos {
             x: index % self.size.x,
-            y: index / self.size.y,
+            y: index / self.size.x,
         }
     }
 }
@@ -169,6 +164,7 @@ struct MapEntry {
     // immediately collapsed any with one option and remove the collapsed field?
     collapsed: bool,
     options: Vec<TileOption>,
+    entropy: f32,
 }
 
 impl MapEntry {
@@ -176,6 +172,7 @@ impl MapEntry {
         MapEntry {
             collapsed: false,
             options: Vec::from(tiles),
+            entropy: calculate_entropy(tiles),
         }
     }
 
@@ -228,12 +225,33 @@ impl MapEntry {
             .collect();
 
         if new_options.len() != self.options.len() {
+            self.entropy = calculate_entropy(&new_options);
             self.options = new_options;
             true
         } else {
             false
         }
     }
+}
+
+fn calculate_entropy(tiles: &[TileOption]) -> f32 {
+    if tiles.is_empty() {
+        return 0.0;
+    }
+
+    let sum_weights = tiles
+        .iter()
+        .map(|e| e.weight)
+        .reduce(|acc, e| acc + e)
+        .unwrap();
+
+    let sum_weight_logs = tiles
+        .iter()
+        .map(|e| e.weight)
+        .reduce(|acc, e| acc + e * ln(e))
+        .unwrap();
+
+    ln(sum_weights) - (sum_weight_logs / sum_weights)
 }
 
 struct TileSet {
