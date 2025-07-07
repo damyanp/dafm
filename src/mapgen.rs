@@ -156,10 +156,10 @@ struct MapEntry {
 }
 
 impl MapEntry {
-    fn new(tiles: &Vec<u32>) -> Self {
+    fn new(tiles: &[u32]) -> Self {
         MapEntry {
             collapsed: false,
-            options: tiles.clone(),
+            options: tiles.to_owned(),
         }
     }
 
@@ -262,7 +262,7 @@ impl TileSet {
             combos.vertical.len()
         );
 
-        return TileSet { combos, tiles };
+        TileSet { combos, tiles }
     }
 }
 

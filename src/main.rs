@@ -17,4 +17,3 @@ fn main() {
 fn startup(mut commands: Commands) {
     commands.spawn(Camera2d);
 }
-
