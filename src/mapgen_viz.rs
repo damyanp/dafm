@@ -23,7 +23,8 @@ impl Plugin for MapGenPlugin {
     fn build(&self, app: &mut App) {
         app.add_systems(Startup, startup)
             .add_event::<MapGenControlEvent>()
-            .add_systems(Update, (manage_generator, update).chain());
+            .add_systems(Update, (manage_generator, update).chain())
+            .add_systems(Update, mapgen_controls);
     }
 }
 
@@ -67,6 +68,27 @@ fn startup(mut commands: Commands, asset_server: Res<AssetServer>) {
     });
 }
 
+fn mapgen_controls(
+    keys: Res<ButtonInput<KeyCode>>,
+    mut control_event: EventWriter<MapGenControlEvent>,
+) {
+    if keys.just_pressed(KeyCode::Space) {
+        control_event.write(MapGenControlEvent::Step);
+    }
+
+    if keys.just_pressed(KeyCode::Enter) {
+        control_event.write(MapGenControlEvent::AutoStep);
+    }
+
+    if keys.just_pressed(KeyCode::KeyR) {
+        control_event.write(MapGenControlEvent::Reset);
+    }
+
+    if keys.just_pressed(KeyCode::KeyB) {
+        control_event.write(MapGenControlEvent::Build);
+    }
+}
+
 #[derive(Component)]
 struct TileLabel(Entity);
 
@@ -99,7 +121,7 @@ fn manage_generator(
         }
 
         if *control_event == MapGenControlEvent::Build {
-            for (tile_entity, _, _, _, _, _, _, _, mut generator) in &mut tile_maps {
+            for (_, _, _, _, _, _, _, _, mut generator) in &mut tile_maps {
                 if let Some(generator) = &mut generator {
                     generator.generator.reset();
                 }
