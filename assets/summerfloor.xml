@@ -31,67 +31,67 @@
    <property name="submat" value="sgsg"/>
   </properties>
  </tile>
- <tile id="7">
+ <tile id="7" probability="10">
   <properties>
    <property name="submat" value="gggg"/>
   </properties>
  </tile>
- <tile id="15">
+ <tile id="15" probability="0.5">
   <properties>
    <property name="edges" value="wwwSwSww"/>
   </properties>
  </tile>
- <tile id="16">
+ <tile id="16" probability="0.5">
   <properties>
    <property name="edges" value="wwwwSwwS"/>
   </properties>
  </tile>
- <tile id="17">
+ <tile id="17" probability="0.5">
   <properties>
    <property name="edges" value="wwwSwSww"/>
   </properties>
  </tile>
- <tile id="18">
+ <tile id="18" probability="0.5">
   <properties>
    <property name="edges" value="wwwwSwwS"/>
   </properties>
  </tile>
- <tile id="19">
+ <tile id="19" probability="0.5">
   <properties>
    <property name="edges" value="wwwSwSww"/>
   </properties>
  </tile>
- <tile id="20">
+ <tile id="20" probability="0.5">
   <properties>
    <property name="edges" value="wwwwSwwS"/>
   </properties>
  </tile>
- <tile id="21">
+ <tile id="21" probability="1.5">
   <properties>
    <property name="edges" value="wwwGwGww"/>
   </properties>
  </tile>
- <tile id="22">
+ <tile id="22" probability="1.5">
   <properties>
    <property name="edges" value="wwwwGGwG"/>
   </properties>
  </tile>
- <tile id="23">
+ <tile id="23" probability="1.5">
   <properties>
    <property name="edges" value="wwwGwGww"/>
   </properties>
  </tile>
- <tile id="24">
+ <tile id="24" probability="1.5">
   <properties>
    <property name="edges" value="wwwwGGwG"/>
   </properties>
  </tile>
- <tile id="25">
+ <tile id="25" probability="1.5">
   <properties>
    <property name="edges" value="wwwGwGww"/>
   </properties>
  </tile>
- <tile id="26">
+ <tile id="26" probability="1.5">
   <properties>
    <property name="edges" value="wwwwGGwG"/>
   </properties>
@@ -126,67 +126,67 @@
    <property name="submat" value="sgsg"/>
   </properties>
  </tile>
- <tile id="55">
+ <tile id="55" probability="10">
   <properties>
    <property name="submat" value="gggg"/>
   </properties>
  </tile>
- <tile id="63">
+ <tile id="63" probability="0.5">
   <properties>
    <property name="edges" value="wSSSwwww"/>
   </properties>
  </tile>
- <tile id="64">
+ <tile id="64" probability="0.5">
   <properties>
    <property name="edges" value="SwwwwwSS"/>
   </properties>
  </tile>
- <tile id="65">
+ <tile id="65" probability="0.5">
   <properties>
    <property name="edges" value="wSSSwwww"/>
   </properties>
  </tile>
- <tile id="66">
+ <tile id="66" probability="0.5">
   <properties>
    <property name="edges" value="SwwwwwSS"/>
   </properties>
  </tile>
- <tile id="67">
+ <tile id="67" probability="0.5">
   <properties>
    <property name="edges" value="wSSSwwww"/>
   </properties>
  </tile>
- <tile id="68">
+ <tile id="68" probability="0.5">
   <properties>
    <property name="edges" value="SwwwwwSS"/>
   </properties>
  </tile>
- <tile id="69">
+ <tile id="69" probability="1.5">
   <properties>
    <property name="edges" value="wGGGwwww"/>
   </properties>
  </tile>
- <tile id="70">
+ <tile id="70" probability="1.5">
   <properties>
    <property name="edges" value="GwwwwwGG"/>
   </properties>
  </tile>
- <tile id="71">
+ <tile id="71" probability="1.5">
   <properties>
    <property name="edges" value="wGGGwwww"/>
   </properties>
  </tile>
- <tile id="72">
+ <tile id="72" probability="1.5">
   <properties>
    <property name="edges" value="GwwwwwGG"/>
   </properties>
  </tile>
- <tile id="73">
+ <tile id="73" probability="1.5">
   <properties>
    <property name="edges" value="wGGGwwww"/>
   </properties>
  </tile>
- <tile id="74">
+ <tile id="74" probability="1.5">
   <properties>
    <property name="edges" value="GwwwwwGG"/>
   </properties>
@@ -221,67 +221,67 @@
    <property name="submat" value="sgsg"/>
   </properties>
  </tile>
- <tile id="103">
+ <tile id="103" probability="10">
   <properties>
    <property name="submat" value="gggg"/>
   </properties>
  </tile>
- <tile id="111">
+ <tile id="111" probability="0.5">
   <properties>
    <property name="edges" value="ssSwSwss"/>
   </properties>
  </tile>
- <tile id="112">
+ <tile id="112" probability="0.5">
   <properties>
    <property name="edges" value="sssswSSw"/>
   </properties>
  </tile>
- <tile id="113">
+ <tile id="113" probability="0.5">
   <properties>
    <property name="edges" value="ssSwSwss"/>
   </properties>
  </tile>
- <tile id="114">
+ <tile id="114" probability="0.5">
   <properties>
    <property name="edges" value="sssswSSw"/>
   </properties>
  </tile>
- <tile id="115">
+ <tile id="115" probability="0.5">
   <properties>
    <property name="edges" value="ssSwSwss"/>
   </properties>
  </tile>
- <tile id="116">
+ <tile id="116" probability="0.5">
   <properties>
    <property name="edges" value="sssswSSw"/>
   </properties>
  </tile>
- <tile id="117">
+ <tile id="117" probability="1.5">
   <properties>
    <property name="edges" value="ggGwGwgg"/>
   </properties>
  </tile>
- <tile id="118">
+ <tile id="118" probability="1.5">
   <properties>
    <property name="edges" value="ggggwGGw"/>
   </properties>
  </tile>
- <tile id="119">
+ <tile id="119" probability="1.5">
   <properties>
    <property name="edges" value="ggGwGwgg"/>
   </properties>
  </tile>
- <tile id="120">
+ <tile id="120" probability="1.5">
   <properties>
    <property name="edges" value="ggggwGGw"/>
   </properties>
  </tile>
- <tile id="121">
+ <tile id="121" probability="1.5">
   <properties>
    <property name="edges" value="ggGwGwgg"/>
   </properties>
  </tile>
- <tile id="122">
+ <tile id="122" probability="1.5">
   <properties>
    <property name="edges" value="ggggwGGw"/>
   </properties>
@@ -316,67 +316,67 @@
    <property name="submat" value="sgsg"/>
   </properties>
  </tile>
- <tile id="151">
+ <tile id="151" probability="10">
   <properties>
    <property name="submat" value="gggg"/>
   </properties>
  </tile>
- <tile id="159">
+ <tile id="159" probability="0.5">
   <properties>
    <property name="edges" value="SwwSssss"/>
   </properties>
  </tile>
- <tile id="160">
+ <tile id="160" probability="0.5">
   <properties>
    <property name="edges" value="wSsssswS"/>
   </properties>
  </tile>
- <tile id="161">
+ <tile id="161" probability="0.5">
   <properties>
    <property name="edges" value="SwwSssss"/>
   </properties>
  </tile>
- <tile id="162">
+ <tile id="162" probability="0.5">
   <properties>
    <property name="edges" value="wSsssswS"/>
   </properties>
  </tile>
- <tile id="163">
+ <tile id="163" probability="0.5">
   <properties>
    <property name="edges" value="SwwSssss"/>
   </properties>
  </tile>
- <tile id="164">
+ <tile id="164" probability="0.5">
   <properties>
    <property name="edges" value="wSsssswS"/>
   </properties>
  </tile>
- <tile id="165">
+ <tile id="165" probability="1.5">
   <properties>
    <property name="edges" value="GwwGgggg"/>
   </properties>
  </tile>
- <tile id="166">
+ <tile id="166" probability="1.5">
   <properties>
    <property name="edges" value="wGggggwG"/>
   </properties>
  </tile>
- <tile id="167">
+ <tile id="167" probability="1.5">
   <properties>
    <property name="edges" value="GwwGgggg"/>
   </properties>
  </tile>
- <tile id="168">
+ <tile id="168" probability="1.5">
   <properties>
    <property name="edges" value="wGggggwG"/>
   </properties>
  </tile>
- <tile id="169">
+ <tile id="169" probability="1.5">
   <properties>
    <property name="edges" value="GwwGgggg"/>
   </properties>
  </tile>
- <tile id="170">
+ <tile id="170" probability="1.5">
   <properties>
    <property name="edges" value="wGggggwG"/>
   </properties>
@@ -411,67 +411,67 @@
    <property name="submat" value="sgsg"/>
   </properties>
  </tile>
- <tile id="199">
+ <tile id="199" probability="10">
   <properties>
    <property name="submat" value="gggg"/>
   </properties>
  </tile>
- <tile id="207">
+ <tile id="207" probability="0.5">
   <properties>
    <property name="edges" value="SwwwSwss"/>
   </properties>
  </tile>
- <tile id="208">
+ <tile id="208" probability="0.5">
   <properties>
    <property name="edges" value="wSsswSww"/>
   </properties>
  </tile>
- <tile id="209">
+ <tile id="209" probability="0.5">
   <properties>
    <property name="edges" value="wwwSsswS"/>
   </properties>
  </tile>
- <tile id="210">
+ <tile id="210" probability="0.5">
   <properties>
    <property name="edges" value="wwwSsswS"/>
   </properties>
  </tile>
- <tile id="211">
+ <tile id="211" probability="0.5">
   <properties>
    <property name="edges" value="wwwSsswS"/>
   </properties>
  </tile>
- <tile id="212">
+ <tile id="212" probability="0.5">
   <properties>
    <property name="edges" value="wwwSsswS"/>
   </properties>
  </tile>
- <tile id="213">
+ <tile id="213" probability="1.5">
   <properties>
    <property name="edges" value="GwwwGwgg"/>
   </properties>
  </tile>
- <tile id="214">
+ <tile id="214" probability="1.5">
   <properties>
    <property name="edges" value="wGggWgww"/>
   </properties>
  </tile>
- <tile id="215">
+ <tile id="215" probability="1.5">
   <properties>
    <property name="edges" value="wwwGggwG"/>
   </properties>
  </tile>
- <tile id="216">
+ <tile id="216" probability="1.5">
   <properties>
    <property name="edges" value="wwwGggwG"/>
   </properties>
  </tile>
- <tile id="217">
+ <tile id="217" probability="1.5">
   <properties>
    <property name="edges" value="wwwGggwG"/>
   </properties>
  </tile>
- <tile id="218">
+ <tile id="218" probability="1.5">
   <properties>
    <property name="edges" value="wwwGggwG"/>
   </properties>
@@ -506,67 +506,67 @@
    <property name="submat" value="sgsg"/>
   </properties>
  </tile>
- <tile id="247">
+ <tile id="247" probability="10">
   <properties>
    <property name="submat" value="gggg"/>
   </properties>
  </tile>
- <tile id="255">
+ <tile id="255" probability="0.5">
   <properties>
    <property name="edges" value="SwwwSwss"/>
   </properties>
  </tile>
- <tile id="256">
+ <tile id="256" probability="0.5">
   <properties>
    <property name="edges" value="wSsswSww"/>
   </properties>
  </tile>
- <tile id="257">
+ <tile id="257" probability="0.5">
   <properties>
    <property name="edges" value="ssSSwwSS"/>
   </properties>
  </tile>
- <tile id="258">
+ <tile id="258" probability="0.5">
   <properties>
    <property name="edges" value="ssSSwwSS"/>
   </properties>
  </tile>
- <tile id="259">
+ <tile id="259" probability="0.5">
   <properties>
    <property name="edges" value="ssSSwwSS"/>
   </properties>
  </tile>
- <tile id="260">
+ <tile id="260" probability="0.5">
   <properties>
    <property name="edges" value="ssSSwwSS"/>
   </properties>
  </tile>
- <tile id="261">
+ <tile id="261" probability="1.5">
   <properties>
    <property name="edges" value="GwwwGwgg"/>
   </properties>
  </tile>
- <tile id="262">
+ <tile id="262" probability="1.5">
   <properties>
    <property name="edges" value="wGggWgww"/>
   </properties>
  </tile>
- <tile id="263">
+ <tile id="263" probability="1.5">
   <properties>
    <property name="edges" value="ggGwwwGw"/>
   </properties>
  </tile>
- <tile id="264">
+ <tile id="264" probability="1.5">
   <properties>
    <property name="edges" value="ggGwwwGw"/>
   </properties>
  </tile>
- <tile id="265">
+ <tile id="265" probability="1.5">
   <properties>
    <property name="edges" value="ggGwwwGw"/>
   </properties>
  </tile>
- <tile id="266">
+ <tile id="266" probability="1.5">
   <properties>
    <property name="edges" value="ggGwwwGw"/>
   </properties>
@@ -601,67 +601,67 @@
    <property name="submat" value="ssgs"/>
   </properties>
  </tile>
- <tile id="295">
+ <tile id="295" probability="10">
   <properties>
    <property name="submat" value="gggg"/>
   </properties>
  </tile>
- <tile id="303">
+ <tile id="303" probability="0.5">
   <properties>
    <property name="edges" value="SwwwSwss"/>
   </properties>
  </tile>
- <tile id="304">
+ <tile id="304" probability="0.5">
   <properties>
    <property name="edges" value="wSsswSww"/>
   </properties>
  </tile>
- <tile id="305">
+ <tile id="305" probability="0.5">
   <properties>
    <property name="edges" value="wSSwSwwS"/>
   </properties>
  </tile>
- <tile id="306">
+ <tile id="306" probability="0.5">
   <properties>
    <property name="edges" value="wSSwSwwS"/>
   </properties>
  </tile>
- <tile id="307">
+ <tile id="307" probability="0.5">
   <properties>
    <property name="edges" value="wSSwSwwS"/>
   </properties>
  </tile>
- <tile id="308">
+ <tile id="308" probability="0.5">
   <properties>
    <property name="edges" value="wSSwSwwS"/>
   </properties>
  </tile>
- <tile id="309">
+ <tile id="309" probability="1.5">
   <properties>
    <property name="edges" value="GwwwGwgg"/>
   </properties>
  </tile>
- <tile id="310">
+ <tile id="310" probability="1.5">
   <properties>
    <property name="edges" value="wGggWgww"/>
   </properties>
  </tile>
- <tile id="311">
+ <tile id="311" probability="1.5">
   <properties>
    <property name="edges" value="wGGwGwwG"/>
   </properties>
  </tile>
- <tile id="312">
+ <tile id="312" probability="1.5">
   <properties>
    <property name="edges" value="wGGwGwwG"/>
   </properties>
  </tile>
- <tile id="313">
+ <tile id="313" probability="1.5">
   <properties>
    <property name="edges" value="wGGwGwwG"/>
   </properties>
  </tile>
- <tile id="314">
+ <tile id="314" probability="1.5">
   <properties>
    <property name="edges" value="wGGwGwwG"/>
   </properties>
@@ -696,67 +696,67 @@
    <property name="submat" value="gsss"/>
   </properties>
  </tile>
- <tile id="343">
+ <tile id="343" probability="10">
   <properties>
    <property name="submat" value="gggg"/>
   </properties>
  </tile>
- <tile id="351">
+ <tile id="351" probability="0.5">
   <properties>
    <property name="edges" value="SwwwSwss"/>
   </properties>
  </tile>
- <tile id="352">
+ <tile id="352" probability="0.5">
   <properties>
    <property name="edges" value="wSsswSww"/>
   </properties>
  </tile>
- <tile id="353">
+ <tile id="353" probability="0.5">
   <properties>
    <property name="edges" value="SwwSwSSw"/>
   </properties>
  </tile>
- <tile id="354">
+ <tile id="354" probability="0.5">
   <properties>
    <property name="edges" value="SwwSwSSw"/>
   </properties>
  </tile>
- <tile id="355">
+ <tile id="355" probability="0.5">
   <properties>
    <property name="edges" value="SwwSwSSw"/>
   </properties>
  </tile>
- <tile id="356">
+ <tile id="356" probability="0.5">
   <properties>
    <property name="edges" value="SwwSwSSw"/>
   </properties>
  </tile>
- <tile id="357">
+ <tile id="357" probability="1.5">
   <properties>
    <property name="edges" value="GwwwGwgg"/>
   </properties>
  </tile>
- <tile id="358">
+ <tile id="358" probability="1.5">
   <properties>
    <property name="edges" value="wGggWgww"/>
   </properties>
  </tile>
- <tile id="359">
+ <tile id="359" probability="1.5">
   <properties>
    <property name="edges" value="GwwGwGGw"/>
   </properties>
  </tile>
- <tile id="360">
+ <tile id="360" probability="1.5">
   <properties>
    <property name="edges" value="GwwGwGGw"/>
   </properties>
  </tile>
- <tile id="361">
+ <tile id="361" probability="1.5">
   <properties>
    <property name="edges" value="GwwGwGGw"/>
   </properties>
  </tile>
- <tile id="362">
+ <tile id="362" probability="1.5">
   <properties>
    <property name="edges" value="GwwGwGGw"/>
   </properties>
@@ -791,67 +791,67 @@
    <property name="submat" value="gssg"/>
   </properties>
  </tile>
- <tile id="391">
+ <tile id="391" probability="10">
   <properties>
    <property name="submat" value="gggg"/>
   </properties>
  </tile>
- <tile id="399">
+ <tile id="399" probability="0.5">
   <properties>
    <property name="edges" value="ssSSwwSS"/>
   </properties>
  </tile>
- <tile id="400">
+ <tile id="400" probability="0.5">
   <properties>
    <property name="edges" value="ssSSwwSS"/>
   </properties>
  </tile>
- <tile id="401">
+ <tile id="401" probability="0.5">
   <properties>
    <property name="edges" value="wSSSSwwS"/>
   </properties>
  </tile>
- <tile id="402">
+ <tile id="402" probability="0.5">
   <properties>
    <property name="edges" value="wSSSSwwS"/>
   </properties>
  </tile>
- <tile id="403">
+ <tile id="403" probability="0.5">
   <properties>
    <property name="edges" value="wSSSSwwS"/>
   </properties>
  </tile>
- <tile id="404">
+ <tile id="404" probability="0.5">
   <properties>
    <property name="edges" value="wSSSSwwS"/>
   </properties>
  </tile>
- <tile id="405">
+ <tile id="405" probability="1.5">
   <properties>
    <property name="edges" value="ggGwwwGw"/>
   </properties>
  </tile>
- <tile id="406">
+ <tile id="406" probability="1.5">
   <properties>
    <property name="edges" value="ggGwwwGw"/>
   </properties>
  </tile>
- <tile id="407">
+ <tile id="407" probability="1.5">
   <properties>
    <property name="edges" value="wGGwGwwG"/>
   </properties>
  </tile>
- <tile id="408">
+ <tile id="408" probability="1.5">
   <properties>
    <property name="edges" value="wGGwGwwG"/>
   </properties>
  </tile>
- <tile id="409">
+ <tile id="409" probability="1.5">
   <properties>
    <property name="edges" value="wGGwGwwG"/>
   </properties>
  </tile>
- <tile id="410">
+ <tile id="410" probability="1.5">
   <properties>
    <property name="edges" value="wGGwGwwG"/>
   </properties>
@@ -886,67 +886,67 @@
    <property name="submat" value="sggs"/>
   </properties>
  </tile>
- <tile id="439">
+ <tile id="439" probability="10">
   <properties>
    <property name="submat" value="gggg"/>
   </properties>
  </tile>
- <tile id="447">
+ <tile id="447" probability="0.5">
   <properties>
    <property name="edges" value="wSSSwwww"/>
   </properties>
  </tile>
- <tile id="448">
+ <tile id="448" probability="0.5">
   <properties>
    <property name="submat" value="wwww"/>
   </properties>
  </tile>
- <tile id="449">
+ <tile id="449" probability="0.5">
   <properties>
    <property name="edges" value="SwwSSwSS"/>
   </properties>
  </tile>
- <tile id="450">
+ <tile id="450" probability="0.5">
   <properties>
    <property name="edges" value="SwwSSwSS"/>
   </properties>
  </tile>
- <tile id="451">
+ <tile id="451" probability="0.5">
   <properties>
    <property name="edges" value="SwwSSwSS"/>
   </properties>
  </tile>
- <tile id="452">
+ <tile id="452" probability="0.5">
   <properties>
    <property name="edges" value="SwwSSwSS"/>
   </properties>
  </tile>
- <tile id="453">
+ <tile id="453" probability="1.5">
   <properties>
    <property name="edges" value="wGGwwwww"/>
   </properties>
  </tile>
- <tile id="454">
+ <tile id="454" probability="1.5">
   <properties>
    <property name="submat" value="wwww"/>
   </properties>
  </tile>
- <tile id="455">
+ <tile id="455" probability="1.5">
   <properties>
    <property name="edges" value="GwwGwGGw"/>
   </properties>
  </tile>
- <tile id="456">
+ <tile id="456" probability="1.5">
   <properties>
    <property name="edges" value="GwwGwGGw"/>
   </properties>
  </tile>
- <tile id="457">
+ <tile id="457" probability="1.5">
   <properties>
    <property name="edges" value="GwwGwGGw"/>
   </properties>
  </tile>
- <tile id="458">
+ <tile id="458" probability="1.5">
   <properties>
    <property name="edges" value="GwwGwGGw"/>
   </properties>
@@ -1386,37 +1386,37 @@
    <property name="submat" value="????"/>
   </properties>
  </tile>
- <tile id="691">
+ <tile id="691" probability="5">
   <properties>
    <property name="submat" value="ssss"/>
   </properties>
  </tile>
- <tile id="692">
+ <tile id="692" probability="5">
   <properties>
    <property name="submat" value="ssss"/>
   </properties>
  </tile>
- <tile id="693">
+ <tile id="693" probability="5">
   <properties>
    <property name="submat" value="ssss"/>
   </properties>
  </tile>
- <tile id="694">
+ <tile id="694" probability="5">
   <properties>
    <property name="submat" value="ssss"/>
   </properties>
  </tile>
- <tile id="695">
+ <tile id="695" probability="5">
   <properties>
    <property name="submat" value="ssss"/>
   </properties>
  </tile>
- <tile id="696">
+ <tile id="696" probability="5">
   <properties>
    <property name="submat" value="ssss"/>
   </properties>
  </tile>
- <tile id="697">
+ <tile id="697" probability="5">
   <properties>
    <property name="submat" value="ssss"/>
   </properties>
@@ -1426,57 +1426,57 @@
    <property name="submat" value="????"/>
   </properties>
  </tile>
- <tile id="728">
+ <tile id="728" probability="50">
   <properties>
    <property name="submat" value="ssss"/>
   </properties>
  </tile>
- <tile id="729">
+ <tile id="729" probability="50">
   <properties>
    <property name="submat" value="ssss"/>
   </properties>
  </tile>
- <tile id="730">
+ <tile id="730" probability="50">
   <properties>
    <property name="submat" value="ssss"/>
   </properties>
  </tile>
- <tile id="731">
+ <tile id="731" probability="50">
   <properties>
    <property name="submat" value="ssss"/>
   </properties>
  </tile>
- <tile id="732">
+ <tile id="732" probability="50">
   <properties>
    <property name="submat" value="ssss"/>
   </properties>
  </tile>
- <tile id="733">
+ <tile id="733" probability="50">
   <properties>
    <property name="submat" value="ssss"/>
   </properties>
  </tile>
- <tile id="734">
+ <tile id="734" probability="50">
   <properties>
    <property name="submat" value="ssss"/>
   </properties>
  </tile>
- <tile id="735">
+ <tile id="735" probability="50">
   <properties>
    <property name="submat" value="ssss"/>
   </properties>
  </tile>
- <tile id="736">
+ <tile id="736" probability="50">
   <properties>
    <property name="submat" value="ssss"/>
   </properties>
  </tile>
- <tile id="737">
+ <tile id="737" probability="50">
   <properties>
    <property name="submat" value="ssss"/>
   </properties>
  </tile>
- <tile id="738">
+ <tile id="738" probability="50">
   <properties>
    <property name="submat" value="ssss"/>
   </properties>

@@ -1,9 +1,13 @@
+use bevy::log::info;
 use bevy_ecs_tilemap::{
     helpers::square_grid::neighbors::{Neighbors, SquareDirection},
     map::TilemapSize,
     tiles::TilePos,
 };
-use rand::Rng;
+use rand::{
+    Rng,
+    distr::{Distribution, weighted::WeightedIndex},
+};
 use serde::{Deserialize, Serialize};
 use tiled::{Loader, PropertyValue};
 
@@ -55,7 +59,7 @@ impl Generator {
             .map(|(index, entry)| Tile {
                 pos: self.index_to_pos(index),
                 state: if entry.collapsed {
-                    TileState::Collapsed(entry.options[0])
+                    TileState::Collapsed(entry.options[0].index)
                 } else {
                     TileState::Options(entry.options.len())
                 },
@@ -114,6 +118,8 @@ impl Generator {
     fn update_options(&mut self, starting_tile: TilePos) {
         let mut remaining = vec![starting_tile];
 
+        let mut count = 0;
+
         while let Some(tile_pos) = remaining.pop() {
             let neighbors =
                 Neighbors::get_square_neighboring_positions(&tile_pos, &self.size, false);
@@ -132,12 +138,15 @@ impl Generator {
                     continue;
                 }
 
+                count = count + 1;
                 let changed = neighbor.constrain(&self.tile_set.combos, &tile.options, direction);
                 if changed {
                     remaining.push(*neighbor_pos);
                 }
             }
         }
+
+        info!("Updated {count}");
     }
 
     fn index_to_pos(&self, index: usize) -> TilePos {
@@ -149,18 +158,24 @@ impl Generator {
     }
 }
 
+#[derive(Clone, Copy, PartialEq)]
+struct TileOption {
+    index: u32,
+    weight: f32,
+}
+
 struct MapEntry {
     // When collapsed=true there's only one option. Maybe we should just
     // immediately collapsed any with one option and remove the collapsed field?
     collapsed: bool,
-    options: Vec<u32>,
+    options: Vec<TileOption>,
 }
 
 impl MapEntry {
-    fn new(tiles: &[u32]) -> Self {
+    fn new(tiles: &[TileOption]) -> Self {
         MapEntry {
             collapsed: false,
-            options: tiles.to_owned(),
+            options: Vec::from(tiles),
         }
     }
 
@@ -169,9 +184,13 @@ impl MapEntry {
 
         if self.options.is_empty() {
             self.collapsed = true;
-            self.options = vec![0];
+            self.options = vec![TileOption {
+                index: 0,
+                weight: 0.0,
+            }];
         } else {
-            let random_index = rand::rng().random_range(0..self.options.len());
+            let weighted_index = WeightedIndex::new(self.options.iter().map(|o| o.weight)).unwrap();
+            let random_index = weighted_index.sample(&mut rand::rng());
             self.options = vec![self.options[random_index]];
             self.collapsed = true;
         }
@@ -180,7 +199,7 @@ impl MapEntry {
     fn constrain(
         &mut self,
         combos: &TileCombos,
-        from_options: &[u32],
+        from_options: &[TileOption],
         from_direction: SquareDirection,
     ) -> bool {
         assert!(!self.collapsed);
@@ -191,17 +210,17 @@ impl MapEntry {
             _ => panic!("Unexpected direction"),
         };
 
-        let new_options: Vec<u32> = self
+        let new_options: Vec<TileOption> = self
             .options
             .iter()
             .cloned()
             .filter(|option| {
                 combos.iter().any(|[a, b]| match from_direction {
                     SquareDirection::West | SquareDirection::North => {
-                        a == option && from_options.contains(b)
+                        *a == option.index && from_options.iter().any(|o| o.index == *b)
                     }
                     SquareDirection::East | SquareDirection::South => {
-                        from_options.contains(a) && (b == option)
+                        from_options.iter().any(|o| o.index == *a) && (*b == option.index)
                     }
                     _ => panic!(),
                 })
@@ -219,7 +238,7 @@ impl MapEntry {
 
 struct TileSet {
     combos: TileCombos,
-    tiles: Vec<u32>,
+    tiles: Vec<TileOption>,
 }
 
 #[derive(Debug, Default, Deserialize, Serialize)]
@@ -233,17 +252,20 @@ impl TileSet {
         let mut loader = Loader::new();
 
         let tileset = loader.load_tsx_tileset("assets/summerfloor.xml").unwrap();
-        println!("Loaded tileset {}", tileset.name);
+        info!("Loaded tileset {}", tileset.name);
 
         let mut combos = TileCombos::default();
         let mut tiles = Vec::new();
 
         for (a, tile_a) in tileset.tiles() {
-            if let Some(a_edges) = get_edges(tile_a) {
-                tiles.push(a);
+            if let Some(a_edges) = get_edges(&tile_a) {
+                tiles.push(TileOption {
+                    index: a,
+                    weight: tile_a.probability,
+                });
 
                 for (b, tile_b) in tileset.tiles() {
-                    if let Some(b_edges) = get_edges(tile_b) {
+                    if let Some(b_edges) = get_edges(&tile_b) {
                         if a_edges.right == b_edges.left {
                             combos.horizontal.push([a, b]);
                         }
@@ -274,7 +296,7 @@ struct Edges {
     left: [char; 2],
 }
 
-fn get_edges(tile: tiled::Tile) -> Option<Edges> {
+fn get_edges(tile: &tiled::Tile) -> Option<Edges> {
     if let Some(PropertyValue::StringValue(edges)) = tile.properties.get("edges") {
         if edges != "????" {
             return Some(Edges::from_edges(edges));
