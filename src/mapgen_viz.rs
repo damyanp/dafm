@@ -198,7 +198,8 @@ fn update(
                 match generated_tile.state {
                     mapgen::TileState::Collapsed(i) => {
                         texture_index.0 = i;
-                        commands.entity(*label).insert(Visibility::Hidden);
+                        // commands.entity(*label).insert(Visibility::Hidden);
+                        labels.get_mut(*label).unwrap().0 = format!("[{}]", i);
                     }
                     mapgen::TileState::Options(count) => {
                         commands.entity(*label).insert(Visibility::Visible);

@@ -159,9 +159,14 @@ impl MapEntry {
     fn collapse(&mut self) {
         assert!(!self.collapsed);
 
-        let random_index = rand::rng().random_range(0..self.options.len());
-        self.options = vec![self.options[random_index]];
-        self.collapsed = true;
+        if self.options.is_empty() {
+            self.collapsed = true;
+            self.options = vec![0];
+        } else {
+            let random_index = rand::rng().random_range(0..self.options.len());
+            self.options = vec![self.options[random_index]];
+            self.collapsed = true;
+        }
     }
 
     fn constrain(
@@ -255,18 +260,21 @@ struct Edges {
 }
 
 fn get_edges(tile: tiled::Tile) -> Option<Edges> {
-    if let Some(PropertyValue::StringValue(submat)) = tile.properties.get("submat") {
-        if submat == "????" {
-            return None;
+    if let Some(PropertyValue::StringValue(edges)) = tile.properties.get("edges") {
+        if edges != "????" {
+            return Some(Edges::from_edges(edges));
         }
-
-        return Some(Edges::new(submat));
+    }
+    if let Some(PropertyValue::StringValue(submat)) = tile.properties.get("submat") {
+        if submat != "????" {
+            return Some(Edges::from_submat(submat));
+        }
     }
     None
 }
 
 impl Edges {
-    fn new(s: &str) -> Self {
+    fn from_submat(s: &str) -> Self {
         let s: Vec<char> = s.chars().collect();
 
         Edges {
@@ -274,6 +282,16 @@ impl Edges {
             right: [s[1], s[3]],
             bottom: [s[2], s[3]],
             left: [s[0], s[2]],
+        }
+    }
+
+    fn from_edges(s: &str) -> Self {
+        let s: Vec<char> = s.chars().collect();
+        Edges {
+            top: [s[0], s[1]],
+            right: [s[2], s[3]],
+            bottom: [s[4], s[5]],
+            left: [s[6], s[7]],
         }
     }
 }

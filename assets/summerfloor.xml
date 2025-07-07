@@ -36,6 +36,66 @@
    <property name="submat" value="gggg"/>
   </properties>
  </tile>
+ <tile id="15">
+  <properties>
+   <property name="edges" value="wwwSwSww"/>
+  </properties>
+ </tile>
+ <tile id="16">
+  <properties>
+   <property name="edges" value="wwwwSwwS"/>
+  </properties>
+ </tile>
+ <tile id="17">
+  <properties>
+   <property name="edges" value="wwwSwSww"/>
+  </properties>
+ </tile>
+ <tile id="18">
+  <properties>
+   <property name="edges" value="wwwwSwwS"/>
+  </properties>
+ </tile>
+ <tile id="19">
+  <properties>
+   <property name="edges" value="wwwSwSww"/>
+  </properties>
+ </tile>
+ <tile id="20">
+  <properties>
+   <property name="edges" value="wwwwSwwS"/>
+  </properties>
+ </tile>
+ <tile id="21">
+  <properties>
+   <property name="edges" value="wwwGwGww"/>
+  </properties>
+ </tile>
+ <tile id="22">
+  <properties>
+   <property name="edges" value="wwwwGGwG"/>
+  </properties>
+ </tile>
+ <tile id="23">
+  <properties>
+   <property name="edges" value="wwwGwGww"/>
+  </properties>
+ </tile>
+ <tile id="24">
+  <properties>
+   <property name="edges" value="wwwwGGwG"/>
+  </properties>
+ </tile>
+ <tile id="25">
+  <properties>
+   <property name="edges" value="wwwGwGww"/>
+  </properties>
+ </tile>
+ <tile id="26">
+  <properties>
+   <property name="edges" value="wwwwGGwG"/>
+  </properties>
+ </tile>
  <tile id="49">
   <properties>
    <property name="submat" value="ssgg"/>
@@ -69,6 +129,66 @@
  <tile id="55">
   <properties>
    <property name="submat" value="gggg"/>
+  </properties>
+ </tile>
+ <tile id="63">
+  <properties>
+   <property name="edges" value="wSSSwwww"/>
+  </properties>
+ </tile>
+ <tile id="64">
+  <properties>
+   <property name="edges" value="SwwwwwSS"/>
+  </properties>
+ </tile>
+ <tile id="65">
+  <properties>
+   <property name="edges" value="wSSSwwww"/>
+  </properties>
+ </tile>
+ <tile id="66">
+  <properties>
+   <property name="edges" value="SwwwwwSS"/>
+  </properties>
+ </tile>
+ <tile id="67">
+  <properties>
+   <property name="edges" value="wSSSwwww"/>
+  </properties>
+ </tile>
+ <tile id="68">
+  <properties>
+   <property name="edges" value="SwwwwwSS"/>
+  </properties>
+ </tile>
+ <tile id="69">
+  <properties>
+   <property name="edges" value="wGGGwwww"/>
+  </properties>
+ </tile>
+ <tile id="70">
+  <properties>
+   <property name="edges" value="GwwwwwGG"/>
+  </properties>
+ </tile>
+ <tile id="71">
+  <properties>
+   <property name="edges" value="wGGGwwww"/>
+  </properties>
+ </tile>
+ <tile id="72">
+  <properties>
+   <property name="edges" value="GwwwwwGG"/>
+  </properties>
+ </tile>
+ <tile id="73">
+  <properties>
+   <property name="edges" value="wGGGwwww"/>
+  </properties>
+ </tile>
+ <tile id="74">
+  <properties>
+   <property name="edges" value="GwwwwwGG"/>
   </properties>
  </tile>
  <tile id="97">
@@ -106,6 +226,66 @@
    <property name="submat" value="gggg"/>
   </properties>
  </tile>
+ <tile id="111">
+  <properties>
+   <property name="edges" value="ssSSSSss"/>
+  </properties>
+ </tile>
+ <tile id="112">
+  <properties>
+   <property name="edges" value="ssssSSSS"/>
+  </properties>
+ </tile>
+ <tile id="113">
+  <properties>
+   <property name="edges" value="ssSSSSss"/>
+  </properties>
+ </tile>
+ <tile id="114">
+  <properties>
+   <property name="edges" value="ssssSSSS"/>
+  </properties>
+ </tile>
+ <tile id="115">
+  <properties>
+   <property name="edges" value="ssSSSSss"/>
+  </properties>
+ </tile>
+ <tile id="116">
+  <properties>
+   <property name="edges" value="ssssSSSS"/>
+  </properties>
+ </tile>
+ <tile id="117">
+  <properties>
+   <property name="edges" value="ggGGGGgg"/>
+  </properties>
+ </tile>
+ <tile id="118">
+  <properties>
+   <property name="edges" value="ggggGGGG"/>
+  </properties>
+ </tile>
+ <tile id="119">
+  <properties>
+   <property name="edges" value="ggGGGGgg"/>
+  </properties>
+ </tile>
+ <tile id="120">
+  <properties>
+   <property name="edges" value="ggggGGGG"/>
+  </properties>
+ </tile>
+ <tile id="121">
+  <properties>
+   <property name="edges" value="ggGGGGgg"/>
+  </properties>
+ </tile>
+ <tile id="122">
+  <properties>
+   <property name="edges" value="ggggGGGG"/>
+  </properties>
+ </tile>
  <tile id="145">
   <properties>
    <property name="submat" value="ssgg"/>
@@ -139,6 +319,66 @@
  <tile id="151">
   <properties>
    <property name="submat" value="gggg"/>
+  </properties>
+ </tile>
+ <tile id="159">
+  <properties>
+   <property name="edges" value="SSSSssss"/>
+  </properties>
+ </tile>
+ <tile id="160">
+  <properties>
+   <property name="edges" value="SSssssSS"/>
+  </properties>
+ </tile>
+ <tile id="161">
+  <properties>
+   <property name="edges" value="SSSSssss"/>
+  </properties>
+ </tile>
+ <tile id="162">
+  <properties>
+   <property name="edges" value="SSssssSS"/>
+  </properties>
+ </tile>
+ <tile id="163">
+  <properties>
+   <property name="edges" value="SSSSssss"/>
+  </properties>
+ </tile>
+ <tile id="164">
+  <properties>
+   <property name="edges" value="SSssssSS"/>
+  </properties>
+ </tile>
+ <tile id="165">
+  <properties>
+   <property name="edges" value="GGGGgggg"/>
+  </properties>
+ </tile>
+ <tile id="166">
+  <properties>
+   <property name="edges" value="GGggggGG"/>
+  </properties>
+ </tile>
+ <tile id="167">
+  <properties>
+   <property name="edges" value="GGGGgggg"/>
+  </properties>
+ </tile>
+ <tile id="168">
+  <properties>
+   <property name="edges" value="GGggggGG"/>
+  </properties>
+ </tile>
+ <tile id="169">
+  <properties>
+   <property name="edges" value="GGGGgggg"/>
+  </properties>
+ </tile>
+ <tile id="170">
+  <properties>
+   <property name="edges" value="GGggggGG"/>
   </properties>
  </tile>
  <tile id="193">
@@ -176,6 +416,66 @@
    <property name="submat" value="gggg"/>
   </properties>
  </tile>
+ <tile id="207">
+  <properties>
+   <property name="edges" value="SwwwSwss"/>
+  </properties>
+ </tile>
+ <tile id="208">
+  <properties>
+   <property name="edges" value="wSsswSww"/>
+  </properties>
+ </tile>
+ <tile id="209">
+  <properties>
+   <property name="edges" value="wwwSsswS"/>
+  </properties>
+ </tile>
+ <tile id="210">
+  <properties>
+   <property name="edges" value="wwwSsswS"/>
+  </properties>
+ </tile>
+ <tile id="211">
+  <properties>
+   <property name="edges" value="wwwSsswS"/>
+  </properties>
+ </tile>
+ <tile id="212">
+  <properties>
+   <property name="edges" value="wwwSsswS"/>
+  </properties>
+ </tile>
+ <tile id="213">
+  <properties>
+   <property name="edges" value="GGwwGGgg"/>
+  </properties>
+ </tile>
+ <tile id="214">
+  <properties>
+   <property name="edges" value="GGggGGww"/>
+  </properties>
+ </tile>
+ <tile id="215">
+  <properties>
+   <property name="edges" value="wwGGggGG"/>
+  </properties>
+ </tile>
+ <tile id="216">
+  <properties>
+   <property name="edges" value="wwGGggGG"/>
+  </properties>
+ </tile>
+ <tile id="217">
+  <properties>
+   <property name="edges" value="wwGGggGG"/>
+  </properties>
+ </tile>
+ <tile id="218">
+  <properties>
+   <property name="edges" value="wwGGggGG"/>
+  </properties>
+ </tile>
  <tile id="241">
   <properties>
    <property name="submat" value="ssgg"/>
@@ -209,6 +509,66 @@
  <tile id="247">
   <properties>
    <property name="submat" value="gggg"/>
+  </properties>
+ </tile>
+ <tile id="255">
+  <properties>
+   <property name="edges" value="SwwwSwss"/>
+  </properties>
+ </tile>
+ <tile id="256">
+  <properties>
+   <property name="edges" value="wSsswSww"/>
+  </properties>
+ </tile>
+ <tile id="257">
+  <properties>
+   <property name="edges" value="ssSSwwSS"/>
+  </properties>
+ </tile>
+ <tile id="258">
+  <properties>
+   <property name="edges" value="ssSSwwSS"/>
+  </properties>
+ </tile>
+ <tile id="259">
+  <properties>
+   <property name="edges" value="ssSSwwSS"/>
+  </properties>
+ </tile>
+ <tile id="260">
+  <properties>
+   <property name="edges" value="ssSSwwSS"/>
+  </properties>
+ </tile>
+ <tile id="261">
+  <properties>
+   <property name="edges" value="GGwwGGgg"/>
+  </properties>
+ </tile>
+ <tile id="262">
+  <properties>
+   <property name="edges" value="GGggGGww"/>
+  </properties>
+ </tile>
+ <tile id="263">
+  <properties>
+   <property name="edges" value="ggGGwwGG"/>
+  </properties>
+ </tile>
+ <tile id="264">
+  <properties>
+   <property name="edges" value="ggGGwwGG"/>
+  </properties>
+ </tile>
+ <tile id="265">
+  <properties>
+   <property name="edges" value="ggGGwwGG"/>
+  </properties>
+ </tile>
+ <tile id="266">
+  <properties>
+   <property name="edges" value="ggGGwwGG"/>
   </properties>
  </tile>
  <tile id="289">
@@ -246,6 +606,66 @@
    <property name="submat" value="gggg"/>
   </properties>
  </tile>
+ <tile id="303">
+  <properties>
+   <property name="edges" value="SwwwSwss"/>
+  </properties>
+ </tile>
+ <tile id="304">
+  <properties>
+   <property name="edges" value="wSsswSww"/>
+  </properties>
+ </tile>
+ <tile id="305">
+  <properties>
+   <property name="edges" value="wSSSSwwS"/>
+  </properties>
+ </tile>
+ <tile id="306">
+  <properties>
+   <property name="edges" value="wSSSSwwS"/>
+  </properties>
+ </tile>
+ <tile id="307">
+  <properties>
+   <property name="edges" value="wSSSSwwS"/>
+  </properties>
+ </tile>
+ <tile id="308">
+  <properties>
+   <property name="edges" value="wSSSSwwS"/>
+  </properties>
+ </tile>
+ <tile id="309">
+  <properties>
+   <property name="edges" value="GGwwGGgg"/>
+  </properties>
+ </tile>
+ <tile id="310">
+  <properties>
+   <property name="edges" value="GGggGGww"/>
+  </properties>
+ </tile>
+ <tile id="311">
+  <properties>
+   <property name="edges" value="wGGGGwwG"/>
+  </properties>
+ </tile>
+ <tile id="312">
+  <properties>
+   <property name="edges" value="wGGGGwwG"/>
+  </properties>
+ </tile>
+ <tile id="313">
+  <properties>
+   <property name="edges" value="wGGGGwwG"/>
+  </properties>
+ </tile>
+ <tile id="314">
+  <properties>
+   <property name="edges" value="wGGGGwwG"/>
+  </properties>
+ </tile>
  <tile id="337">
   <properties>
    <property name="submat" value="sgss"/>
@@ -279,6 +699,66 @@
  <tile id="343">
   <properties>
    <property name="submat" value="gggg"/>
+  </properties>
+ </tile>
+ <tile id="351">
+  <properties>
+   <property name="edges" value="SwwwSwss"/>
+  </properties>
+ </tile>
+ <tile id="352">
+  <properties>
+   <property name="edges" value="wSsswSww"/>
+  </properties>
+ </tile>
+ <tile id="353">
+  <properties>
+   <property name="edges" value="SwwSwSSS"/>
+  </properties>
+ </tile>
+ <tile id="354">
+  <properties>
+   <property name="edges" value="SwwSwSSS"/>
+  </properties>
+ </tile>
+ <tile id="355">
+  <properties>
+   <property name="edges" value="SwwSwSSS"/>
+  </properties>
+ </tile>
+ <tile id="356">
+  <properties>
+   <property name="edges" value="SwwSwSSS"/>
+  </properties>
+ </tile>
+ <tile id="357">
+  <properties>
+   <property name="edges" value="GGwwGGgg"/>
+  </properties>
+ </tile>
+ <tile id="358">
+  <properties>
+   <property name="edges" value="GGggGGww"/>
+  </properties>
+ </tile>
+ <tile id="359">
+  <properties>
+   <property name="edges" value="GwwGwGGG"/>
+  </properties>
+ </tile>
+ <tile id="360">
+  <properties>
+   <property name="edges" value="GwwGwGGG"/>
+  </properties>
+ </tile>
+ <tile id="361">
+  <properties>
+   <property name="edges" value="GwwGwGGG"/>
+  </properties>
+ </tile>
+ <tile id="362">
+  <properties>
+   <property name="edges" value="GwwGwGGG"/>
   </properties>
  </tile>
  <tile id="385">
@@ -316,6 +796,66 @@
    <property name="submat" value="gggg"/>
   </properties>
  </tile>
+ <tile id="399">
+  <properties>
+   <property name="edges" value="ssSSwwSS"/>
+  </properties>
+ </tile>
+ <tile id="400">
+  <properties>
+   <property name="edges" value="ssSSwwSS"/>
+  </properties>
+ </tile>
+ <tile id="401">
+  <properties>
+   <property name="edges" value="wSSSSwwS"/>
+  </properties>
+ </tile>
+ <tile id="402">
+  <properties>
+   <property name="edges" value="wSSSSwwS"/>
+  </properties>
+ </tile>
+ <tile id="403">
+  <properties>
+   <property name="edges" value="wSSSSwwS"/>
+  </properties>
+ </tile>
+ <tile id="404">
+  <properties>
+   <property name="edges" value="wSSSSwwS"/>
+  </properties>
+ </tile>
+ <tile id="405">
+  <properties>
+   <property name="edges" value="ggGGwwGG"/>
+  </properties>
+ </tile>
+ <tile id="406">
+  <properties>
+   <property name="edges" value="ggGGwwGG"/>
+  </properties>
+ </tile>
+ <tile id="407">
+  <properties>
+   <property name="edges" value="wGGGGGwG"/>
+  </properties>
+ </tile>
+ <tile id="408">
+  <properties>
+   <property name="edges" value="wGGGGGwG"/>
+  </properties>
+ </tile>
+ <tile id="409">
+  <properties>
+   <property name="edges" value="wGGGGGwG"/>
+  </properties>
+ </tile>
+ <tile id="410">
+  <properties>
+   <property name="edges" value="wGGGGGwG"/>
+  </properties>
+ </tile>
  <tile id="433">
   <properties>
    <property name="submat" value="gssg"/>
@@ -349,6 +889,66 @@
  <tile id="439">
   <properties>
    <property name="submat" value="gggg"/>
+  </properties>
+ </tile>
+ <tile id="447">
+  <properties>
+   <property name="edges" value="wSSSwwww"/>
+  </properties>
+ </tile>
+ <tile id="448">
+  <properties>
+   <property name="submat" value="wwww"/>
+  </properties>
+ </tile>
+ <tile id="449">
+  <properties>
+   <property name="edges" value="SwwSSwSS"/>
+  </properties>
+ </tile>
+ <tile id="450">
+  <properties>
+   <property name="edges" value="SwwSSwSS"/>
+  </properties>
+ </tile>
+ <tile id="451">
+  <properties>
+   <property name="edges" value="SwwSSwSS"/>
+  </properties>
+ </tile>
+ <tile id="452">
+  <properties>
+   <property name="edges" value="SwwSSwSS"/>
+  </properties>
+ </tile>
+ <tile id="453">
+  <properties>
+   <property name="edges" value="GGGGwwww"/>
+  </properties>
+ </tile>
+ <tile id="454">
+  <properties>
+   <property name="submat" value="wwww"/>
+  </properties>
+ </tile>
+ <tile id="455">
+  <properties>
+   <property name="edges" value="GwwGwGGG"/>
+  </properties>
+ </tile>
+ <tile id="456">
+  <properties>
+   <property name="edges" value="GwwGwGGG"/>
+  </properties>
+ </tile>
+ <tile id="457">
+  <properties>
+   <property name="edges" value="GwwGwGGG"/>
+  </properties>
+ </tile>
+ <tile id="458">
+  <properties>
+   <property name="edges" value="GwwGwGGG"/>
   </properties>
  </tile>
  <tile id="488">
