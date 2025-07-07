@@ -40,6 +40,13 @@ impl Generator {
         }
     }
 
+    pub fn reset(&mut self) {
+        for entry in self.grid.iter_mut() {
+            entry.collapsed = false;
+            entry.options = self.tile_set.tiles.clone();
+        }
+    }
+
     pub fn get(&self) -> Vec<Tile> {
         self.grid
             .iter()
@@ -247,6 +254,13 @@ impl TileSet {
                 }
             }
         }
+
+        println!(
+            "{} tiles, {} horizontal combos, {} vertical combos",
+            tiles.len(),
+            combos.horizontal.len(),
+            combos.vertical.len()
+        );
 
         return TileSet { combos, tiles };
     }

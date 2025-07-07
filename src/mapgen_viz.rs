@@ -74,7 +74,7 @@ struct TileLabel(Entity);
 fn manage_generator(
     mut commands: Commands,
     mut control_events: EventReader<MapGenControlEvent>,
-    tile_maps: Query<(
+    mut tile_maps: Query<(
         Entity,
         &TileStorage,
         &Transform,
@@ -83,7 +83,7 @@ fn manage_generator(
         &TilemapTileSize,
         &TilemapType,
         &TilemapAnchor,
-        Option<&MapGenerator>,
+        Option<&mut MapGenerator>,
     )>,
     mut tiles: Query<(&mut TileTextureIndex, &TilePos, Option<&TileLabel>)>,
 ) {
@@ -98,7 +98,15 @@ fn manage_generator(
             }
         }
 
-        for tile_map in tile_maps {
+        if *control_event == MapGenControlEvent::Build {
+            for (tile_entity, _, _, _, _, _, _, _, mut generator) in &mut tile_maps {
+                if let Some(generator) = &mut generator {
+                    generator.generator.reset();
+                }
+            }
+        }
+
+        for tile_map in &tile_maps {
             match control_event {
                 MapGenControlEvent::Step
                 | MapGenControlEvent::AutoStep
@@ -199,7 +207,7 @@ fn update(
                     mapgen::TileState::Collapsed(i) => {
                         texture_index.0 = i;
                         // commands.entity(*label).insert(Visibility::Hidden);
-                        labels.get_mut(*label).unwrap().0 = format!("[{}]", i);
+                        labels.get_mut(*label).unwrap().0 = format!("{}", i);
                     }
                     mapgen::TileState::Options(count) => {
                         commands.entity(*label).insert(Visibility::Visible);

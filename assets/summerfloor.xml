@@ -228,62 +228,62 @@
  </tile>
  <tile id="111">
   <properties>
-   <property name="edges" value="ssSSSSss"/>
+   <property name="edges" value="ssSwSwss"/>
   </properties>
  </tile>
  <tile id="112">
   <properties>
-   <property name="edges" value="ssssSSSS"/>
+   <property name="edges" value="sssswSSw"/>
   </properties>
  </tile>
  <tile id="113">
   <properties>
-   <property name="edges" value="ssSSSSss"/>
+   <property name="edges" value="ssSwSwss"/>
   </properties>
  </tile>
  <tile id="114">
   <properties>
-   <property name="edges" value="ssssSSSS"/>
+   <property name="edges" value="sssswSSw"/>
   </properties>
  </tile>
  <tile id="115">
   <properties>
-   <property name="edges" value="ssSSSSss"/>
+   <property name="edges" value="ssSwSwss"/>
   </properties>
  </tile>
  <tile id="116">
   <properties>
-   <property name="edges" value="ssssSSSS"/>
+   <property name="edges" value="sssswSSw"/>
   </properties>
  </tile>
  <tile id="117">
   <properties>
-   <property name="edges" value="ggGGGGgg"/>
+   <property name="edges" value="ggGwGwgg"/>
   </properties>
  </tile>
  <tile id="118">
   <properties>
-   <property name="edges" value="ggggGGGG"/>
+   <property name="edges" value="ggggwGGw"/>
   </properties>
  </tile>
  <tile id="119">
   <properties>
-   <property name="edges" value="ggGGGGgg"/>
+   <property name="edges" value="ggGwGwgg"/>
   </properties>
  </tile>
  <tile id="120">
   <properties>
-   <property name="edges" value="ggggGGGG"/>
+   <property name="edges" value="ggggwGGw"/>
   </properties>
  </tile>
  <tile id="121">
   <properties>
-   <property name="edges" value="ggGGGGgg"/>
+   <property name="edges" value="ggGwGwgg"/>
   </properties>
  </tile>
  <tile id="122">
   <properties>
-   <property name="edges" value="ggggGGGG"/>
+   <property name="edges" value="ggggwGGw"/>
   </properties>
  </tile>
  <tile id="145">
@@ -323,62 +323,62 @@
  </tile>
  <tile id="159">
   <properties>
-   <property name="edges" value="SSSSssss"/>
+   <property name="edges" value="SwwSssss"/>
   </properties>
  </tile>
  <tile id="160">
   <properties>
-   <property name="edges" value="SSssssSS"/>
+   <property name="edges" value="wSsssswS"/>
   </properties>
  </tile>
  <tile id="161">
   <properties>
-   <property name="edges" value="SSSSssss"/>
+   <property name="edges" value="SwwSssss"/>
   </properties>
  </tile>
  <tile id="162">
   <properties>
-   <property name="edges" value="SSssssSS"/>
+   <property name="edges" value="wSsssswS"/>
   </properties>
  </tile>
  <tile id="163">
   <properties>
-   <property name="edges" value="SSSSssss"/>
+   <property name="edges" value="SwwSssss"/>
   </properties>
  </tile>
  <tile id="164">
   <properties>
-   <property name="edges" value="SSssssSS"/>
+   <property name="edges" value="wSsssswS"/>
   </properties>
  </tile>
  <tile id="165">
   <properties>
-   <property name="edges" value="GGGGgggg"/>
+   <property name="edges" value="GwwGgggg"/>
   </properties>
  </tile>
  <tile id="166">
   <properties>
-   <property name="edges" value="GGggggGG"/>
+   <property name="edges" value="wGggggwG"/>
   </properties>
  </tile>
  <tile id="167">
   <properties>
-   <property name="edges" value="GGGGgggg"/>
+   <property name="edges" value="GwwGgggg"/>
   </properties>
  </tile>
  <tile id="168">
   <properties>
-   <property name="edges" value="GGggggGG"/>
+   <property name="edges" value="wGggggwG"/>
   </properties>
  </tile>
  <tile id="169">
   <properties>
-   <property name="edges" value="GGGGgggg"/>
+   <property name="edges" value="GwwGgggg"/>
   </properties>
  </tile>
  <tile id="170">
   <properties>
-   <property name="edges" value="GGggggGG"/>
+   <property name="edges" value="wGggggwG"/>
   </properties>
  </tile>
  <tile id="193">
@@ -448,32 +448,32 @@
  </tile>
  <tile id="213">
   <properties>
-   <property name="edges" value="GGwwGGgg"/>
+   <property name="edges" value="GwwwGwgg"/>
   </properties>
  </tile>
  <tile id="214">
   <properties>
-   <property name="edges" value="GGggGGww"/>
+   <property name="edges" value="wGggWgww"/>
   </properties>
  </tile>
  <tile id="215">
   <properties>
-   <property name="edges" value="wwGGggGG"/>
+   <property name="edges" value="wwwGggwG"/>
   </properties>
  </tile>
  <tile id="216">
   <properties>
-   <property name="edges" value="wwGGggGG"/>
+   <property name="edges" value="wwwGggwG"/>
   </properties>
  </tile>
  <tile id="217">
   <properties>
-   <property name="edges" value="wwGGggGG"/>
+   <property name="edges" value="wwwGggwG"/>
   </properties>
  </tile>
  <tile id="218">
   <properties>
-   <property name="edges" value="wwGGggGG"/>
+   <property name="edges" value="wwwGggwG"/>
   </properties>
  </tile>
  <tile id="241">
@@ -543,32 +543,32 @@
  </tile>
  <tile id="261">
   <properties>
-   <property name="edges" value="GGwwGGgg"/>
+   <property name="edges" value="GwwwGwgg"/>
   </properties>
  </tile>
  <tile id="262">
   <properties>
-   <property name="edges" value="GGggGGww"/>
+   <property name="edges" value="wGggWgww"/>
   </properties>
  </tile>
  <tile id="263">
   <properties>
-   <property name="edges" value="ggGGwwGG"/>
+   <property name="edges" value="ggGwwwGw"/>
   </properties>
  </tile>
  <tile id="264">
   <properties>
-   <property name="edges" value="ggGGwwGG"/>
+   <property name="edges" value="ggGwwwGw"/>
   </properties>
  </tile>
  <tile id="265">
   <properties>
-   <property name="edges" value="ggGGwwGG"/>
+   <property name="edges" value="ggGwwwGw"/>
   </properties>
  </tile>
  <tile id="266">
   <properties>
-   <property name="edges" value="ggGGwwGG"/>
+   <property name="edges" value="ggGwwwGw"/>
   </properties>
  </tile>
  <tile id="289">
@@ -618,52 +618,52 @@
  </tile>
  <tile id="305">
   <properties>
-   <property name="edges" value="wSSSSwwS"/>
+   <property name="edges" value="wSSwSwwS"/>
   </properties>
  </tile>
  <tile id="306">
   <properties>
-   <property name="edges" value="wSSSSwwS"/>
+   <property name="edges" value="wSSwSwwS"/>
   </properties>
  </tile>
  <tile id="307">
   <properties>
-   <property name="edges" value="wSSSSwwS"/>
+   <property name="edges" value="wSSwSwwS"/>
   </properties>
  </tile>
  <tile id="308">
   <properties>
-   <property name="edges" value="wSSSSwwS"/>
+   <property name="edges" value="wSSwSwwS"/>
   </properties>
  </tile>
  <tile id="309">
   <properties>
-   <property name="edges" value="GGwwGGgg"/>
+   <property name="edges" value="GwwwGwgg"/>
   </properties>
  </tile>
  <tile id="310">
   <properties>
-   <property name="edges" value="GGggGGww"/>
+   <property name="edges" value="wGggWgww"/>
   </properties>
  </tile>
  <tile id="311">
   <properties>
-   <property name="edges" value="wGGGGwwG"/>
+   <property name="edges" value="wGGwGwwG"/>
   </properties>
  </tile>
  <tile id="312">
   <properties>
-   <property name="edges" value="wGGGGwwG"/>
+   <property name="edges" value="wGGwGwwG"/>
   </properties>
  </tile>
  <tile id="313">
   <properties>
-   <property name="edges" value="wGGGGwwG"/>
+   <property name="edges" value="wGGwGwwG"/>
   </properties>
  </tile>
  <tile id="314">
   <properties>
-   <property name="edges" value="wGGGGwwG"/>
+   <property name="edges" value="wGGwGwwG"/>
   </properties>
  </tile>
  <tile id="337">
@@ -713,52 +713,52 @@
  </tile>
  <tile id="353">
   <properties>
-   <property name="edges" value="SwwSwSSS"/>
+   <property name="edges" value="SwwSwSSw"/>
   </properties>
  </tile>
  <tile id="354">
   <properties>
-   <property name="edges" value="SwwSwSSS"/>
+   <property name="edges" value="SwwSwSSw"/>
   </properties>
  </tile>
  <tile id="355">
   <properties>
-   <property name="edges" value="SwwSwSSS"/>
+   <property name="edges" value="SwwSwSSw"/>
   </properties>
  </tile>
  <tile id="356">
   <properties>
-   <property name="edges" value="SwwSwSSS"/>
+   <property name="edges" value="SwwSwSSw"/>
   </properties>
  </tile>
  <tile id="357">
   <properties>
-   <property name="edges" value="GGwwGGgg"/>
+   <property name="edges" value="GwwwGwgg"/>
   </properties>
  </tile>
  <tile id="358">
   <properties>
-   <property name="edges" value="GGggGGww"/>
+   <property name="edges" value="wGggWgww"/>
   </properties>
  </tile>
  <tile id="359">
   <properties>
-   <property name="edges" value="GwwGwGGG"/>
+   <property name="edges" value="GwwGwGGw"/>
   </properties>
  </tile>
  <tile id="360">
   <properties>
-   <property name="edges" value="GwwGwGGG"/>
+   <property name="edges" value="GwwGwGGw"/>
   </properties>
  </tile>
  <tile id="361">
   <properties>
-   <property name="edges" value="GwwGwGGG"/>
+   <property name="edges" value="GwwGwGGw"/>
   </properties>
  </tile>
  <tile id="362">
   <properties>
-   <property name="edges" value="GwwGwGGG"/>
+   <property name="edges" value="GwwGwGGw"/>
   </properties>
  </tile>
  <tile id="385">
@@ -828,32 +828,32 @@
  </tile>
  <tile id="405">
   <properties>
-   <property name="edges" value="ggGGwwGG"/>
+   <property name="edges" value="ggGwwwGw"/>
   </properties>
  </tile>
  <tile id="406">
   <properties>
-   <property name="edges" value="ggGGwwGG"/>
+   <property name="edges" value="ggGwwwGw"/>
   </properties>
  </tile>
  <tile id="407">
   <properties>
-   <property name="edges" value="wGGGGGwG"/>
+   <property name="edges" value="wGGwGwwG"/>
   </properties>
  </tile>
  <tile id="408">
   <properties>
-   <property name="edges" value="wGGGGGwG"/>
+   <property name="edges" value="wGGwGwwG"/>
   </properties>
  </tile>
  <tile id="409">
   <properties>
-   <property name="edges" value="wGGGGGwG"/>
+   <property name="edges" value="wGGwGwwG"/>
   </properties>
  </tile>
  <tile id="410">
   <properties>
-   <property name="edges" value="wGGGGGwG"/>
+   <property name="edges" value="wGGwGwwG"/>
   </properties>
  </tile>
  <tile id="433">
@@ -923,7 +923,7 @@
  </tile>
  <tile id="453">
   <properties>
-   <property name="edges" value="GGGGwwww"/>
+   <property name="edges" value="wGGwwwww"/>
   </properties>
  </tile>
  <tile id="454">
@@ -933,22 +933,22 @@
  </tile>
  <tile id="455">
   <properties>
-   <property name="edges" value="GwwGwGGG"/>
+   <property name="edges" value="GwwGwGGw"/>
   </properties>
  </tile>
  <tile id="456">
   <properties>
-   <property name="edges" value="GwwGwGGG"/>
+   <property name="edges" value="GwwGwGGw"/>
   </properties>
  </tile>
  <tile id="457">
   <properties>
-   <property name="edges" value="GwwGwGGG"/>
+   <property name="edges" value="GwwGwGGw"/>
   </properties>
  </tile>
  <tile id="458">
   <properties>
-   <property name="edges" value="GwwGwGGG"/>
+   <property name="edges" value="GwwGwGGw"/>
   </properties>
  </tile>
  <tile id="488">
