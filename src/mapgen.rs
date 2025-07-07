@@ -5,6 +5,7 @@ use bevy_ecs_tilemap::{
 };
 use rand::Rng;
 use serde::{Deserialize, Serialize};
+use tiled::{Loader, PropertyValue};
 
 // Based on Wave Function Collapse Algorithm.  See for example:
 //   https://robertheaton.com/2018/12/17/wavefunction-collapse-algorithm/
@@ -208,7 +209,7 @@ struct TileSet {
     tiles: Vec<u32>,
 }
 
-#[derive(Debug, Deserialize, Serialize)]
+#[derive(Debug, Default, Deserialize, Serialize)]
 struct TileCombos {
     horizontal: Vec<[u32; 2]>,
     vertical: Vec<[u32; 2]>,
@@ -216,23 +217,63 @@ struct TileCombos {
 
 impl TileSet {
     fn load() -> Self {
-        // Load and parse the combos.json file
-        let combos_json = std::fs::read_to_string("assets/kentangpixel/combos.json")
-            .expect("Failed to read combos.json file");
-        let combos: TileCombos =
-            serde_json::from_str(&combos_json).expect("Failed to parse combos.json");
+        let mut loader = Loader::new();
 
-        // Infer all the possible tiles from those mentioned in the list of
-        // valid combinations
-        let tiles: Vec<u32> = combos
-            .horizontal
-            .iter()
-            .chain(combos.vertical.iter())
-            .flat_map(|pair| [pair[0], pair[1]])
-            .collect::<std::collections::HashSet<_>>()
-            .into_iter()
-            .collect();
+        let tileset = loader.load_tsx_tileset("assets/summerfloor.xml").unwrap();
+        println!("Loaded tileset {}", tileset.name);
 
-        TileSet { combos, tiles }
+        let mut combos = TileCombos::default();
+        let mut tiles = Vec::new();
+
+        for (a, tile_a) in tileset.tiles() {
+            if let Some(a_edges) = get_edges(tile_a) {
+                tiles.push(a);
+
+                for (b, tile_b) in tileset.tiles() {
+                    if let Some(b_edges) = get_edges(tile_b) {
+                        if a_edges.right == b_edges.left {
+                            combos.horizontal.push([a, b]);
+                        }
+
+                        if a_edges.bottom == b_edges.top {
+                            combos.vertical.push([a, b]);
+                        }
+                    }
+                }
+            }
+        }
+
+        return TileSet { combos, tiles };
+    }
+}
+
+struct Edges {
+    top: [char; 2],
+    right: [char; 2],
+    bottom: [char; 2],
+    left: [char; 2],
+}
+
+fn get_edges(tile: tiled::Tile) -> Option<Edges> {
+    if let Some(PropertyValue::StringValue(submat)) = tile.properties.get("submat") {
+        if submat == "????" {
+            return None;
+        }
+
+        return Some(Edges::new(submat));
+    }
+    None
+}
+
+impl Edges {
+    fn new(s: &str) -> Self {
+        let s: Vec<char> = s.chars().collect();
+
+        Edges {
+            top: [s[0], s[1]],
+            right: [s[1], s[3]],
+            bottom: [s[2], s[3]],
+            left: [s[0], s[2]],
+        }
     }
 }

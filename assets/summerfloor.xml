@@ -36,11 +36,6 @@
    <property name="submat" value="gggg"/>
   </properties>
  </tile>
- <tile id="47">
-  <properties>
-   <property name="submat" value="????"/>
-  </properties>
- </tile>
  <tile id="49">
   <properties>
    <property name="submat" value="ssgg"/>
@@ -74,11 +69,6 @@
  <tile id="55">
   <properties>
    <property name="submat" value="gggg"/>
-  </properties>
- </tile>
- <tile id="95">
-  <properties>
-   <property name="submat" value="????"/>
   </properties>
  </tile>
  <tile id="97">
@@ -116,11 +106,6 @@
    <property name="submat" value="gggg"/>
   </properties>
  </tile>
- <tile id="143">
-  <properties>
-   <property name="submat" value="????"/>
-  </properties>
- </tile>
  <tile id="145">
   <properties>
    <property name="submat" value="ssgg"/>
@@ -154,11 +139,6 @@
  <tile id="151">
   <properties>
    <property name="submat" value="gggg"/>
-  </properties>
- </tile>
- <tile id="191">
-  <properties>
-   <property name="submat" value="????"/>
   </properties>
  </tile>
  <tile id="193">
@@ -196,11 +176,6 @@
    <property name="submat" value="gggg"/>
   </properties>
  </tile>
- <tile id="239">
-  <properties>
-   <property name="submat" value="????"/>
-  </properties>
- </tile>
  <tile id="241">
   <properties>
    <property name="submat" value="ssgg"/>
@@ -234,11 +209,6 @@
  <tile id="247">
   <properties>
    <property name="submat" value="gggg"/>
-  </properties>
- </tile>
- <tile id="287">
-  <properties>
-   <property name="submat" value="????"/>
   </properties>
  </tile>
  <tile id="289">
@@ -276,11 +246,6 @@
    <property name="submat" value="gggg"/>
   </properties>
  </tile>
- <tile id="335">
-  <properties>
-   <property name="submat" value="????"/>
-  </properties>
- </tile>
  <tile id="337">
   <properties>
    <property name="submat" value="sgss"/>
@@ -314,11 +279,6 @@
  <tile id="343">
   <properties>
    <property name="submat" value="gggg"/>
-  </properties>
- </tile>
- <tile id="383">
-  <properties>
-   <property name="submat" value="????"/>
   </properties>
  </tile>
  <tile id="385">
@@ -356,11 +316,6 @@
    <property name="submat" value="gggg"/>
   </properties>
  </tile>
- <tile id="431">
-  <properties>
-   <property name="submat" value="????"/>
-  </properties>
- </tile>
  <tile id="433">
   <properties>
    <property name="submat" value="gssg"/>
@@ -394,11 +349,6 @@
  <tile id="439">
   <properties>
    <property name="submat" value="gggg"/>
-  </properties>
- </tile>
- <tile id="479">
-  <properties>
-   <property name="submat" value="????"/>
   </properties>
  </tile>
  <tile id="488">
@@ -492,11 +442,6 @@
   </properties>
  </tile>
  <tile id="506">
-  <properties>
-   <property name="submat" value="????"/>
-  </properties>
- </tile>
- <tile id="527">
   <properties>
    <property name="submat" value="????"/>
   </properties>
@@ -596,11 +541,6 @@
    <property name="submat" value="????"/>
   </properties>
  </tile>
- <tile id="575">
-  <properties>
-   <property name="submat" value="????"/>
-  </properties>
- </tile>
  <tile id="584">
   <properties>
    <property name="submat" value="????"/>
@@ -692,11 +632,6 @@
   </properties>
  </tile>
  <tile id="602">
-  <properties>
-   <property name="submat" value="????"/>
-  </properties>
- </tile>
- <tile id="623">
   <properties>
    <property name="submat" value="????"/>
   </properties>
@@ -796,11 +731,6 @@
    <property name="submat" value="????"/>
   </properties>
  </tile>
- <tile id="671">
-  <properties>
-   <property name="submat" value="????"/>
-  </properties>
- </tile>
  <tile id="680">
   <properties>
    <property name="submat" value="????"/>
@@ -896,11 +826,6 @@
    <property name="submat" value="????"/>
   </properties>
  </tile>
- <tile id="719">
-  <properties>
-   <property name="submat" value="????"/>
-  </properties>
- </tile>
  <tile id="728">
   <properties>
    <property name="submat" value="ssss"/>
@@ -992,11 +917,6 @@
   </properties>
  </tile>
  <tile id="746">
-  <properties>
-   <property name="submat" value="????"/>
-  </properties>
- </tile>
- <tile id="767">
   <properties>
    <property name="submat" value="????"/>
   </properties>
