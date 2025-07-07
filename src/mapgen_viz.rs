@@ -173,7 +173,7 @@ fn manage_generator(
                         commands.entity(*tile_entity).insert(TileLabel(label));
                     }
                     commands.entity(entity).insert(MapGenerator {
-                        generator: mapgen::Generator::new(*map_size),
+                        generator: mapgen::Generator::new(map_size),
                         auto_step: false,
                     });
                 }

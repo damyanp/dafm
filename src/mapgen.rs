@@ -21,20 +21,21 @@ pub struct Tile {
     pub state: TileState,
 }
 
+#[derive(PartialEq)]
 pub enum TileState {
     Collapsed(u32),
     Options(usize),
 }
 
 impl Generator {
-    pub fn new(size: TilemapSize) -> Self {
+    pub fn new(size: &TilemapSize) -> Self {
         let tile_set = TileSet::load();
 
         let mut grid = Vec::new();
         grid.resize_with(size.count(), || MapEntry::new(&tile_set.tiles));
 
         Generator {
-            size,
+            size: *size,
             tile_set,
             grid,
         }
