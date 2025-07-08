@@ -20,12 +20,41 @@ fn startup(mut commands: Commands) {
     commands.spawn(Camera2d);
 }
 
-fn camera(mut camera: Query<&mut Transform, With<Camera2d>>) {
+fn camera(
+    keys: Res<ButtonInput<KeyCode>>,
+    mut camera: Query<&mut Transform, With<Camera2d>>,
+    mut scale: Local<f32>,
+    mut translate: Local<Vec3>,
+) {
     let Ok(mut camera) = camera.single_mut() else {
         return;
     };
 
-    camera.scale = Vec3::splat(3.0);
+    if *scale == 0.0 {
+        *scale = 1.0;
+    }
+
+    if keys.pressed(KeyCode::Equal) {
+        *scale = *scale * 0.99;
+    }
+    if keys.pressed(KeyCode::Minus) {
+        *scale = *scale * 1.01;
+    }
+    if keys.pressed(KeyCode::ArrowUp) {
+        translate.y = translate.y + 3.0;
+    }
+    if keys.pressed(KeyCode::ArrowDown) {
+        translate.y = translate.y - 3.0;
+    }
+    if keys.pressed(KeyCode::ArrowLeft) {
+        translate.x = translate.x - 3.0;
+    }
+    if keys.pressed(KeyCode::ArrowRight) {
+        translate.x = translate.x + 3.0;
+    }
+
+    camera.translation = *translate;
+    camera.scale = Vec3::splat(1.0 * *scale);
 }
 
 mod map {
@@ -44,7 +73,7 @@ mod map {
     fn startup(mut commands: Commands, asset_server: Res<AssetServer>) {
         let texture = asset_server.load("kentangpixel/SummerFloor.png");
 
-        let map_size = TilemapSize { x: 32, y: 32 };
+        let map_size = TilemapSize { x: 256, y: 256 };
 
         let map = {
             info!("Generating map....");

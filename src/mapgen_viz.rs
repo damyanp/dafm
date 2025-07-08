@@ -233,7 +233,7 @@ fn update(
                     }
                     mapgen::TileState::Options(count) => {
                         commands.entity(*label).insert(Visibility::Visible);
-                        labels.get_mut(*label).unwrap().0 = format!("{:.0}", count*100.0);
+                        labels.get_mut(*label).unwrap().0 = format!("{:.0}", count * 100.0);
                     }
                 }
             }

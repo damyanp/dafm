@@ -8,7 +8,6 @@ use rand::{
     Rng,
     distr::{Distribution, weighted::WeightedIndex},
 };
-use serde::{Deserialize, Serialize};
 use tiled::{Loader, PropertyValue};
 
 // Based on Wave Function Collapse Algorithm.  See for example:
@@ -136,6 +135,7 @@ impl Generator {
                     continue;
                 }
 
+                // println!("Constrain {neighbor_pos:?}");
                 let changed = neighbor.constrain(&self.tile_set.combos, &tile.options, direction);
                 if changed {
                     remaining.push(*neighbor_pos);
@@ -153,7 +153,7 @@ impl Generator {
     }
 }
 
-#[derive(Clone, Copy, PartialEq)]
+#[derive(Clone, Copy, PartialEq, PartialOrd, Debug)]
 struct TileOption {
     index: u32,
     weight: f32,
@@ -201,32 +201,14 @@ impl MapEntry {
     ) -> bool {
         assert!(!self.collapsed);
 
-        let combos = match from_direction {
-            SquareDirection::East | SquareDirection::West => &combos.horizontal,
-            SquareDirection::North | SquareDirection::South => &combos.vertical,
-            _ => panic!("Unexpected direction"),
-        };
+        let old_len = self.options.len();
 
-        let new_options: Vec<TileOption> = self
-            .options
-            .iter()
-            .cloned()
-            .filter(|option| {
-                combos.iter().any(|[a, b]| match from_direction {
-                    SquareDirection::West | SquareDirection::North => {
-                        *a == option.index && from_options.iter().any(|o| o.index == *b)
-                    }
-                    SquareDirection::East | SquareDirection::South => {
-                        from_options.iter().any(|o| o.index == *a) && (*b == option.index)
-                    }
-                    _ => panic!(),
-                })
-            })
-            .collect();
+        self.options
+            .retain(|option| combos.is_allowed(&from_direction, from_options, option));
 
-        if new_options.len() != self.options.len() {
-            self.entropy = calculate_entropy(&new_options);
-            self.options = new_options;
+        if self.options.len() != old_len {
+            // println!(" Changed: {} --> {}", old_len, self.options.len());
+            self.entropy = calculate_entropy(&self.options);
             true
         } else {
             false
@@ -259,10 +241,85 @@ struct TileSet {
     tiles: Vec<TileOption>,
 }
 
-#[derive(Debug, Default, Deserialize, Serialize)]
 struct TileCombos {
-    horizontal: Vec<[u32; 2]>,
-    vertical: Vec<[u32; 2]>,
+    horizontal: Combos,
+    vertical: Combos,
+}
+
+impl TileCombos {
+    fn is_allowed(
+        &self,
+        from_direction: &SquareDirection,
+        from_options: &[TileOption],
+        option: &TileOption,
+    ) -> bool {
+        assert!(from_options.is_sorted());
+
+        let combos = match from_direction {
+            SquareDirection::East | SquareDirection::West => &self.horizontal,
+            SquareDirection::North | SquareDirection::South => &self.vertical,
+            _ => panic!("Unexpected direction"),
+        };
+
+        let reversed = match from_direction {
+            SquareDirection::East | SquareDirection::South => true,
+            _ => false,
+        };
+
+        combos.is_allowed(from_options, option, reversed)
+    }
+}
+
+struct Combos {
+    combos: Vec<[u32; 2]>,
+    reversed_combos: Vec<[u32; 2]>,
+}
+
+impl Combos {
+    fn new(combos: &[[u32; 2]]) -> Self {
+        let mut reversed_combos: Vec<[u32; 2]> = combos.iter().map(|[a, b]| [*b, *a]).collect();
+        let mut combos = combos.to_owned();
+
+        combos.sort();
+        reversed_combos.sort();
+
+        Combos {
+            combos,
+            reversed_combos,
+        }
+    }
+
+    fn is_allowed(&self, from_options: &[TileOption], option: &TileOption, reversed: bool) -> bool {
+        if from_options.is_empty() {
+            return false;
+        }
+
+        let combos = if reversed {
+            &self.reversed_combos
+        } else {
+            &self.combos
+        };
+
+        // println!("  {from_options:?} {option:?} {reversed}:");
+
+        let mut index = combos.partition_point(|[a, _]| *a < option.index);
+        while index < combos.len() {
+            let combo = &combos[index];
+            if combo[0] != option.index {
+                break;
+            }
+            // println!("    check [{},{}]", combo[0], combo[1]);
+
+            if from_options
+                .binary_search_by(|o| o.index.cmp(&combo[1]))
+                .is_ok()
+            {
+                return true;
+            }
+            index = index + 1;
+        }
+        false
+    }
 }
 
 impl TileSet {
@@ -272,7 +329,8 @@ impl TileSet {
         let tileset = loader.load_tsx_tileset("assets/summerfloor.xml").unwrap();
         info!("Loaded tileset {}", tileset.name);
 
-        let mut combos = TileCombos::default();
+        let mut horizontal = Vec::new();
+        let mut vertical = Vec::new();
         let mut tiles = Vec::new();
 
         for (a, tile_a) in tileset.tiles() {
@@ -285,11 +343,11 @@ impl TileSet {
                 for (b, tile_b) in tileset.tiles() {
                     if let Some(b_edges) = get_edges(&tile_b) {
                         if a_edges.right == b_edges.left {
-                            combos.horizontal.push([a, b]);
+                            horizontal.push([a, b]);
                         }
 
                         if a_edges.bottom == b_edges.top {
-                            combos.vertical.push([a, b]);
+                            vertical.push([a, b]);
                         }
                     }
                 }
@@ -299,9 +357,16 @@ impl TileSet {
         println!(
             "{} tiles, {} horizontal combos, {} vertical combos",
             tiles.len(),
-            combos.horizontal.len(),
-            combos.vertical.len()
+            horizontal.len(),
+            vertical.len()
         );
+
+        tiles.sort_by(|a, b| a.index.cmp(&b.index));
+
+        let combos = TileCombos {
+            horizontal: Combos::new(&horizontal),
+            vertical: Combos::new(&vertical),
+        };
 
         TileSet { combos, tiles }
     }
