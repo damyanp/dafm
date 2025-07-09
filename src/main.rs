@@ -35,22 +35,22 @@ fn camera(
     }
 
     if keys.pressed(KeyCode::Equal) {
-        *scale = *scale * 0.99;
+        *scale *= 0.99;
     }
     if keys.pressed(KeyCode::Minus) {
-        *scale = *scale * 1.01;
+        *scale *= 1.01;
     }
     if keys.pressed(KeyCode::ArrowUp) {
-        translate.y = translate.y + 3.0;
+        translate.y += 3.0;
     }
     if keys.pressed(KeyCode::ArrowDown) {
-        translate.y = translate.y - 3.0;
+        translate.y -= 3.0;
     }
     if keys.pressed(KeyCode::ArrowLeft) {
-        translate.x = translate.x - 3.0;
+        translate.x -= 3.0;
     }
     if keys.pressed(KeyCode::ArrowRight) {
-        translate.x = translate.x + 3.0;
+        translate.x += 3.0;
     }
 
     camera.translation = *translate;
