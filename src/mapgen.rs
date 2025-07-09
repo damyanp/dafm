@@ -1,3 +1,5 @@
+use std::collections::HashMap;
+
 use bevy::{log::info, math::ops::ln};
 use bevy_ecs_tilemap::{
     helpers::square_grid::neighbors::{Neighbors, SquareDirection},
@@ -8,7 +10,7 @@ use rand::{
     Rng,
     distr::{Distribution, weighted::WeightedIndex},
 };
-use tiled::{Loader, PropertyValue};
+use tiled::{Loader, PropertyValue, Tileset};
 
 // Based on Wave Function Collapse Algorithm.  See for example:
 //   https://robertheaton.com/2018/12/17/wavefunction-collapse-algorithm/
@@ -35,7 +37,7 @@ impl Generator {
         let tile_set = TileSet::load();
 
         let mut grid = Vec::new();
-        grid.resize_with(size.count(), || MapEntry::new(&tile_set.tiles));
+        grid.resize_with(size.count(), || MapEntry::new(&tile_set.classes));
 
         Generator {
             size: *size,
@@ -46,8 +48,7 @@ impl Generator {
 
     pub fn reset(&mut self) {
         for entry in self.grid.iter_mut() {
-            entry.collapsed = false;
-            entry.options = self.tile_set.tiles.clone();
+            *entry = MapEntry::new(&self.tile_set.classes)
         }
     }
 
@@ -57,10 +58,9 @@ impl Generator {
             .enumerate()
             .map(|(index, entry)| Tile {
                 pos: self.index_to_pos(index),
-                state: if entry.collapsed {
-                    TileState::Collapsed(entry.options[0].index)
-                } else {
-                    TileState::Options(entry.entropy)
+                state: match *entry {
+                    MapEntry::Collapsed { index, .. } => TileState::Collapsed(index),
+                    MapEntry::Superposition { entropy, .. } => TileState::Options(entropy),
                 },
             })
             .collect()
@@ -75,7 +75,7 @@ impl Generator {
         self.collapse(tile);
         self.update_options(tile);
 
-        self.grid.iter().all(|e| e.collapsed)
+        self.grid.iter().all(|e| e.is_collapsed())
     }
 
     fn pick_tile_to_update(&self) -> Option<TilePos> {
@@ -88,8 +88,10 @@ impl Generator {
         let min_entropy = self
             .grid
             .iter()
-            .filter(|e| !e.collapsed)
-            .map(|e| e.entropy)
+            .filter_map(|e| match *e {
+                MapEntry::Superposition { entropy, .. } => Some(entropy),
+                _ => None,
+            })
             .reduce(f32::min)
             .unwrap_or(f32::MAX);
 
@@ -97,7 +99,13 @@ impl Generator {
             .grid
             .iter()
             .enumerate()
-            .filter(|(_, e)| !e.collapsed && e.entropy == min_entropy)
+            .filter(|(_, e)| {
+                if let MapEntry::Superposition { entropy, .. } = **e {
+                    entropy <= min_entropy
+                } else {
+                    false
+                }
+            })
             .map(|(i, _)| i)
             .collect();
 
@@ -111,7 +119,7 @@ impl Generator {
 
     fn collapse(&mut self, tile: TilePos) {
         let index = tile.to_index(&self.size);
-        self.grid[index].collapse();
+        self.grid[index].collapse(&self.tile_set.tiles);
     }
 
     fn update_options(&mut self, starting_tile: TilePos) {
@@ -131,12 +139,12 @@ impl Generator {
                     ])
                     .expect("tile_pos != neighbor_pos");
 
-                if neighbor.collapsed {
+                if neighbor.is_collapsed() {
                     continue;
                 }
 
                 // println!("Constrain {neighbor_pos:?}");
-                let changed = neighbor.constrain(&self.tile_set.combos, &tile.options, direction);
+                let changed = neighbor.constrain(&self.tile_set, tile, direction);
                 if changed {
                     remaining.push(*neighbor_pos);
                 }
@@ -155,71 +163,99 @@ impl Generator {
 
 #[derive(Clone, Copy, PartialEq, PartialOrd, Debug)]
 struct TileOption {
+    class: TileClass,
     index: u32,
     weight: f32,
 }
 
-struct MapEntry {
-    // When collapsed=true there's only one option. Maybe we should just
-    // immediately collapsed any with one option and remove the collapsed field?
-    collapsed: bool,
-    options: Vec<TileOption>,
-    entropy: f32,
+enum MapEntry {
+    Collapsed {
+        class: TileClass,
+        index: u32,
+    },
+    Superposition {
+        options: Vec<TileClass>,
+        entropy: f32,
+    },
 }
 
 impl MapEntry {
-    fn new(tiles: &[TileOption]) -> Self {
-        MapEntry {
-            collapsed: false,
-            options: Vec::from(tiles),
-            entropy: calculate_entropy(tiles),
+    fn new(options: &[TileClass]) -> Self {
+        MapEntry::Superposition {
+            options: options.to_owned(),
+            entropy: f32::MAX,
         }
     }
 
-    fn collapse(&mut self) {
-        assert!(!self.collapsed);
+    fn is_collapsed(&self) -> bool {
+        matches!(self, MapEntry::Collapsed { .. })
+    }
 
-        if self.options.is_empty() {
-            self.collapsed = true;
-            self.options = vec![TileOption {
-                index: 0,
-                weight: 0.0,
-            }];
-        } else {
-            let weighted_index = WeightedIndex::new(self.options.iter().map(|o| o.weight)).unwrap();
-            let random_index = weighted_index.sample(&mut rand::rng());
-            self.options = vec![self.options[random_index]];
-            self.collapsed = true;
-        }
+    fn collapse(&mut self, tiles: &[TileOption]) {
+        *self = match self {
+            MapEntry::Superposition { options, .. } => {
+                if options.is_empty() {
+                    MapEntry::Collapsed {
+                        class: TileClass(0),
+                        index: 0,
+                    }
+                } else {
+                    let tiles: Vec<&TileOption> = tiles
+                        .iter()
+                        .filter(|tile| options.contains(&tile.class))
+                        .collect();
+
+                    let weighted_index =
+                        WeightedIndex::new(tiles.iter().map(|tile| tile.weight)).unwrap();
+                    let option = &tiles[weighted_index.sample(&mut rand::rng())];
+                    MapEntry::Collapsed {
+                        class: option.class,
+                        index: option.index,
+                    }
+                }
+            }
+            _ => return,
+        };
     }
 
     fn constrain(
         &mut self,
-        combos: &TileCombos,
-        from_options: &[TileOption],
+        tile_set: &TileSet,
+        from_tile: &MapEntry,
         from_direction: SquareDirection,
     ) -> bool {
-        assert!(!self.collapsed);
+        match self {
+            MapEntry::Collapsed { .. } => panic!(),
+            MapEntry::Superposition { options, entropy } => {
+                let old_len = options.len();
 
-        let old_len = self.options.len();
+                options.retain(|option| {
+                    tile_set
+                        .combos
+                        .is_allowed(&from_direction, from_tile, option)
+                });
 
-        self.options
-            .retain(|option| combos.is_allowed(&from_direction, from_options, option));
-
-        if self.options.len() != old_len {
-            // println!(" Changed: {} --> {}", old_len, self.options.len());
-            self.entropy = calculate_entropy(&self.options);
-            true
-        } else {
-            false
+                if options.len() != old_len {
+                    // println!(" Changed: {} --> {}", old_len, self.options.len());
+                    *entropy = calculate_entropy(options, &tile_set.tiles);
+                    true
+                } else {
+                    false
+                }
+            }
         }
     }
 }
 
-fn calculate_entropy(tiles: &[TileOption]) -> f32 {
-    if tiles.is_empty() {
+fn calculate_entropy(options: &[TileClass], tiles: &[TileOption]) -> f32 {
+    if options.is_empty() {
         return 0.0;
     }
+
+    let tiles: Vec<&TileOption> = tiles
+        .iter()
+        .filter(|tile| options.contains(&tile.class))
+        .collect();
 
     let sum_weights = tiles
         .iter()
@@ -238,6 +274,7 @@ fn calculate_entropy(tiles: &[TileOption]) -> f32 {
 
 struct TileSet {
     combos: TileCombos,
+    classes: Vec<TileClass>,
     tiles: Vec<TileOption>,
 }
 
@@ -250,34 +287,33 @@ impl TileCombos {
     fn is_allowed(
         &self,
         from_direction: &SquareDirection,
-        from_options: &[TileOption],
-        option: &TileOption,
+        from_tile: &MapEntry,
+        option: &TileClass,
     ) -> bool {
-        assert!(from_options.is_sorted());
-
         let combos = match from_direction {
             SquareDirection::East | SquareDirection::West => &self.horizontal,
             SquareDirection::North | SquareDirection::South => &self.vertical,
             _ => panic!("Unexpected direction"),
         };
 
-        let reversed = match from_direction {
-            SquareDirection::East | SquareDirection::South => true,
-            _ => false,
-        };
+        let reversed = matches!(
+            from_direction,
+            SquareDirection::East | SquareDirection::South
+        );
 
-        combos.is_allowed(from_options, option, reversed)
+        combos.is_allowed(from_tile, option, reversed)
     }
 }
 
 struct Combos {
-    combos: Vec<[u32; 2]>,
-    reversed_combos: Vec<[u32; 2]>,
+    combos: Vec<[TileClass; 2]>,
+    reversed_combos: Vec<[TileClass; 2]>,
 }
 
 impl Combos {
-    fn new(combos: &[[u32; 2]]) -> Self {
-        let mut reversed_combos: Vec<[u32; 2]> = combos.iter().map(|[a, b]| [*b, *a]).collect();
+    fn new(combos: &[[TileClass; 2]]) -> Self {
+        let mut reversed_combos: Vec<[TileClass; 2]> =
+            combos.iter().map(|[a, b]| [*b, *a]).collect();
         let mut combos = combos.to_owned();
 
         combos.sort();
@@ -289,11 +325,7 @@ impl Combos {
         }
     }
 
-    fn is_allowed(&self, from_options: &[TileOption], option: &TileOption, reversed: bool) -> bool {
-        if from_options.is_empty() {
-            return false;
-        }
-
+    fn is_allowed(&self, from_tile: &MapEntry, option: &TileClass, reversed: bool) -> bool {
         let combos = if reversed {
             &self.reversed_combos
         } else {
@@ -302,23 +334,88 @@ impl Combos {
 
         // println!("  {from_options:?} {option:?} {reversed}:");
 
-        let mut index = combos.partition_point(|[a, _]| *a < option.index);
+        let mut index = combos.partition_point(|[a, _]| a < option);
         while index < combos.len() {
             let combo = &combos[index];
-            if combo[0] != option.index {
+            if &combo[0] != option {
                 break;
             }
             // println!("    check [{},{}]", combo[0], combo[1]);
 
-            if from_options
-                .binary_search_by(|o| o.index.cmp(&combo[1]))
-                .is_ok()
-            {
-                return true;
+            match from_tile {
+                MapEntry::Collapsed { class, .. } => {
+                    if *class == combo[1] {
+                        return true;
+                    }
+                }
+                MapEntry::Superposition { options, .. } => {
+                    if options.binary_search_by(|o| o.cmp(&combo[1])).is_ok() {
+                        return true;
+                    }
+                }
             }
-            index = index + 1;
+
+            index += 1;
         }
         false
+    }
+}
+
+struct TileClasses {
+    classes: Vec<TileClassData>,
+}
+
+struct TileClassData {
+    edges: Edges,
+    tiles: Vec<u32>,
+}
+
+#[derive(Copy, Clone, PartialOrd, Ord, PartialEq, Eq, Debug)]
+struct TileClass(usize);
+
+impl TileClasses {
+    fn new(tileset: &Tileset) -> Self {
+        let mut classes: HashMap<Edges, TileClassData> = HashMap::default();
+
+        for (tile_index, tile) in tileset.tiles() {
+            if let Some(edges) = get_edges(&tile) {
+                if classes.contains_key(&edges) {
+                    classes.get_mut(&edges).unwrap().tiles.push(tile_index);
+                } else {
+                    classes.insert(
+                        edges.clone(),
+                        TileClassData {
+                            edges,
+                            tiles: vec![tile_index],
+                        },
+                    );
+                }
+            }
+        }
+
+        let mut classes: Vec<TileClassData> = classes.into_values().collect();
+        classes.sort_by(|a, b| a.edges.cmp(&b.edges));
+
+        TileClasses { classes }
+    }
+
+    fn len(&self) -> usize {
+        self.classes.len()
+    }
+
+    fn iter(&self) -> impl Iterator<Item = (TileClass, &Edges)> {
+        self.classes
+            .iter()
+            .enumerate()
+            .map(|(index, class)| (TileClass(index), &class.edges))
+    }
+
+    fn get(&self, edges: &Edges) -> TileClass {
+        TileClass(
+            self.classes
+                .binary_search_by(|a| a.edges.cmp(edges))
+                .unwrap(),
+        )
     }
 }
 
@@ -329,49 +426,59 @@ impl TileSet {
         let tileset = loader.load_tsx_tileset("assets/summerfloor.xml").unwrap();
         info!("Loaded tileset {}", tileset.name);
 
+        let classes = TileClasses::new(&tileset);
+
+        let mut tiles: Vec<TileOption> = tileset
+            .tiles()
+            .flat_map(|(index, tile)| {
+                get_edges(&tile).map(|edges| TileOption {
+                    class: classes.get(&edges),
+                    index,
+                    weight: tile.probability,
+                })
+            })
+            .collect();
+        tiles.sort_by(|a, b| a.index.cmp(&b.index));
+
         let mut horizontal = Vec::new();
         let mut vertical = Vec::new();
-        let mut tiles = Vec::new();
 
-        for (a, tile_a) in tileset.tiles() {
-            if let Some(a_edges) = get_edges(&tile_a) {
-                tiles.push(TileOption {
-                    index: a,
-                    weight: tile_a.probability,
-                });
+        for (a, a_edges) in classes.iter() {
+            for (b, b_edges) in classes.iter() {
+                if a_edges.right == b_edges.left {
+                    horizontal.push([a, b]);
+                }
 
-                for (b, tile_b) in tileset.tiles() {
-                    if let Some(b_edges) = get_edges(&tile_b) {
-                        if a_edges.right == b_edges.left {
-                            horizontal.push([a, b]);
-                        }
-
-                        if a_edges.bottom == b_edges.top {
-                            vertical.push([a, b]);
-                        }
-                    }
+                if a_edges.bottom == b_edges.top {
+                    vertical.push([a, b]);
                 }
             }
         }
 
         println!(
-            "{} tiles, {} horizontal combos, {} vertical combos",
+            "{} tiles, {} classes {} horizontal combos, {} vertical combos",
             tiles.len(),
+            classes.len(),
             horizontal.len(),
             vertical.len()
         );
-
-        tiles.sort_by(|a, b| a.index.cmp(&b.index));
 
         let combos = TileCombos {
             horizontal: Combos::new(&horizontal),
             vertical: Combos::new(&vertical),
         };
 
-        TileSet { combos, tiles }
+        let classes = classes.iter().map(|(c, _)| c).collect();
+
+        TileSet {
+            combos,
+            classes,
+            tiles,
+        }
     }
 }
 
+#[derive(Hash, Eq, PartialEq, Clone, PartialOrd, Ord)]
 struct Edges {
     top: [char; 2],
     right: [char; 2],
