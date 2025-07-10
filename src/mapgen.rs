@@ -10,7 +10,7 @@ use rand::{
     Rng,
     distr::{Distribution, weighted::WeightedIndex},
 };
-use tiled::{Loader, PropertyValue, Tileset};
+use tiled::{Loader, PropertyValue, Tileset, WangId};
 
 // Based on Wave Function Collapse Algorithm.  See for example:
 //   https://robertheaton.com/2018/12/17/wavefunction-collapse-algorithm/
@@ -366,8 +366,22 @@ struct TileClasses {
 }
 
 struct TileClassData {
-    edges: Edges,
+    wang_id: WangId,
     tiles: Vec<u32>,
+}
+
+impl TileClassData {
+    fn connects_with(&self, other: &TileClassData) -> (bool, bool) {
+        let a = &self.wang_id.0;
+        let right = [a[1], a[2], a[3]];
+        let bottom = [a[5], a[4], a[3]];
+
+        let b = &other.wang_id.0;
+        let left = [b[7], b[6], b[5]];
+        let top = [b[7], b[0], b[1]];
+
+        (left == right, bottom == top)
+    }
 }
 
 #[derive(Copy, Clone, PartialOrd, Ord, PartialEq, Eq, Debug)]
@@ -375,26 +389,25 @@ struct TileClass(usize);
 
 impl TileClasses {
     fn new(tileset: &Tileset) -> Self {
-        let mut classes: HashMap<Edges, TileClassData> = HashMap::default();
+        let mut classes: HashMap<[u8; 8], TileClassData> = HashMap::default();
 
-        for (tile_index, tile) in tileset.tiles() {
-            if let Some(edges) = get_edges(&tile) {
-                if classes.contains_key(&edges) {
-                    classes.get_mut(&edges).unwrap().tiles.push(tile_index);
-                } else {
-                    classes.insert(
-                        edges.clone(),
-                        TileClassData {
-                            edges,
-                            tiles: vec![tile_index],
-                        },
-                    );
-                }
+        for (tile_index, wang_tile) in tileset.wang_sets[0].wang_tiles.iter() {
+            let id = wang_tile.wang_id.0;
+            if classes.contains_key(&id) {
+                classes.get_mut(&id).unwrap().tiles.push(*tile_index);
+            } else {
+                classes.insert(
+                    id.clone(),
+                    TileClassData {
+                        wang_id: WangId(id),
+                        tiles: vec![*tile_index],
+                    },
+                );
             }
         }
 
         let mut classes: Vec<TileClassData> = classes.into_values().collect();
-        classes.sort_by(|a, b| a.edges.cmp(&b.edges));
+        classes.sort_by(|a, b| a.wang_id.0.cmp(&b.wang_id.0));
 
         TileClasses { classes }
     }
@@ -403,17 +416,17 @@ impl TileClasses {
         self.classes.len()
     }
 
-    fn iter(&self) -> impl Iterator<Item = (TileClass, &Edges)> {
+    fn iter(&self) -> impl Iterator<Item = (TileClass, &TileClassData)> {
         self.classes
             .iter()
             .enumerate()
-            .map(|(index, class)| (TileClass(index), &class.edges))
+            .map(|(index, class)| (TileClass(index), class))
     }
 
-    fn get(&self, edges: &Edges) -> TileClass {
+    fn get(&self, wang_id: &WangId) -> TileClass {
         TileClass(
             self.classes
-                .binary_search_by(|a| a.edges.cmp(edges))
+                .binary_search_by(|a| a.wang_id.0.cmp(&wang_id.0))
                 .unwrap(),
         )
     }
@@ -428,28 +441,38 @@ impl TileSet {
 
         let classes = TileClasses::new(&tileset);
 
-        let mut tiles: Vec<TileOption> = tileset
-            .tiles()
-            .flat_map(|(index, tile)| {
-                get_edges(&tile).map(|edges| TileOption {
-                    class: classes.get(&edges),
-                    index,
-                    weight: tile.probability,
-                })
-            })
-            .collect();
+        let mut tiles = Vec::new();
+        for (class, tile_class_data) in classes.iter() {
+            for index in &tile_class_data.tiles {
+                let mut weight = tileset.get_tile(index.clone()).unwrap().probability;
+
+                if weight == 0.0 {
+                    // workaround https://github.com/mapeditor/rs-tiled/issues/323
+                    weight = 1.0;
+                }
+
+                tiles.push(TileOption {
+                    class,
+                    index: index.clone(),
+                    weight,
+                });
+            }
+        }
+
         tiles.sort_by(|a, b| a.index.cmp(&b.index));
 
         let mut horizontal = Vec::new();
         let mut vertical = Vec::new();
 
-        for (a, a_edges) in classes.iter() {
-            for (b, b_edges) in classes.iter() {
-                if a_edges.right == b_edges.left {
+        for (a, a_data) in classes.iter() {
+            for (b, b_data) in classes.iter() {
+                let (connects_horizontally, connects_vertically) = a_data.connects_with(&b_data);
+
+                if connects_horizontally {
                     horizontal.push([a, b]);
                 }
 
-                if a_edges.bottom == b_edges.top {
+                if connects_vertically {
                     vertical.push([a, b]);
                 }
             }
@@ -474,51 +497,6 @@ impl TileSet {
             combos,
             classes,
             tiles,
-        }
-    }
-}
-
-#[derive(Hash, Eq, PartialEq, Clone, PartialOrd, Ord)]
-struct Edges {
-    top: [char; 2],
-    right: [char; 2],
-    bottom: [char; 2],
-    left: [char; 2],
-}
-
-fn get_edges(tile: &tiled::Tile) -> Option<Edges> {
-    if let Some(PropertyValue::StringValue(edges)) = tile.properties.get("edges") {
-        if edges != "????" {
-            return Some(Edges::from_edges(edges));
-        }
-    }
-    if let Some(PropertyValue::StringValue(submat)) = tile.properties.get("submat") {
-        if submat != "????" {
-            return Some(Edges::from_submat(submat));
-        }
-    }
-    None
-}
-
-impl Edges {
-    fn from_submat(s: &str) -> Self {
-        let s: Vec<char> = s.chars().collect();
-
-        Edges {
-            top: [s[0], s[1]],
-            right: [s[1], s[3]],
-            bottom: [s[2], s[3]],
-            left: [s[0], s[2]],
-        }
-    }
-
-    fn from_edges(s: &str) -> Self {
-        let s: Vec<char> = s.chars().collect();
-        Edges {
-            top: [s[0], s[1]],
-            right: [s[2], s[3]],
-            bottom: [s[4], s[5]],
-            left: [s[6], s[7]],
         }
     }
 }
