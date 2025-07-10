@@ -8,9 +8,9 @@ use bevy_ecs_tilemap::{
 };
 use rand::{
     Rng,
-    distr::{Distribution, weighted::WeightedIndex},
+    distr::{Distribution, Uniform, weighted::WeightedIndex},
 };
-use tiled::{Loader, PropertyValue, Tileset, WangId};
+use tiled::{Loader, Tileset, WangId};
 
 // Based on Wave Function Collapse Algorithm.  See for example:
 //   https://robertheaton.com/2018/12/17/wavefunction-collapse-algorithm/
@@ -37,7 +37,9 @@ impl Generator {
         let tile_set = TileSet::load();
 
         let mut grid = Vec::new();
-        grid.resize_with(size.count(), || MapEntry::new(&tile_set.classes));
+        grid.resize_with(size.count(), || {
+            MapEntry::new(tile_set.classes.get_tile_classes_options())
+        });
 
         Generator {
             size: *size,
@@ -48,7 +50,7 @@ impl Generator {
 
     pub fn reset(&mut self) {
         for entry in self.grid.iter_mut() {
-            *entry = MapEntry::new(&self.tile_set.classes)
+            *entry = MapEntry::new(self.tile_set.classes.get_tile_classes_options())
         }
     }
 
@@ -119,7 +121,7 @@ impl Generator {
 
     fn collapse(&mut self, tile: TilePos) {
         let index = tile.to_index(&self.size);
-        self.grid[index].collapse(&self.tile_set.tiles);
+        self.grid[index].collapse(&self.tile_set);
     }
 
     fn update_options(&mut self, starting_tile: TilePos) {
@@ -165,7 +167,6 @@ impl Generator {
 struct TileOption {
     class: TileClass,
     index: u32,
-    weight: f32,
 }
 
 enum MapEntry {
@@ -180,9 +181,9 @@ enum MapEntry {
 }
 
 impl MapEntry {
-    fn new(options: &[TileClass]) -> Self {
+    fn new(options: Vec<TileClass>) -> Self {
         MapEntry::Superposition {
-            options: options.to_owned(),
+            options: options,
             entropy: f32::MAX,
         }
     }
@@ -191,7 +192,7 @@ impl MapEntry {
         matches!(self, MapEntry::Collapsed { .. })
     }
 
-    fn collapse(&mut self, tiles: &[TileOption]) {
+    fn collapse(&mut self, tile_set: &TileSet) {
         *self = match self {
             MapEntry::Superposition { options, .. } => {
                 if options.is_empty() {
@@ -200,17 +201,29 @@ impl MapEntry {
                         index: 0,
                     }
                 } else {
-                    let tiles: Vec<&TileOption> = tiles
+                    // Pick a class
+                    let weights = options
                         .iter()
-                        .filter(|tile| options.contains(&tile.class))
+                        .map(|class| tile_set.classes.get_weight(class));
+
+                    let weighted_index = WeightedIndex::new(weights).unwrap();
+                    let class = &options[weighted_index.sample(&mut rand::rng())];
+
+                    // Now pick a tile of that class
+                    let tiles: Vec<u32> = tile_set
+                        .tiles
+                        .iter()
+                        .filter(|t| t.class == *class)
+                        .map(|t| t.index)
                         .collect();
 
-                    let weighted_index =
-                        WeightedIndex::new(tiles.iter().map(|tile| tile.weight)).unwrap();
-                    let option = &tiles[weighted_index.sample(&mut rand::rng())];
+                    let index = tiles[Uniform::new(0, tiles.len())
+                        .unwrap()
+                        .sample(&mut rand::rng())];
+
                     MapEntry::Collapsed {
-                        class: option.class,
-                        index: option.index,
+                        class: *class,
+                        index,
                     }
                 }
             }
@@ -237,7 +250,7 @@ impl MapEntry {
 
                 if options.len() != old_len {
                     // println!(" Changed: {} --> {}", old_len, self.options.len());
-                    *entropy = calculate_entropy(options, &tile_set.tiles);
+                    *entropy = calculate_entropy(options, &tile_set);
                     true
                 } else {
                     false
@@ -247,25 +260,21 @@ impl MapEntry {
     }
 }
 
-fn calculate_entropy(options: &[TileClass], tiles: &[TileOption]) -> f32 {
+fn calculate_entropy(options: &[TileClass], tile_set: &TileSet) -> f32 {
     if options.is_empty() {
         return 0.0;
     }
 
-    let tiles: Vec<&TileOption> = tiles
+    let weights: Vec<f32> = options
         .iter()
-        .filter(|tile| options.contains(&tile.class))
+        .map(|class| tile_set.classes.get_weight(class))
         .collect();
 
-    let sum_weights = tiles
-        .iter()
-        .map(|e| e.weight)
-        .reduce(|acc, e| acc + e)
-        .unwrap();
+    let sum_weights = weights.iter().cloned().reduce(|acc, e| acc + e).unwrap();
 
-    let sum_weight_logs = tiles
+    let sum_weight_logs = weights
         .iter()
-        .map(|e| e.weight)
+        .cloned()
         .reduce(|acc, e| acc + e * ln(e))
         .unwrap();
 
@@ -274,7 +283,7 @@ fn calculate_entropy(options: &[TileClass], tiles: &[TileOption]) -> f32 {
 
 struct TileSet {
     combos: TileCombos,
-    classes: Vec<TileClass>,
+    classes: TileClasses,
     tiles: Vec<TileOption>,
 }
 
@@ -365,9 +374,11 @@ struct TileClasses {
     classes: Vec<TileClassData>,
 }
 
+#[derive(Debug)]
 struct TileClassData {
     wang_id: WangId,
     tiles: Vec<u32>,
+    weight: f32,
 }
 
 impl TileClassData {
@@ -401,6 +412,7 @@ impl TileClasses {
                     TileClassData {
                         wang_id: WangId(id),
                         tiles: vec![*tile_index],
+                        weight: get_wang_tile_weight(tileset, &wang_tile.wang_id),
                     },
                 );
             }
@@ -408,6 +420,8 @@ impl TileClasses {
 
         let mut classes: Vec<TileClassData> = classes.into_values().collect();
         classes.sort_by(|a, b| a.wang_id.0.cmp(&b.wang_id.0));
+
+        println!("{classes:?}");
 
         TileClasses { classes }
     }
@@ -423,13 +437,29 @@ impl TileClasses {
             .map(|(index, class)| (TileClass(index), class))
     }
 
-    fn get(&self, wang_id: &WangId) -> TileClass {
-        TileClass(
-            self.classes
-                .binary_search_by(|a| a.wang_id.0.cmp(&wang_id.0))
-                .unwrap(),
-        )
+    fn get_tile_classes_options(&self) -> Vec<TileClass> {
+        (0..self.classes.len())
+            .into_iter()
+            .map(|id| TileClass(id))
+            .collect()
     }
+
+    fn get_weight(&self, class: &TileClass) -> f32 {
+        self.classes[class.0].weight
+    }
+}
+
+/// Wangtile weight is calculated as the product of the probabilities of all the
+/// WangColors in the tile.
+fn get_wang_tile_weight(tileset: &Tileset, wang_tile: &WangId) -> f32 {
+    let mut ids = Vec::from(wang_tile.0);
+    ids.sort();
+    ids.dedup();
+    ids.into_iter()
+        .filter(|id| id != &0)
+        .map(|id| tileset.wang_sets[0].wang_colors[(id as usize) - 1].probability)
+        .reduce(|a, e| a * e)
+        .unwrap()
 }
 
 impl TileSet {
@@ -444,17 +474,9 @@ impl TileSet {
         let mut tiles = Vec::new();
         for (class, tile_class_data) in classes.iter() {
             for index in &tile_class_data.tiles {
-                let mut weight = tileset.get_tile(index.clone()).unwrap().probability;
-
-                if weight == 0.0 {
-                    // workaround https://github.com/mapeditor/rs-tiled/issues/323
-                    weight = 1.0;
-                }
-
                 tiles.push(TileOption {
                     class,
                     index: index.clone(),
-                    weight,
                 });
             }
         }
@@ -490,8 +512,6 @@ impl TileSet {
             horizontal: Combos::new(&horizontal),
             vertical: Combos::new(&vertical),
         };
-
-        let classes = classes.iter().map(|(c, _)| c).collect();
 
         TileSet {
             combos,
