@@ -1,7 +1,6 @@
+use super::mapgen;
 use bevy::prelude::*;
 use bevy_ecs_tilemap::prelude::*;
-
-use crate::mapgen;
 
 pub struct MapGenPlugin;
 
