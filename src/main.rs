@@ -1,9 +1,10 @@
 use bevy::{prelude::*, window::PresentMode};
 use bevy_ecs_tilemap::prelude::*;
+use bevy_egui::EguiPlugin;
+use bevy_inspector_egui::quick::WorldInspectorPlugin;
+use bevy_pancam::{PanCam, PanCamPlugin};
 
 mod terrain;
-
-use bevy_pancam::{PanCam, PanCamPlugin};
 
 fn main() {
     App::new()
@@ -18,6 +19,8 @@ fn main() {
                     ..default()
                 }),
         )
+        .add_plugins(EguiPlugin::default())
+        .add_plugins(WorldInspectorPlugin::new())
         .add_plugins(PanCamPlugin::default())
         .add_plugins(TilemapPlugin)
         .add_plugins(terrain::TerrainPlugin)
