@@ -1,8 +1,12 @@
 use avian2d::prelude::*;
-use bevy::{prelude::*, render::mesh::RectangleMeshBuilder, window::PresentMode};
+use bevy::{
+    prelude::*,
+    render::mesh::RectangleMeshBuilder,
+    window::{PresentMode, WindowResized},
+};
 use bevy_ecs_tilemap::prelude::*;
 use bevy_egui::EguiPlugin;
-use bevy_inspector_egui::quick::WorldInspectorPlugin;
+use bevy_inspector_egui::quick::{ResourceInspectorPlugin, WorldInspectorPlugin};
 use bevy_pancam::{PanCam, PanCamPlugin};
 
 mod terrain;
@@ -21,14 +25,17 @@ fn main() {
                 }),
         )
         .add_plugins(PhysicsPlugins::default())
-        .add_plugins(PhysicsDebugPlugin::default())
+        // .add_plugins(PhysicsDebugPlugin::default())
         .add_plugins(EguiPlugin::default())
         .add_plugins(WorldInspectorPlugin::new())
+        // .add_plugins(ResourceInspectorPlugin::<PlayerMoveConfig>::default())
         // .add_plugins(PanCamPlugin::default())
         .add_plugins(TilemapPlugin)
         // .add_plugins(terrain::TerrainPlugin)
         .add_systems(Startup, startup)
-        .add_systems(Update, update)
+        .add_systems(FixedUpdate, update)
+        .add_systems(Update, on_resize_system)
+        .register_type::<PlayerMoveConfig>()
         .run();
 }
 
@@ -61,47 +68,109 @@ fn startup(
         LinearDamping(1.0),
         Player,
     ));
-    commands.spawn((
-        Collider::rectangle(5.0, 200.0),
-        Position::from_xy(-100.0, 0.0),
-        RigidBody::Static,
-    ));
-    commands.spawn((
-        Collider::rectangle(5.0, 200.0),
-        Position::from_xy(100.0, 0.0),
-        RigidBody::Static,
-    ));
-    commands.spawn((
-        Collider::rectangle(200.0, 5.0),
-        Position::from_xy(0.0, -100.0),
-        RigidBody::Static,
-    ));
-    commands.spawn((
-        Collider::rectangle(200.0, 5.0),
-        Position::from_xy(0.0, 100.0),
-        RigidBody::Static,
-    ));
+
+    commands.insert_resource(PlayerMoveConfig::default());
+}
+
+#[derive(Component)]
+struct GameBorder;
+
+fn on_resize_system(
+    mut commands: Commands,
+    mut resize_reader: EventReader<WindowResized>,
+    mut query: Query<Entity, With<GameBorder>>,
+) {
+    for e in resize_reader.read() {
+        for entity in query {
+            commands.entity(entity).despawn();
+        }
+
+        commands.spawn((
+            Collider::rectangle(1.0, e.height),
+            Position::from_xy(-e.width / 2.0, 0.0),
+            RigidBody::Static,
+            GameBorder,
+        ));
+        commands.spawn((
+            Collider::rectangle(1.0, e.height),
+            Position::from_xy(e.width / 2.0, 0.0),
+            RigidBody::Static,
+            GameBorder,
+        ));
+        commands.spawn((
+            Collider::rectangle(e.width, 1.0),
+            Position::from_xy(0.0, -e.height / 2.0),
+            RigidBody::Static,
+            GameBorder,
+        ));
+        commands.spawn((
+            Collider::rectangle(e.width, 1.0),
+            Position::from_xy(0.0, e.height / 2.0),
+            RigidBody::Static,
+            GameBorder,
+        ));
+    }
 }
 
 #[derive(Component)]
 struct Player;
 
+#[derive(Resource, Reflect)]
+#[reflect(Resource)]
+struct PlayerMoveConfig {
+    torque: f32,
+    thrust: f32,
+    angular_damping: AngularDamping,
+    linear_damping: LinearDamping,
+}
+
+impl Default for PlayerMoveConfig {
+    fn default() -> Self {
+        Self {
+            torque: 5000000.0,
+            thrust: 1000000.0,
+            angular_damping: AngularDamping(8.0),
+            linear_damping: LinearDamping(8.0),
+        }
+    }
+}
+
 fn update(
     keys: Res<ButtonInput<KeyCode>>,
-    mut query: Query<(&mut ExternalTorque, &mut ExternalForce, &Transform), With<Player>>,
+    config: Res<PlayerMoveConfig>,
+    mut query: Query<
+        (
+            &mut ExternalTorque,
+            &mut ExternalForce,
+            &mut AngularDamping,
+            &mut LinearDamping,
+            &mut Sprite,
+            &Transform,
+        ),
+        With<Player>,
+    >,
 ) {
+    let (mut torque, mut force, mut angular_damping, mut linear_damping, mut sprite, transform) =
+        query.single_mut().unwrap();
 
-    const TORQUE:f32 = 100000.0;
-    const THRUST:f32 = 100000.0;
+    *angular_damping = config.angular_damping;
+    *linear_damping = config.linear_damping;
 
-    let (mut torque, mut force, transform) = query.single_mut().unwrap();
     if keys.pressed(KeyCode::ArrowLeft) {
-        torque.apply_torque(TORQUE);
+        torque.apply_torque(config.torque);
     }
     if keys.pressed(KeyCode::ArrowRight) {
-        torque.apply_torque(-TORQUE);
+        torque.apply_torque(-config.torque);
     }
+
+    let mut new_index = 0;
     if keys.pressed(KeyCode::ArrowUp) {
-        force.apply_force((transform.rotation * Vec3::Y * THRUST).truncate());
+        force.apply_force((transform.rotation * Vec3::Y * config.thrust).truncate());
+        new_index = 1;
     }
+
+    sprite
+        .texture_atlas
+        .iter_mut()
+        .for_each(|a| a.index = new_index);
 }
