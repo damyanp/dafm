@@ -8,6 +8,9 @@ use bevy_ecs_tilemap::prelude::*;
 use bevy_egui::EguiPlugin;
 use bevy_inspector_egui::quick::{ResourceInspectorPlugin, WorldInspectorPlugin};
 use bevy_pancam::{PanCam, PanCamPlugin};
+use bevy_rand::prelude::*;
+use bevy_rand::{global::GlobalEntropy, plugin::EntropyPlugin};
+use rand::RngCore;
 
 mod terrain;
 
@@ -32,6 +35,7 @@ fn main() {
         // .add_plugins(PanCamPlugin::default())
         .add_plugins(TilemapPlugin)
         // .add_plugins(terrain::TerrainPlugin)
+        .add_plugins(EntropyPlugin::<WyRand>::default())
         .add_systems(Startup, startup)
         .add_systems(FixedUpdate, update)
         .add_systems(Update, on_resize_system)
@@ -79,10 +83,15 @@ fn on_resize_system(
     mut commands: Commands,
     mut resize_reader: EventReader<WindowResized>,
     mut query: Query<Entity, With<GameBorder>>,
+    mut player: Query<&mut Position, With<Player>>,
 ) {
     for e in resize_reader.read() {
         for entity in query {
             commands.entity(entity).despawn();
+        }
+
+        for mut p in &mut player {
+            *p = Position::default();
         }
 
         commands.spawn((
@@ -138,6 +147,7 @@ impl Default for PlayerMoveConfig {
 fn update(
     keys: Res<ButtonInput<KeyCode>>,
     config: Res<PlayerMoveConfig>,
+    mut rng: GlobalEntropy<WyRand>,
     mut query: Query<
         (
             &mut ExternalTorque,
@@ -163,14 +173,14 @@ fn update(
         torque.apply_torque(-config.torque);
     }
 
-    let mut new_index = 0;
+    let mut new_index = 2;
     if keys.pressed(KeyCode::ArrowUp) {
         force.apply_force((transform.rotation * Vec3::Y * config.thrust).truncate());
-        new_index = 1;
+        new_index = 3 + rng.next_u32() % 2;
     }
 
     sprite
         .texture_atlas
         .iter_mut()
-        .for_each(|a| a.index = new_index);
+        .for_each(|a| a.index = new_index as usize);
 }
