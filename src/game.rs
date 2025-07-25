@@ -11,7 +11,7 @@ pub struct Game;
 impl Plugin for Game {
     fn build(&self, app: &mut App) {
         app.register_type::<PlayerMoveConfig>()
-            .add_systems(OnEnter(GameState::InGame), on_enter)
+            .add_systems(OnEnter(GameState::InGame), (on_enter, setup_game_borders))
             .add_systems(
                 FixedUpdate,
                 (update_player, update_bullets).run_if(in_state(GameState::InGame)),
@@ -65,54 +65,75 @@ fn on_enter(
 #[derive(Component)]
 struct GameBorder;
 
+fn setup_game_borders(
+    commands: Commands,
+    window: Single<&Window>,
+    query: Query<Entity, With<GameBorder>>,
+    player: Query<&mut Position, With<Player>>,
+) {
+    let r = &window.resolution;
+
+    create_game_borders(commands, query, player, r.width(), r.height());
+}
+
 fn on_resize_system(
-    mut commands: Commands,
+    commands: Commands,
     mut resize_reader: EventReader<WindowResized>,
     query: Query<Entity, With<GameBorder>>,
-    mut player: Query<&mut Position, With<Player>>,
+    player: Query<&mut Position, With<Player>>,
 ) {
     if let Some(e) = resize_reader.read().last() {
-        for entity in query {
-            commands.entity(entity).despawn();
-        }
-
-        for mut p in &mut player {
-            *p = Position::default();
-        }
-
-        commands.spawn((
-            StateScoped(GameState::InGame),
-            Name::new("GameBorder 1"),
-            Collider::rectangle(1.0, e.height),
-            Position::from_xy(-e.width / 2.0, 0.0),
-            RigidBody::Static,
-            GameBorder,
-        ));
-        commands.spawn((
-            StateScoped(GameState::InGame),
-            Name::new("GameBorder 2"),
-            Collider::rectangle(1.0, e.height),
-            Position::from_xy(e.width / 2.0, 0.0),
-            RigidBody::Static,
-            GameBorder,
-        ));
-        commands.spawn((
-            StateScoped(GameState::InGame),
-            Name::new("GameBorder 3"),
-            Collider::rectangle(e.width, 1.0),
-            Position::from_xy(0.0, -e.height / 2.0),
-            RigidBody::Static,
-            GameBorder,
-        ));
-        commands.spawn((
-            StateScoped(GameState::InGame),
-            Name::new("GameBorder 4"),
-            Collider::rectangle(e.width, 1.0),
-            Position::from_xy(0.0, e.height / 2.0),
-            RigidBody::Static,
-            GameBorder,
-        ));
+        create_game_borders(commands, query, player, e.width, e.height);
     }
+}
+
+fn create_game_borders(
+    mut commands: Commands,
+    query: Query<Entity, With<GameBorder>>,
+    mut player: Query<&mut Position, With<Player>>,
+    width: f32,
+    height: f32,
+) {
+    for entity in query {
+        commands.entity(entity).despawn();
+    }
+
+    for mut p in &mut player {
+        *p = Position::default();
+    }
+
+    commands.spawn((
+        StateScoped(GameState::InGame),
+        Name::new("GameBorder 1"),
+        Collider::rectangle(1.0, height),
+        Position::from_xy(-width / 2.0, 0.0),
+        RigidBody::Static,
+        GameBorder,
+    ));
+    commands.spawn((
+        StateScoped(GameState::InGame),
+        Name::new("GameBorder 2"),
+        Collider::rectangle(1.0, height),
+        Position::from_xy(width / 2.0, 0.0),
+        RigidBody::Static,
+        GameBorder,
+    ));
+    commands.spawn((
+        StateScoped(GameState::InGame),
+        Name::new("GameBorder 3"),
+        Collider::rectangle(width, 1.0),
+        Position::from_xy(0.0, -height / 2.0),
+        RigidBody::Static,
+        GameBorder,
+    ));
+    commands.spawn((
+        StateScoped(GameState::InGame),
+        Name::new("GameBorder 4"),
+        Collider::rectangle(width, 1.0),
+        Position::from_xy(0.0, height / 2.0),
+        RigidBody::Static,
+        GameBorder,
+    ));
 }
 
 #[derive(Component)]
@@ -209,7 +230,7 @@ fn update_player(
                 Bullet,
                 RigidBody::Kinematic,
                 Position::new(transform.translation.truncate()),
-                rotation.clone(),
+                *rotation,
                 LinearVelocity(velocity.0 + (transform.rotation * Vec3::Y * 500.0).truncate()),
                 Collider::rectangle(3.0, 6.0),
                 CollidingEntities::default(),
