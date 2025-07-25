@@ -23,8 +23,8 @@ impl Plugin for Game {
     }
 }
 
-fn check_for_exit(mut commands: Commands, keys: Res<ButtonInput<KeyCode>>) {
-    if keys.just_pressed(KeyCode::Escape) {
+fn check_for_exit(mut commands: Commands, mut keys: ResMut<ButtonInput<KeyCode>>) {
+    if keys.clear_just_released(KeyCode::Escape) {
         commands.set_state(GameState::MainMenu);
     }
 }
