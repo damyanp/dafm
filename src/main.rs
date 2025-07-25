@@ -6,10 +6,9 @@ use bevy_inspector_egui::quick::WorldInspectorPlugin;
 use bevy_rand::plugin::EntropyPlugin;
 use bevy_rand::prelude::*;
 
-mod terrain;
-mod main_menu;
 mod game;
-
+mod main_menu;
+mod terrain;
 
 #[derive(Clone, Copy, PartialEq, Eq, Hash, Debug, Default, States)]
 enum GameState {
@@ -37,7 +36,8 @@ fn main() {
         .add_plugins(PhysicsPlugins::default())
         // .add_plugins(PhysicsDebugPlugin::default())
         .add_plugins(EguiPlugin::default())
-        .add_plugins(WorldInspectorPlugin::new())
+        .add_plugins(WorldInspectorPlugin::new().run_if(resource_exists::<ShowWorldInspector>))
+        .add_systems(Update, toggle_world_inspector)
         // .add_plugins(ResourceInspectorPlugin::<PlayerMoveConfig>::default())
         // .add_plugins(PanCamPlugin::default())
         .add_plugins(TilemapPlugin)
@@ -49,7 +49,23 @@ fn main() {
         .run();
 }
 
+#[derive(Resource)]
+struct ShowWorldInspector;
+
+fn toggle_world_inspector(
+    mut commands: Commands,
+    mut keys: ResMut<ButtonInput<KeyCode>>,
+    show: Option<Res<ShowWorldInspector>>,
+) {
+    if keys.clear_just_released(KeyCode::F12) {
+        if show.is_some() {
+            commands.remove_resource::<ShowWorldInspector>();
+        } else {
+            commands.insert_resource(ShowWorldInspector);
+        }
+    }
+}
+
 fn startup(mut commands: Commands) {
     commands.spawn(Camera2d);
 }
-
