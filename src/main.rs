@@ -1,13 +1,11 @@
 use avian2d::prelude::*;
 use bevy::{
     prelude::*,
-    render::mesh::RectangleMeshBuilder,
     window::{PresentMode, WindowResized},
 };
 use bevy_ecs_tilemap::prelude::*;
 use bevy_egui::EguiPlugin;
-use bevy_inspector_egui::quick::{ResourceInspectorPlugin, WorldInspectorPlugin};
-use bevy_pancam::{PanCam, PanCamPlugin};
+use bevy_inspector_egui::quick::WorldInspectorPlugin;
 use bevy_rand::prelude::*;
 use bevy_rand::{global::GlobalEntropy, plugin::EntropyPlugin};
 use rand::RngCore;
@@ -37,7 +35,8 @@ fn main() {
         // .add_plugins(terrain::TerrainPlugin)
         .add_plugins(EntropyPlugin::<WyRand>::default())
         .add_systems(Startup, startup)
-        .add_systems(FixedUpdate, update)
+        .add_systems(FixedUpdate, update_player)
+        .add_systems(FixedUpdate, update_bullets)
         .add_systems(Update, on_resize_system)
         .register_type::<PlayerMoveConfig>()
         .run();
@@ -45,7 +44,7 @@ fn main() {
 
 fn startup(
     mut commands: Commands,
-    mut asset_server: Res<AssetServer>,
+    asset_server: Res<AssetServer>,
     mut texture_atlas_layouts: ResMut<Assets<TextureAtlasLayout>>,
 ) {
     // commands.spawn((Camera2d, PanCam::default()));
@@ -71,6 +70,7 @@ fn startup(
         AngularDamping(1.0),
         LinearDamping(1.0),
         Player,
+        Cooldown(0),
     ));
 
     commands.insert_resource(PlayerMoveConfig::default());
@@ -82,7 +82,7 @@ struct GameBorder;
 fn on_resize_system(
     mut commands: Commands,
     mut resize_reader: EventReader<WindowResized>,
-    mut query: Query<Entity, With<GameBorder>>,
+    query: Query<Entity, With<GameBorder>>,
     mut player: Query<&mut Position, With<Player>>,
 ) {
     for e in resize_reader.read() {
@@ -124,6 +124,9 @@ fn on_resize_system(
 #[derive(Component)]
 struct Player;
 
+#[derive(Component)]
+struct Cooldown(u32);
+
 #[derive(Resource, Reflect)]
 #[reflect(Resource)]
 struct PlayerMoveConfig {
@@ -144,7 +147,9 @@ impl Default for PlayerMoveConfig {
     }
 }
 
-fn update(
+fn update_player(
+    mut commands: Commands,
+    asset_server: Res<AssetServer>,
     keys: Res<ButtonInput<KeyCode>>,
     config: Res<PlayerMoveConfig>,
     mut rng: GlobalEntropy<WyRand>,
@@ -155,32 +160,84 @@ fn update(
             &mut AngularDamping,
             &mut LinearDamping,
             &mut Sprite,
+            &mut Cooldown,
             &Transform,
+            &LinearVelocity,
+            &Rotation,
         ),
         With<Player>,
     >,
 ) {
-    let (mut torque, mut force, mut angular_damping, mut linear_damping, mut sprite, transform) =
-        query.single_mut().unwrap();
+    if let Ok((
+        mut torque,
+        mut force,
+        mut angular_damping,
+        mut linear_damping,
+        mut sprite,
+        mut cooldown,
+        transform,
+        velocity,
+        rotation,
+    )) = query.single_mut()
+    {
+        *angular_damping = config.angular_damping;
+        *linear_damping = config.linear_damping;
 
-    *angular_damping = config.angular_damping;
-    *linear_damping = config.linear_damping;
+        if keys.pressed(KeyCode::ArrowLeft) || keys.pressed(KeyCode::KeyA) {
+            torque.apply_torque(config.torque);
+        }
+        if keys.pressed(KeyCode::ArrowRight) || keys.pressed(KeyCode::KeyD) {
+            torque.apply_torque(-config.torque);
+        }
 
-    if keys.pressed(KeyCode::ArrowLeft) {
-        torque.apply_torque(config.torque);
+        let mut new_index = 2;
+        if keys.pressed(KeyCode::ArrowUp) || keys.pressed(KeyCode::KeyW) {
+            force.apply_force((transform.rotation * Vec3::Y * config.thrust).truncate());
+            new_index = 3 + rng.next_u32() % 2;
+        }
+
+        sprite
+            .texture_atlas
+            .iter_mut()
+            .for_each(|a| a.index = new_index as usize);
+
+        if cooldown.0 > 0 {
+            cooldown.0 -= 1;
+        }
+
+        if cooldown.0 == 0 && keys.pressed(KeyCode::Space) {
+            let image = asset_server.load("laser.png");
+
+            commands.spawn((
+                Sprite::from_image(image.clone()),
+                Bullet,
+                RigidBody::Kinematic,
+                Position::new(transform.translation.truncate()),
+                rotation.clone(),
+                LinearVelocity(velocity.0 + (transform.rotation * Vec3::Y * 500.0).truncate()),
+                Collider::rectangle(3.0, 6.0),
+                CollidingEntities::default(),
+            ));
+
+            cooldown.0 = 5;
+        }
     }
-    if keys.pressed(KeyCode::ArrowRight) {
-        torque.apply_torque(-config.torque);
-    }
+}
 
-    let mut new_index = 2;
-    if keys.pressed(KeyCode::ArrowUp) {
-        force.apply_force((transform.rotation * Vec3::Y * config.thrust).truncate());
-        new_index = 3 + rng.next_u32() % 2;
-    }
+#[derive(Component)]
+struct Bullet;
 
-    sprite
-        .texture_atlas
-        .iter_mut()
-        .for_each(|a| a.index = new_index as usize);
+fn update_bullets(
+    mut commands: Commands,
+    bullets: Query<(Entity, &CollidingEntities), With<Bullet>>,
+    walls: Query<Entity, With<GameBorder>>,
+) {
+    for (bullet, colliding_entities) in bullets {
+        for colliding_entity in colliding_entities.iter() {
+            if walls.get(*colliding_entity).is_ok() {
+                commands.entity(bullet).despawn();
+                break;
+            }
+        }
+    }
 }
