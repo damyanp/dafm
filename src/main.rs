@@ -56,6 +56,7 @@ fn startup(
 
     commands.insert_resource(Gravity::ZERO);
     commands.spawn((
+        Name::new("Player"),
         Sprite::from_atlas_image(
             texture,
             TextureAtlas {
@@ -85,7 +86,7 @@ fn on_resize_system(
     query: Query<Entity, With<GameBorder>>,
     mut player: Query<&mut Position, With<Player>>,
 ) {
-    for e in resize_reader.read() {
+    if let Some(e) = resize_reader.read().last() {
         for entity in query {
             commands.entity(entity).despawn();
         }
@@ -95,24 +96,28 @@ fn on_resize_system(
         }
 
         commands.spawn((
+            Name::new("GameBorder 1"),
             Collider::rectangle(1.0, e.height),
             Position::from_xy(-e.width / 2.0, 0.0),
             RigidBody::Static,
             GameBorder,
         ));
         commands.spawn((
+            Name::new("GameBorder 2"),
             Collider::rectangle(1.0, e.height),
             Position::from_xy(e.width / 2.0, 0.0),
             RigidBody::Static,
             GameBorder,
         ));
         commands.spawn((
+            Name::new("GameBorder 3"),
             Collider::rectangle(e.width, 1.0),
             Position::from_xy(0.0, -e.height / 2.0),
             RigidBody::Static,
             GameBorder,
         ));
         commands.spawn((
+            Name::new("GameBorder 4"),
             Collider::rectangle(e.width, 1.0),
             Position::from_xy(0.0, e.height / 2.0),
             RigidBody::Static,
@@ -209,6 +214,7 @@ fn update_player(
             let image = asset_server.load("laser.png");
 
             commands.spawn((
+                Name::new("Bullet"),
                 Sprite::from_image(image.clone()),
                 Bullet,
                 RigidBody::Kinematic,
