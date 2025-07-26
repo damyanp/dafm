@@ -90,6 +90,7 @@ impl Default for PlayerMoveConfig {
     }
 }
 
+#[allow(clippy::type_complexity)]
 pub fn update_player(
     turn: Single<&Action<Turn>>,
     thrust: Single<&Action<Thrust>>,
