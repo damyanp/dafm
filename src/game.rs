@@ -10,7 +10,8 @@ pub struct Game;
 
 impl Plugin for Game {
     fn build(&self, app: &mut App) {
-        app.register_type::<player::PlayerMoveConfig>()
+        app.add_systems(Startup, load_assets)
+            .register_type::<player::PlayerMoveConfig>()
             .add_input_context::<player::Player>()
             .add_systems(
                 OnEnter(GameState::InGame),
@@ -26,6 +27,28 @@ impl Plugin for Game {
                 (update_game_borders, check_for_exit).run_if(in_state(GameState::InGame)),
             );
     }
+}
+
+#[derive(Resource)]
+pub struct GameAssets {
+    pub sprite_sheet: Handle<Image>,
+    pub sprite_sheet_layout: Handle<TextureAtlasLayout>,
+    pub laser: Handle<Image>,
+}
+
+fn load_assets(
+    mut commands: Commands,
+    mut texture_atlas_layouts: ResMut<Assets<TextureAtlasLayout>>,
+    asset_server: Res<AssetServer>,
+) {
+    let layout = TextureAtlasLayout::from_grid(UVec2::splat(32), 10, 10, None, None);
+    let sprite_sheet_layout = texture_atlas_layouts.add(layout);
+
+    commands.insert_resource(GameAssets {
+        sprite_sheet: asset_server.load("sprites.png"),
+        sprite_sheet_layout,
+        laser: asset_server.load("laser.png"),
+    })
 }
 
 fn check_for_exit(mut commands: Commands, mut keys: ResMut<ButtonInput<KeyCode>>) {

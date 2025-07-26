@@ -19,23 +19,15 @@ pub struct Thrust;
 #[action_output(bool)]
 pub struct Fire;
 
-pub fn create_player(
-    mut commands: Commands,
-    asset_server: Res<AssetServer>,
-    mut texture_atlas_layouts: ResMut<Assets<TextureAtlasLayout>>,
-) {
-    let texture = asset_server.load("sprites.png");
-    let layout = TextureAtlasLayout::from_grid(UVec2::splat(32), 10, 10, None, None);
-    let texture_atlas_layout = texture_atlas_layouts.add(layout);
-
+pub fn create_player(mut commands: Commands, assets: Res<super::GameAssets>) {
     commands.insert_resource(Gravity::ZERO);
     commands.spawn((
         StateScoped(GameState::InGame),
         Name::new("Player"),
         Sprite::from_atlas_image(
-            texture,
+            assets.sprite_sheet.clone(),
             TextureAtlas {
-                layout: texture_atlas_layout,
+                layout: assets.sprite_sheet_layout.clone(),
                 index: 0,
             },
         ),
@@ -101,7 +93,7 @@ impl Default for PlayerMoveConfig {
 
 pub fn update_player(
     commands: Commands,
-    asset_server: Res<AssetServer>,
+    assets: Res<super::GameAssets>,
     turn: Single<&Action<Turn>>,
     thrust: Single<&Action<Thrust>>,
     fire: Single<&Action<Fire>>,
@@ -160,7 +152,7 @@ pub fn update_player(
         if cooldown.0 == 0 && ***fire {
             super::bullets::fire(
                 commands,
-                asset_server,
+                assets,
                 &Position::new(transform.translation.truncate()),
                 rotation,
                 velocity,

@@ -22,17 +22,15 @@ pub fn update_bullets(
 
 pub fn fire(
     mut commands: Commands,
-    asset_server: Res<AssetServer>,
+    assets: Res<super::GameAssets>,
     position: &Position,
     rotation: &Rotation,
     velocity: &LinearVelocity,
 ) {
-    let image = asset_server.load("laser.png");
-
     commands.spawn((
         StateScoped(crate::GameState::InGame),
         Name::new("Bullet"),
-        Sprite::from_image(image.clone()),
+        Sprite::from_image(assets.laser.clone()),
         Bullet,
         RigidBody::Kinematic,
         *position,
