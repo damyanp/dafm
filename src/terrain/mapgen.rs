@@ -406,10 +406,10 @@ impl TileClasses {
             let id = wang_tile.wang_id.0;
             if let std::collections::hash_map::Entry::Vacant(e) = classes.entry(id) {
                 e.insert(TileClassData {
-                        wang_id: WangId(id),
-                        tiles: vec![*tile_index],
-                        weight: get_wang_tile_weight(tileset, &wang_tile.wang_id),
-                    });
+                    wang_id: WangId(id),
+                    tiles: vec![*tile_index],
+                    weight: get_wang_tile_weight(tileset, &wang_tile.wang_id),
+                });
             } else {
                 classes.get_mut(&id).unwrap().tiles.push(*tile_index);
             }
@@ -435,9 +435,7 @@ impl TileClasses {
     }
 
     fn get_tile_classes_options(&self) -> Vec<TileClass> {
-        (0..self.classes.len())
-            .map(TileClass)
-            .collect()
+        (0..self.classes.len()).map(TileClass).collect()
     }
 
     fn get_weight(&self, class: &TileClass) -> f32 {

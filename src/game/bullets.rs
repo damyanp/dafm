@@ -25,7 +25,7 @@ pub fn fire(
     asset_server: Res<AssetServer>,
     position: &Position,
     rotation: &Rotation,
-    velocity: &LinearVelocity
+    velocity: &LinearVelocity,
 ) {
     let image = asset_server.load("laser.png");
 

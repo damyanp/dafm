@@ -2,6 +2,7 @@ use avian2d::prelude::*;
 use bevy::{prelude::*, window::PresentMode};
 use bevy_ecs_tilemap::prelude::*;
 use bevy_egui::EguiPlugin;
+use bevy_enhanced_input::EnhancedInputPlugin;
 use bevy_inspector_egui::quick::WorldInspectorPlugin;
 use bevy_rand::plugin::EntropyPlugin;
 use bevy_rand::prelude::*;
@@ -30,6 +31,7 @@ fn main() {
                     ..default()
                 }),
         )
+        .add_plugins(EnhancedInputPlugin)
         .init_state::<GameState>()
         .insert_state(GameState::MainMenu)
         .enable_state_scoped_entities::<GameState>()

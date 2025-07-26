@@ -1,10 +1,23 @@
 use avian2d::prelude::*;
 use bevy::prelude::*;
+use bevy_enhanced_input::prelude::*;
 use bevy_rand::global::GlobalEntropy;
 use bevy_rand::prelude::*;
 use rand::RngCore;
 
 use crate::GameState;
+
+#[derive(InputAction)]
+#[action_output(f32)]
+pub struct Turn;
+
+#[derive(InputAction)]
+#[action_output(f32)]
+pub struct Thrust;
+
+#[derive(InputAction)]
+#[action_output(bool)]
+pub struct Fire;
 
 pub fn create_player(
     mut commands: Commands,
@@ -34,6 +47,27 @@ pub fn create_player(
         LinearDamping(1.0),
         Player,
         Cooldown(0),
+        actions!(
+            Player[
+                (
+                   Action::<Turn>::new(),
+                   bindings![
+                        (KeyCode::KeyA),
+                        (KeyCode::KeyD, Negate::all())
+                    ]
+                ),
+                (
+                    Action::<Thrust>::new(),
+                    bindings![
+                        (KeyCode::KeyW),
+                        (KeyCode::KeyS, Negate::all())
+                    ]
+                ),
+                (
+                    Action::<Fire>::new(),
+                    bindings![KeyCode::Space]
+                )]
+        ),
     ));
 
     commands.insert_resource(PlayerMoveConfig::default());
@@ -68,7 +102,9 @@ impl Default for PlayerMoveConfig {
 pub fn update_player(
     commands: Commands,
     asset_server: Res<AssetServer>,
-    keys: Res<ButtonInput<KeyCode>>,
+    turn: Single<&Action<Turn>>,
+    thrust: Single<&Action<Thrust>>,
+    fire: Single<&Action<Fire>>,
     config: Res<PlayerMoveConfig>,
     mut rng: GlobalEntropy<WyRand>,
     mut query: Query<
@@ -101,16 +137,14 @@ pub fn update_player(
         *angular_damping = config.angular_damping;
         *linear_damping = config.linear_damping;
 
-        if keys.pressed(KeyCode::ArrowLeft) || keys.pressed(KeyCode::KeyA) {
-            torque.apply_torque(config.torque);
-        }
-        if keys.pressed(KeyCode::ArrowRight) || keys.pressed(KeyCode::KeyD) {
-            torque.apply_torque(-config.torque);
-        }
+        let turn = ***turn;
+        let thrust = ***thrust;
+
+        torque.apply_torque(turn * config.torque);
+        force.apply_force(rotation * Vec2::Y * config.thrust * thrust);
 
         let mut new_index = 2;
-        if keys.pressed(KeyCode::ArrowUp) || keys.pressed(KeyCode::KeyW) {
-            force.apply_force((transform.rotation * Vec3::Y * config.thrust).truncate());
+        if thrust.abs() > 0.0 {
             new_index = 3 + rng.next_u32() % 2;
         }
 
@@ -123,13 +157,13 @@ pub fn update_player(
             cooldown.0 -= 1;
         }
 
-        if cooldown.0 == 0 && keys.pressed(KeyCode::Space) {
+        if cooldown.0 == 0 && ***fire {
             super::bullets::fire(
                 commands,
                 asset_server,
                 &Position::new(transform.translation.truncate()),
                 rotation,
-                velocity
+                velocity,
             );
 
             cooldown.0 = 5;

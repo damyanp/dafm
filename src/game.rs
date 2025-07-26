@@ -1,22 +1,25 @@
 use crate::GameState;
 use avian2d::prelude::*;
 use bevy::{prelude::*, window::WindowResized};
+use bevy_enhanced_input::prelude::*;
 
-mod player;
 mod bullets;
+mod player;
 
 pub struct Game;
 
 impl Plugin for Game {
     fn build(&self, app: &mut App) {
         app.register_type::<player::PlayerMoveConfig>()
+            .add_input_context::<player::Player>()
             .add_systems(
                 OnEnter(GameState::InGame),
                 (player::create_player, setup_game_borders),
             )
             .add_systems(
                 FixedUpdate,
-                (player::update_player, bullets::update_bullets).run_if(in_state(GameState::InGame)),
+                (player::update_player, bullets::update_bullets)
+                    .run_if(in_state(GameState::InGame)),
             )
             .add_systems(
                 Update,
@@ -104,4 +107,3 @@ fn create_game_borders(
         GameBorder,
     ));
 }
-
