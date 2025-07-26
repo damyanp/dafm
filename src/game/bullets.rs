@@ -23,12 +23,7 @@ fn update_standard_gun(
     mut commands: Commands,
     assets: Res<super::GameAssets>,
     fire: Single<&Action<player::Fire>>,
-    query: Query<(
-        &mut StandardGun,
-        &Position,
-        &Rotation,
-        &LinearVelocity,
-    )>,
+    query: Query<(&mut StandardGun, &Position, &Rotation, &LinearVelocity)>,
 ) {
     for (mut gun, position, rotation, velocity) in query {
         if gun.cooldown > 0 {

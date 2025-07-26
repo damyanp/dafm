@@ -5,8 +5,8 @@ use bevy_rand::global::GlobalEntropy;
 use bevy_rand::prelude::*;
 use rand::RngCore;
 
-use crate::game::bullets;
 use crate::GameState;
+use crate::game::bullets;
 
 #[derive(InputAction)]
 #[action_output(f32)]
