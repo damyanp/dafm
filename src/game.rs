@@ -4,6 +4,7 @@ use bevy::{prelude::*, window::WindowResized};
 use bevy_enhanced_input::prelude::*;
 
 mod bullets;
+mod enemy;
 mod player;
 
 pub struct Game;
@@ -11,6 +12,7 @@ pub struct Game;
 impl Plugin for Game {
     fn build(&self, app: &mut App) {
         app.add_plugins(bullets::Bullets)
+            .add_plugins(enemy::Enemy)
             .add_systems(Startup, load_assets)
             .register_type::<player::PlayerMoveConfig>()
             .add_input_context::<player::Player>()
