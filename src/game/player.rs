@@ -4,7 +4,6 @@ use bevy_rand::global::GlobalEntropy;
 use bevy_rand::prelude::*;
 use rand::RngCore;
 
-use crate::game::Bullet;
 use crate::GameState;
 
 pub fn create_player(
@@ -67,7 +66,7 @@ impl Default for PlayerMoveConfig {
 }
 
 pub fn update_player(
-    mut commands: Commands,
+    commands: Commands,
     asset_server: Res<AssetServer>,
     keys: Res<ButtonInput<KeyCode>>,
     config: Res<PlayerMoveConfig>,
@@ -125,20 +124,13 @@ pub fn update_player(
         }
 
         if cooldown.0 == 0 && keys.pressed(KeyCode::Space) {
-            let image = asset_server.load("laser.png");
-
-            commands.spawn((
-                StateScoped(GameState::InGame),
-                Name::new("Bullet"),
-                Sprite::from_image(image.clone()),
-                Bullet,
-                RigidBody::Kinematic,
-                Position::new(transform.translation.truncate()),
-                *rotation,
-                LinearVelocity(velocity.0 + (transform.rotation * Vec3::Y * 500.0).truncate()),
-                Collider::rectangle(3.0, 6.0),
-                CollidingEntities::default(),
-            ));
+            super::bullets::fire(
+                commands,
+                asset_server,
+                &Position::new(transform.translation.truncate()),
+                rotation,
+                velocity
+            );
 
             cooldown.0 = 5;
         }

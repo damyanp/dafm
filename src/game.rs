@@ -1,8 +1,9 @@
+use crate::GameState;
 use avian2d::prelude::*;
 use bevy::{prelude::*, window::WindowResized};
-use crate::GameState;
 
 mod player;
+mod bullets;
 
 pub struct Game;
 
@@ -15,7 +16,7 @@ impl Plugin for Game {
             )
             .add_systems(
                 FixedUpdate,
-                (player::update_player, update_bullets).run_if(in_state(GameState::InGame)),
+                (player::update_player, bullets::update_bullets).run_if(in_state(GameState::InGame)),
             )
             .add_systems(
                 Update,
@@ -104,20 +105,3 @@ fn create_game_borders(
     ));
 }
 
-#[derive(Component)]
-struct Bullet;
-
-fn update_bullets(
-    mut commands: Commands,
-    bullets: Query<(Entity, &CollidingEntities), With<Bullet>>,
-    walls: Query<Entity, With<GameBorder>>,
-) {
-    for (bullet, colliding_entities) in bullets {
-        for colliding_entity in colliding_entities.iter() {
-            if walls.get(*colliding_entity).is_ok() {
-                commands.entity(bullet).despawn();
-                break;
-            }
-        }
-    }
-}
