@@ -5,6 +5,7 @@ use bevy_rand::global::GlobalEntropy;
 use bevy_rand::prelude::*;
 use rand::RngCore;
 
+use crate::game::bullets;
 use crate::GameState;
 
 #[derive(InputAction)]
@@ -37,8 +38,9 @@ pub fn create_player(mut commands: Commands, assets: Res<super::GameAssets>) {
         ExternalForce::default().with_persistence(false),
         AngularDamping(1.0),
         LinearDamping(1.0),
+        Position::default(),
         Player,
-        Cooldown(0),
+        bullets::StandardGun::default(),
         actions!(
             Player[
                 (
@@ -68,9 +70,6 @@ pub fn create_player(mut commands: Commands, assets: Res<super::GameAssets>) {
 #[derive(Component)]
 pub struct Player;
 
-#[derive(Component)]
-pub struct Cooldown(u32);
-
 #[derive(Resource, Reflect)]
 #[reflect(Resource)]
 pub struct PlayerMoveConfig {
@@ -92,11 +91,8 @@ impl Default for PlayerMoveConfig {
 }
 
 pub fn update_player(
-    commands: Commands,
-    assets: Res<super::GameAssets>,
     turn: Single<&Action<Turn>>,
     thrust: Single<&Action<Thrust>>,
-    fire: Single<&Action<Fire>>,
     config: Res<PlayerMoveConfig>,
     mut rng: GlobalEntropy<WyRand>,
     mut query: Query<
@@ -106,9 +102,6 @@ pub fn update_player(
             &mut AngularDamping,
             &mut LinearDamping,
             &mut Sprite,
-            &mut Cooldown,
-            &Transform,
-            &LinearVelocity,
             &Rotation,
         ),
         With<Player>,
@@ -120,9 +113,6 @@ pub fn update_player(
         mut angular_damping,
         mut linear_damping,
         mut sprite,
-        mut cooldown,
-        transform,
-        velocity,
         rotation,
     )) = query.single_mut()
     {
@@ -144,21 +134,5 @@ pub fn update_player(
             .texture_atlas
             .iter_mut()
             .for_each(|a| a.index = new_index as usize);
-
-        if cooldown.0 > 0 {
-            cooldown.0 -= 1;
-        }
-
-        if cooldown.0 == 0 && ***fire {
-            super::bullets::fire(
-                commands,
-                assets,
-                &Position::new(transform.translation.truncate()),
-                rotation,
-                velocity,
-            );
-
-            cooldown.0 = 5;
-        }
     }
 }

@@ -10,7 +10,8 @@ pub struct Game;
 
 impl Plugin for Game {
     fn build(&self, app: &mut App) {
-        app.add_systems(Startup, load_assets)
+        app.add_plugins(bullets::Bullets)
+            .add_systems(Startup, load_assets)
             .register_type::<player::PlayerMoveConfig>()
             .add_input_context::<player::Player>()
             .add_systems(
@@ -19,8 +20,7 @@ impl Plugin for Game {
             )
             .add_systems(
                 FixedUpdate,
-                (player::update_player, bullets::update_bullets)
-                    .run_if(in_state(GameState::InGame)),
+                (player::update_player).run_if(in_state(GameState::InGame)),
             )
             .add_systems(
                 Update,
