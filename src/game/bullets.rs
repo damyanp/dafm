@@ -7,9 +7,9 @@ use bevy_enhanced_input::prelude::*;
 pub struct Bullets;
 impl Plugin for Bullets {
     fn build(&self, app: &mut App) {
-        app.add_systems(
+        app.add_event::<Damage>().add_systems(
             FixedUpdate,
-            (update_standard_gun, update_bullets).run_if(in_state(GameState::InGame)),
+            (update_standard_gun).run_if(in_state(GameState::InGame)),
         );
     }
 }
@@ -31,18 +31,21 @@ fn update_standard_gun(
         }
 
         if gun.cooldown == 0 && ***fire {
-            commands.spawn((
-                StateScoped(crate::GameState::InGame),
-                Name::new("Bullet"),
-                Sprite::from_image(assets.laser.clone()),
-                Bullet,
-                RigidBody::Kinematic,
-                *position,
-                *rotation,
-                LinearVelocity(velocity.0 + rotation * Vec2::Y * 500.0),
-                Collider::rectangle(3.0, 6.0),
-                CollidingEntities::default(),
-            ));
+            commands
+                .spawn((
+                    StateScoped(crate::GameState::InGame),
+                    Name::new("Bullet"),
+                    Sprite::from_image(assets.laser.clone()),
+                    Bullet,
+                    RigidBody::Kinematic,
+                    *position,
+                    *rotation,
+                    LinearVelocity(velocity.0 + rotation * Vec2::Y * 500.0),
+                    Collider::rectangle(3.0, 6.0),
+                    CollisionEventsEnabled,
+                    Mass(0.01),
+                ))
+                .observe(observe_bullets);
             gun.cooldown = 5;
         }
     }
@@ -51,17 +54,24 @@ fn update_standard_gun(
 #[derive(Component)]
 pub struct Bullet;
 
-pub fn update_bullets(
+#[derive(Component)]
+pub struct Damageable;
+
+#[derive(Event)]
+pub struct Damage;
+
+fn observe_bullets(
+    trigger: Trigger<OnCollisionStart>,
+    borders: Query<&GameBorder>,
+    damageables: Query<&Damageable>,
     mut commands: Commands,
-    bullets: Query<(Entity, &CollidingEntities), With<Bullet>>,
-    walls: Query<Entity, With<GameBorder>>,
 ) {
-    for (bullet, colliding_entities) in bullets {
-        for colliding_entity in colliding_entities.iter() {
-            if walls.get(*colliding_entity).is_ok() {
-                commands.entity(bullet).despawn();
-                break;
-            }
-        }
+    if borders.contains(trigger.collider) {
+        commands.entity(trigger.target()).despawn();
+    }
+
+    if damageables.contains(trigger.collider) {
+        commands.trigger_targets(Damage, trigger.collider);
+        commands.entity(trigger.target()).despawn();
     }
 }
