@@ -111,7 +111,7 @@ fn update_waves(
                 commands.trigger(SpawnEnemy(circle.sample_interior(rng.as_mut()).into()));
             }
             waves.wave_number += 1;
-            waves.next = time.elapsed_secs() + (waves.wave_number as f32) * 2.0;
+            waves.next = time.elapsed_secs() + 5.0;
         }
     }
 }
