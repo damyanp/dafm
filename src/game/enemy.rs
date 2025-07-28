@@ -1,5 +1,8 @@
 use avian2d::{math::PI, prelude::*};
-use bevy::prelude::*;
+use bevy::{
+    color::palettes::css::{BLUE, GREEN, PURPLE, YELLOW},
+    prelude::*,
+};
 use bevy_rand::{global::GlobalEntropy, prelude::WyRand};
 
 use crate::{
@@ -37,6 +40,7 @@ fn update_enemies(
         With<Enemy>,
     >,
     player: Single<&Position, With<super::player::Player>>,
+    mut _gizmos: Gizmos,
 ) {
     let player_position = *player;
 
@@ -47,7 +51,25 @@ fn update_enemies(
         }
 
         let to_player = (player_position.0 - position.0).normalize();
-        force.apply_force(to_player * 10000.0);
+
+        let mut thrust = |f, _color| {
+            // _gizmos.ray_2d(**position, f * 0.01, _color);
+            force.apply_force(f);
+        };
+
+        if velocity.0.length_squared() > 0.0 {
+            let across = Vec3::Z.cross(velocity.0.extend(0.0)).truncate();
+            let d = across.normalize().dot(to_player);
+            thrust(across * (d * 1000.0), BLUE);
+
+            thrust(
+                velocity.0.normalize() * -(velocity.0.length() - 200.0).max(0.0) * 1000.0,
+                PURPLE,
+            );
+        }
+        thrust(to_player * 10000.0, YELLOW);
+
+        // _gizmos.ray_2d(**position, velocity.0, GREEN);
     }
 }
 
@@ -66,7 +88,7 @@ fn spawn_enemy(spawn: Trigger<SpawnEnemy>, mut commands: Commands, assets: Res<s
             RigidBody::Dynamic,
             Collider::circle(16.0),
             AngularDamping(1.0),
-            LinearDamping(1.0),
+            LinearDamping(0.0),
             ExternalForce::default().with_persistence(false),
             spawn.0,
             Enemy,
@@ -79,7 +101,8 @@ fn observe_damage(trigger: Trigger<Damage>, mut commands: Commands) {
     commands.entity(trigger.target()).despawn();
 }
 
-#[derive(Resource)]
+#[derive(Resource, Reflect)]
+#[reflect(Resource)]
 struct Waves {
     next: f32,
     wave_number: u32,
@@ -88,7 +111,7 @@ struct Waves {
 fn start_waves(mut commands: Commands, time: Res<Time>) {
     commands.insert_resource(Waves {
         next: time.elapsed_secs() + 1.0,
-        wave_number: 10,
+        wave_number: 1,
     });
 }
 
@@ -101,7 +124,7 @@ fn update_waves(
     time: Res<Time>,
     waves: Option<ResMut<Waves>>,
     mut rng: GlobalEntropy<WyRand>,
-    enemies: Query<Entity, With<Enemy>>
+    enemies: Query<Entity, With<Enemy>>,
 ) {
     if let Some(mut waves) = waves {
         if waves.next <= time.elapsed_secs() && enemies.is_empty() {
