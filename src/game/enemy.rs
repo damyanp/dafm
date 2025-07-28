@@ -1,7 +1,6 @@
 use avian2d::{math::PI, prelude::*};
 use bevy::prelude::*;
 use bevy_rand::{global::GlobalEntropy, prelude::WyRand};
-use rand::Rng;
 
 use crate::{
     GameState,
@@ -89,7 +88,7 @@ struct Waves {
 fn start_waves(mut commands: Commands, time: Res<Time>) {
     commands.insert_resource(Waves {
         next: time.elapsed_secs() + 1.0,
-        wave_number: 1,
+        wave_number: 10,
     });
 }
 

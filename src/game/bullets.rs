@@ -42,10 +42,11 @@ fn update_standard_gun(
                     *rotation,
                     LinearVelocity(velocity.0 + rotation * Vec2::Y * 500.0),
                     Collider::rectangle(3.0, 6.0),
+                    Sensor,
                     CollisionEventsEnabled,
                     Mass(0.01),
                 ))
-                .observe(observe_bullets);
+                .observe(observe_bullet);
             gun.cooldown = 5;
         }
     }
@@ -60,17 +61,16 @@ pub struct Damageable;
 #[derive(Event)]
 pub struct Damage;
 
-fn observe_bullets(
+fn observe_bullet(
     trigger: Trigger<OnCollisionStart>,
     borders: Query<&GameBorder>,
     damageables: Query<&Damageable>,
     mut commands: Commands,
 ) {
     if borders.contains(trigger.collider) {
-        commands.entity(trigger.target()).despawn();
-    }
-
-    if damageables.contains(trigger.collider) {
+        // try_despawn to suppress warnings - looks like sometimes the bullet can hit multiple borders
+        commands.entity(trigger.target()).try_despawn();
+    } else if damageables.contains(trigger.collider) {
         commands.trigger_targets(Damage, trigger.collider);
         commands.entity(trigger.target()).despawn();
     }

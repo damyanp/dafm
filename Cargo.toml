@@ -6,7 +6,7 @@ edition = "2024"
 [dependencies]
 avian = "0.0.0"
 avian2d = "0.3.1"
-bevy = { version = "0.16.1", features = ["dynamic_linking"] }
+bevy = { version = "0.16.1", features = ["dynamic_linking", "track_location"] }
 bevy-inspector-egui = "0.32.0"
 bevy_ecs_tilemap = "0.16.0"
 bevy_egui = "0.35.1"
