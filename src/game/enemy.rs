@@ -102,9 +102,10 @@ fn update_waves(
     time: Res<Time>,
     waves: Option<ResMut<Waves>>,
     mut rng: GlobalEntropy<WyRand>,
+    enemies: Query<Entity, With<Enemy>>
 ) {
     if let Some(mut waves) = waves {
-        if waves.next <= time.elapsed_secs() {
+        if waves.next <= time.elapsed_secs() && enemies.is_empty() {
             let circle = Circle::new(128.0);
 
             for _ in 0..waves.wave_number {
