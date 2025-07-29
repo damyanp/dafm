@@ -1,14 +1,11 @@
+use super::bullets::{Damage, Damageable};
+use crate::GameState;
 use avian2d::{math::PI, prelude::*};
 use bevy::{
     color::palettes::css::{BLUE, GREEN, PURPLE, YELLOW},
     prelude::*,
 };
 use bevy_rand::{global::GlobalEntropy, prelude::WyRand};
-
-use crate::{
-    GameState,
-    game::bullets::{Damage, Damageable},
-};
 
 #[derive(Component)]
 pub struct Enemy;
@@ -20,12 +17,12 @@ impl Plugin for Enemy {
     fn build(&self, app: &mut App) {
         app.add_event::<SpawnEnemy>()
             .add_observer(spawn_enemy)
-            .add_systems(OnEnter(GameState::InGame), start_waves)
-            .add_systems(OnExit(GameState::InGame), end_waves)
+            .add_systems(OnEnter(GameState::SpaceShooter), start_waves)
+            .add_systems(OnExit(GameState::SpaceShooter), end_waves)
             .add_systems(
                 Update,
                 (update_waves, update_enemies, update_destroyed_enemies)
-                    .run_if(in_state(GameState::InGame)),
+                    .run_if(in_state(GameState::SpaceShooter)),
             );
     }
 }
@@ -95,7 +92,7 @@ fn update_destroyed_enemies(
 fn spawn_enemy(spawn: Trigger<SpawnEnemy>, mut commands: Commands, assets: Res<super::GameAssets>) {
     commands
         .spawn((
-            StateScoped(GameState::InGame),
+            StateScoped(GameState::SpaceShooter),
             Name::new("Enemy"),
             Sprite::from_atlas_image(
                 assets.sprite_sheet.clone(),

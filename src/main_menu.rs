@@ -26,6 +26,6 @@ fn on_enter(mut commands: Commands) {
 
 fn check_for_any_key(mut commands: Commands, keys: Res<ButtonInput<KeyCode>>) {
     if keys.get_just_released().next().is_some() {
-        commands.set_state(GameState::InGame);
+        commands.set_state(GameState::SpaceShooter);
     }
 }

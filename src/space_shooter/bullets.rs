@@ -9,7 +9,7 @@ impl Plugin for Bullets {
     fn build(&self, app: &mut App) {
         app.add_event::<Damage>().add_systems(
             FixedUpdate,
-            (update_standard_gun).run_if(in_state(GameState::InGame)),
+            (update_standard_gun).run_if(in_state(GameState::SpaceShooter)),
         );
     }
 }
@@ -33,7 +33,7 @@ fn update_standard_gun(
         if gun.cooldown == 0 && ***fire {
             commands
                 .spawn((
-                    StateScoped(crate::GameState::InGame),
+                    StateScoped(crate::GameState::SpaceShooter),
                     Name::new("Bullet"),
                     Sprite::from_image(assets.laser.clone()),
                     Bullet,

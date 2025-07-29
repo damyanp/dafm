@@ -7,7 +7,7 @@ use bevy_inspector_egui::quick::WorldInspectorPlugin;
 use bevy_rand::plugin::EntropyPlugin;
 use bevy_rand::prelude::*;
 
-mod game;
+mod space_shooter;
 mod main_menu;
 mod terrain;
 
@@ -15,7 +15,7 @@ mod terrain;
 enum GameState {
     #[default]
     MainMenu,
-    InGame,
+    SpaceShooter,
 }
 
 fn main() {
@@ -46,7 +46,7 @@ fn main() {
         // .add_plugins(terrain::TerrainPlugin)
         .add_plugins(EntropyPlugin::<WyRand>::default())
         .add_plugins(main_menu::MainMenu)
-        .add_plugins(game::Game)
+        .add_plugins(space_shooter::Game)
         .add_systems(Startup, startup)
         .run();
 }

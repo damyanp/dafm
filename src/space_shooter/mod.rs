@@ -17,16 +17,16 @@ impl Plugin for Game {
             .register_type::<player::PlayerMoveConfig>()
             .add_input_context::<player::Player>()
             .add_systems(
-                OnEnter(GameState::InGame),
+                OnEnter(GameState::SpaceShooter),
                 (player::create_player, setup_game_borders),
             )
             .add_systems(
                 FixedUpdate,
-                (player::update_player).run_if(in_state(GameState::InGame)),
+                (player::update_player).run_if(in_state(GameState::SpaceShooter)),
             )
             .add_systems(
                 Update,
-                (update_game_borders, check_for_exit).run_if(in_state(GameState::InGame)),
+                (update_game_borders, check_for_exit).run_if(in_state(GameState::SpaceShooter)),
             );
     }
 }
@@ -100,7 +100,7 @@ fn create_game_borders(
     }
 
     commands.spawn((
-        StateScoped(GameState::InGame),
+        StateScoped(GameState::SpaceShooter),
         Name::new("GameBorder 1"),
         Collider::rectangle(1.0, height),
         Position::from_xy(-width / 2.0, 0.0),
@@ -108,7 +108,7 @@ fn create_game_borders(
         GameBorder,
     ));
     commands.spawn((
-        StateScoped(GameState::InGame),
+        StateScoped(GameState::SpaceShooter),
         Name::new("GameBorder 2"),
         Collider::rectangle(1.0, height),
         Position::from_xy(width / 2.0, 0.0),
@@ -116,7 +116,7 @@ fn create_game_borders(
         GameBorder,
     ));
     commands.spawn((
-        StateScoped(GameState::InGame),
+        StateScoped(GameState::SpaceShooter),
         Name::new("GameBorder 3"),
         Collider::rectangle(width, 1.0),
         Position::from_xy(0.0, -height / 2.0),
@@ -124,7 +124,7 @@ fn create_game_borders(
         GameBorder,
     ));
     commands.spawn((
-        StateScoped(GameState::InGame),
+        StateScoped(GameState::SpaceShooter),
         Name::new("GameBorder 4"),
         Collider::rectangle(width, 1.0),
         Position::from_xy(0.0, height / 2.0),

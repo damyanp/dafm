@@ -1,12 +1,11 @@
+use super::bullets;
+use crate::GameState;
 use avian2d::prelude::*;
 use bevy::prelude::*;
 use bevy_enhanced_input::prelude::*;
 use bevy_rand::global::GlobalEntropy;
 use bevy_rand::prelude::*;
 use rand::RngCore;
-
-use crate::GameState;
-use crate::game::bullets;
 
 #[derive(InputAction)]
 #[action_output(f32)]
@@ -23,7 +22,7 @@ pub struct Fire;
 pub fn create_player(mut commands: Commands, assets: Res<super::GameAssets>) {
     commands.insert_resource(Gravity::ZERO);
     commands.spawn((
-        StateScoped(GameState::InGame),
+        StateScoped(GameState::SpaceShooter),
         Name::new("Player"),
         Sprite::from_atlas_image(
             assets.sprite_sheet.clone(),
