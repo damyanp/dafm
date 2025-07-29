@@ -13,6 +13,9 @@ use crate::{
 #[derive(Component)]
 pub struct Enemy;
 
+#[derive(Component)]
+struct DestroyedEnemy(u32);
+
 impl Plugin for Enemy {
     fn build(&self, app: &mut App) {
         app.add_event::<SpawnEnemy>()
@@ -21,7 +24,8 @@ impl Plugin for Enemy {
             .add_systems(OnExit(GameState::InGame), end_waves)
             .add_systems(
                 Update,
-                (update_waves, update_enemies).run_if(in_state(GameState::InGame)),
+                (update_waves, update_enemies, update_destroyed_enemies)
+                    .run_if(in_state(GameState::InGame)),
             );
     }
 }
@@ -73,6 +77,21 @@ fn update_enemies(
     }
 }
 
+fn update_destroyed_enemies(
+    mut commands: Commands,
+    enemy_query: Query<(&mut ExternalTorque, &mut DestroyedEnemy, Entity)>,
+) {
+    for (mut torque, mut enemy, entity) in enemy_query {
+        torque.apply_torque(10000.0);
+
+        enemy.0 -= 1;
+
+        if enemy.0 == 0 {
+            commands.entity(entity).despawn();
+        }
+    }
+}
+
 fn spawn_enemy(spawn: Trigger<SpawnEnemy>, mut commands: Commands, assets: Res<super::GameAssets>) {
     commands
         .spawn((
@@ -98,7 +117,11 @@ fn spawn_enemy(spawn: Trigger<SpawnEnemy>, mut commands: Commands, assets: Res<s
 }
 
 fn observe_damage(trigger: Trigger<Damage>, mut commands: Commands) {
-    commands.entity(trigger.target()).despawn();
+    // commands.entity(trigger.target()).despawn();
+    commands
+        .entity(trigger.target())
+        .remove::<(Enemy, Collider)>()
+        .insert(DestroyedEnemy(300));
 }
 
 #[derive(Resource, Reflect)]
