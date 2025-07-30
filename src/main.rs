@@ -7,8 +7,9 @@ use bevy_inspector_egui::quick::WorldInspectorPlugin;
 use bevy_rand::plugin::EntropyPlugin;
 use bevy_rand::prelude::*;
 
-mod space_shooter;
+mod conveyor;
 mod main_menu;
+mod space_shooter;
 mod terrain;
 
 #[derive(Clone, Copy, PartialEq, Eq, Hash, Debug, Default, States)]
@@ -16,6 +17,7 @@ enum GameState {
     #[default]
     MainMenu,
     SpaceShooter,
+    Conveyor,
 }
 
 fn main() {

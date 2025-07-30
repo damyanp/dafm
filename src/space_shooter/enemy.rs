@@ -1,6 +1,7 @@
 use super::bullets::{Damage, Damageable};
 use crate::GameState;
 use avian2d::{math::PI, prelude::*};
+#[allow(unused_imports)]
 use bevy::{
     color::palettes::css::{BLUE, GREEN, PURPLE, YELLOW},
     prelude::*,

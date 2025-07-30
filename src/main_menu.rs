@@ -9,8 +9,10 @@ impl Plugin for MainMenu {
         app.add_systems(OnEnter(GameState::MainMenu), on_enter)
             .add_systems(
                 Update,
-                check_for_any_key
-                    .run_if(in_state(GameState::MainMenu))
+                (
+                    check_main_menu_keys.run_if(in_state(GameState::MainMenu)),
+                    check_for_exit.run_if(not(in_state(GameState::MainMenu))),
+                )
                     .after(toggle_world_inspector),
             );
     }
@@ -19,13 +21,21 @@ impl Plugin for MainMenu {
 fn on_enter(mut commands: Commands) {
     commands.spawn((
         StateScoped(GameState::MainMenu),
-        Text2d::new("Press any key to start"),
+        Text2d::new("1: Shooter\n2: Conveyor"),
         TextLayout::new_with_justify(JustifyText::Center),
     ));
 }
 
-fn check_for_any_key(mut commands: Commands, keys: Res<ButtonInput<KeyCode>>) {
-    if keys.get_just_released().next().is_some() {
-        commands.set_state(GameState::SpaceShooter);
+fn check_main_menu_keys(mut commands: Commands, keys: Res<ButtonInput<KeyCode>>) {
+    match keys.get_just_released().next() {
+        Some(KeyCode::Digit1) => commands.set_state(GameState::SpaceShooter),
+        Some(KeyCode::Digit2) => commands.set_state(GameState::Conveyor),
+        _ => (),
+    }
+}
+
+fn check_for_exit(mut commands: Commands, mut keys: ResMut<ButtonInput<KeyCode>>) {
+    if keys.clear_just_released(KeyCode::Escape) {
+        commands.set_state(GameState::MainMenu);
     }
 }

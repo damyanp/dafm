@@ -26,7 +26,7 @@ impl Plugin for Game {
             )
             .add_systems(
                 Update,
-                (update_game_borders, check_for_exit).run_if(in_state(GameState::SpaceShooter)),
+                (update_game_borders).run_if(in_state(GameState::SpaceShooter)),
             );
     }
 }
@@ -51,12 +51,6 @@ fn load_assets(
         sprite_sheet_layout,
         laser: asset_server.load("laser.png"),
     })
-}
-
-fn check_for_exit(mut commands: Commands, mut keys: ResMut<ButtonInput<KeyCode>>) {
-    if keys.clear_just_released(KeyCode::Escape) {
-        commands.set_state(GameState::MainMenu);
-    }
 }
 
 #[derive(Component)]
