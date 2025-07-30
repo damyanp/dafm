@@ -1,6 +1,5 @@
 use bevy::prelude::*;
 use bevy_ecs_tilemap::prelude::*;
-use tiled::Tile;
 
 use crate::GameState;
 
@@ -21,6 +20,7 @@ fn startup(mut commands: Commands, asset_server: Res<AssetServer>, config: Res<M
     ));
 }
 
+#[allow(clippy::type_complexity)]
 fn track_mouse(
     mut commands: Commands,
     mut cursor_moved: EventReader<CursorMoved>,
