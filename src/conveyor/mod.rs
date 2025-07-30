@@ -28,7 +28,6 @@ fn track_mouse(
     mut interaction_layer: Single<
         (
             Entity,
-            &mut TileStorage,
             &TilemapSize,
             &TilemapGridSize,
             &TilemapTileSize,
@@ -37,31 +36,29 @@ fn track_mouse(
         ),
         With<InteractionLayer>,
     >,
-    current_hovered_tile: Option<Single<(Entity, &HoveredTile, &mut TilePos)>>,
+    mut current_hovered_tile: Option<Single<&mut TilePos, With<HoveredTile>>>,
 ) {
     let (global_transform, camera) = *camera_query;
     if let Some(e) = cursor_moved.read().last() {
         if let Ok(p) = camera.viewport_to_world_2d(global_transform, e.position) {
-            let (entity, storage, size, grid_size, tile_size, map_type, anchor) =
-                &mut (*interaction_layer);
+            let (entity, size, grid_size, tile_size, map_type, anchor) = &mut (*interaction_layer);
 
             if let Some(tile_pos) =
                 TilePos::from_world_pos(&p, size, grid_size, tile_size, map_type, anchor)
             {
-                if let Some(current) = current_hovered_tile {
-                    commands.entity(current.0).despawn();
+                if let Some(old_pos) = &mut current_hovered_tile {
+                    ***old_pos = tile_pos;
+                } else {
+                    commands.spawn((
+                        HoveredTile,
+                        TileBundle {
+                            position: tile_pos,
+                            texture_index: TileTextureIndex(20),
+                            tilemap_id: TilemapId(*entity),
+                            ..default()
+                        },
+                    ));
                 }
-
-                let tile_entity = commands.spawn((
-                    HoveredTile,
-                    TileBundle {
-                        position: tile_pos,
-                        texture_index: TileTextureIndex(20),
-                        tilemap_id: TilemapId(*entity),
-                        ..default()
-                    },
-                )).id();
-                storage.set(&tile_pos, tile_entity);
             }
         }
     }
@@ -83,7 +80,6 @@ fn make_interaction_layer(config: &MapConfig, texture: Handle<Image>) -> impl Bu
             tile_size: config.tile_size,
             grid_size: config.grid_size,
             map_type: config.map_type,
-            storage: TileStorage::empty(config.size),
             anchor: TilemapAnchor::Center,
             texture: TilemapTexture::Single(texture),
             ..default()
@@ -101,7 +97,7 @@ struct MapConfig {
 
 impl Default for MapConfig {
     fn default() -> Self {
-        let map_size = TilemapSize { x: 100, y: 100 };
+        let map_size = TilemapSize { x: 5, y: 5 };
         let tile_size = TilemapTileSize { x: 32.0, y: 32.0 };
         let grid_size = tile_size.into();
 
