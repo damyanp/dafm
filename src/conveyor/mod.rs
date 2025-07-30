@@ -1,4 +1,6 @@
-use bevy::prelude::*;
+use std::ops::DerefMut;
+
+use bevy::{input::common_conditions::input_just_pressed, prelude::*};
 use bevy_ecs_tilemap::prelude::*;
 
 use crate::GameState;
@@ -9,19 +11,25 @@ impl Plugin for ConveyorPlugin {
     fn build(&self, app: &mut App) {
         app.insert_resource(MapConfig::default())
             .add_systems(OnEnter(GameState::Conveyor), startup)
-            .add_systems(Update, track_mouse);
+            .add_systems(Update, track_mouse)
+            .add_systems(
+                Update,
+                on_click.run_if(
+                    in_state(GameState::Conveyor).and(input_just_pressed(MouseButton::Left)),
+                ),
+            );
     }
 }
 
 fn startup(mut commands: Commands, asset_server: Res<AssetServer>, config: Res<MapConfig>) {
+    let texture = asset_server.load("sprites.png");
     let interaction_layer = commands
-        .spawn(make_interaction_layer(
-            &config,
-            asset_server.load("sprites.png"),
-        ))
+        .spawn(make_interaction_layer(&config, texture.to_owned()))
         .id();
 
     commands.spawn((
+        StateScoped(GameState::Conveyor),
+        Name::new("HoveredTile"),
         HoveredTile,
         TileBundle {
             texture_index: TileTextureIndex(20),
@@ -29,6 +37,8 @@ fn startup(mut commands: Commands, asset_server: Res<AssetServer>, config: Res<M
             ..default()
         },
     ));
+
+    commands.spawn(make_base_layer(&config, texture.to_owned()));
 }
 
 #[allow(clippy::type_complexity)]
@@ -45,7 +55,7 @@ fn track_mouse(
         ),
         With<InteractionLayer>,
     >,
-    mut current_hovered_tile: Single<&mut TilePos, With<HoveredTile>>,
+    mut hovered_tile: Single<&mut TilePos, With<HoveredTile>>,
 ) {
     if let Some(e) = cursor_moved.read().last() {
         let (global_transform, camera) = *camera_query;
@@ -55,9 +65,38 @@ fn track_mouse(
             if let Some(tile_pos) =
                 TilePos::from_world_pos(&p, size, grid_size, tile_size, map_type, anchor)
             {
-                **current_hovered_tile = tile_pos;
+                **hovered_tile = tile_pos;
             }
         }
+    }
+}
+
+fn on_click(
+    mut commands: Commands,
+    hovered_tile: Single<&TilePos, With<HoveredTile>>,
+    mut base: Single<(Entity, &mut TileStorage), With<BaseLayer>>,
+) {
+    let (tilemap, storage) = base.deref_mut();
+
+    if let Some(e) = storage.get(*hovered_tile) {
+        storage.remove(*hovered_tile);
+        commands.entity(e).despawn();
+    } else {
+        storage.set(
+            *hovered_tile,
+            commands
+                .spawn((
+                    StateScoped(GameState::Conveyor),
+                    Name::new("Placed Tile"),
+                    TileBundle {
+                        texture_index: TileTextureIndex(10),
+                        tilemap_id: TilemapId(*tilemap),
+                        position: **hovered_tile,
+                        ..default()
+                    },
+                ))
+                .id(),
+        );
     }
 }
 
@@ -69,9 +108,22 @@ struct InteractionLayer;
 
 fn make_interaction_layer(config: &MapConfig, texture: Handle<Image>) -> impl Bundle {
     (
-        StateScoped(GameState::Conveyor),
-        Name::new("InteractionLayer"),
         InteractionLayer,
+        make_layer(config, texture, "InteractionLayer"),
+    )
+}
+
+#[derive(Component)]
+struct BaseLayer;
+
+fn make_base_layer(config: &MapConfig, texture: Handle<Image>) -> impl Bundle {
+    (BaseLayer, make_layer(config, texture, "BaseLayer"))
+}
+
+fn make_layer(config: &MapConfig, texture: Handle<Image>, name: &'static str) -> impl Bundle {
+    (
+        StateScoped(GameState::Conveyor),
+        Name::new(name),
         TilemapBundle {
             size: config.size,
             tile_size: config.tile_size,
@@ -79,6 +131,7 @@ fn make_interaction_layer(config: &MapConfig, texture: Handle<Image>) -> impl Bu
             map_type: config.map_type,
             anchor: TilemapAnchor::Center,
             texture: TilemapTexture::Single(texture),
+            storage: TileStorage::empty(config.size),
             ..default()
         },
     )
