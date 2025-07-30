@@ -14,9 +14,11 @@ impl Plugin for ConveyorPlugin {
             .add_systems(Update, track_mouse)
             .add_systems(
                 Update,
-                on_click.run_if(
-                    in_state(GameState::Conveyor).and(input_just_pressed(MouseButton::Left)),
-                ),
+                (
+                    on_click.run_if(input_just_pressed(MouseButton::Left)),
+                    on_space.run_if(input_just_pressed(KeyCode::Space)),
+                )
+                    .run_if(in_state(GameState::Conveyor)),
             );
     }
 }
@@ -30,7 +32,7 @@ fn startup(mut commands: Commands, asset_server: Res<AssetServer>, config: Res<M
     commands.spawn((
         StateScoped(GameState::Conveyor),
         Name::new("HoveredTile"),
-        HoveredTile,
+        HoveredTile(None),
         TileBundle {
             texture_index: TileTextureIndex(20),
             tilemap_id: TilemapId(interaction_layer),
@@ -73,25 +75,29 @@ fn track_mouse(
 
 fn on_click(
     mut commands: Commands,
-    hovered_tile: Single<&TilePos, With<HoveredTile>>,
+    hovered_tile: Single<(&TilePos, &TileTextureIndex, &TileFlip, &HoveredTile), With<HoveredTile>>,
     mut base: Single<(Entity, &mut TileStorage), With<BaseLayer>>,
 ) {
     let (tilemap, storage) = base.deref_mut();
 
-    if let Some(e) = storage.get(*hovered_tile) {
-        storage.remove(*hovered_tile);
-        commands.entity(e).despawn();
+    let (tile_pos, tile_texture_index, tile_flip, hovered_tile) = *hovered_tile;
+    if hovered_tile.0.is_none() {
+        if let Some(e) = storage.get(tile_pos) {
+            storage.remove(tile_pos);
+            commands.entity(e).despawn();
+        }
     } else {
         storage.set(
-            *hovered_tile,
+            tile_pos,
             commands
                 .spawn((
                     StateScoped(GameState::Conveyor),
                     Name::new("Placed Tile"),
                     TileBundle {
-                        texture_index: TileTextureIndex(10),
+                        texture_index: *tile_texture_index,
+                        flip: *tile_flip,
                         tilemap_id: TilemapId(*tilemap),
-                        position: **hovered_tile,
+                        position: *tile_pos,
                         ..default()
                     },
                 ))
@@ -100,8 +106,61 @@ fn on_click(
     }
 }
 
+fn on_space(mut q: Single<(&mut TileTextureIndex, &mut TileFlip, &mut HoveredTile)>) {
+    let (tti, tf, ht) = q.deref_mut();
+
+    ht.set_to_next_option();
+
+    if let HoveredTile(Some(flip)) = **ht {
+        **tti = TileTextureIndex(11);
+        **tf = flip;
+    } else {
+        **tti = TileTextureIndex(20);
+    }
+}
+
 #[derive(Component)]
-struct HoveredTile;
+struct HoveredTile(Option<TileFlip>);
+
+impl HoveredTile {
+    fn set_to_next_option(&mut self) {
+        self.0 = match self.0 {
+            None => Some(TileFlip {
+                d: false,
+                x: false,
+                y: false,
+            }),
+            Some(TileFlip {
+                d: false,
+                x: false,
+                y: false,
+            }) => Some(TileFlip {
+                d: true,
+                x: false,
+                y: false,
+            }),
+            Some(TileFlip {
+                d: true,
+                x: false,
+                y: false,
+            }) => Some(TileFlip {
+                d: false,
+                x: true,
+                y: false,
+            }),
+            Some(TileFlip {
+                d: false,
+                x: true,
+                y: false,
+            }) => Some(TileFlip {
+                d: true,
+                x: false,
+                y: true,
+            }),
+            _ => None,
+        };
+    }
+}
 
 #[derive(Component)]
 struct InteractionLayer;
