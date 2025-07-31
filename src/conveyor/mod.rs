@@ -12,7 +12,9 @@ pub struct ConveyorPlugin;
 
 impl Plugin for ConveyorPlugin {
     fn build(&self, app: &mut App) {
-        app.insert_resource(MapConfig::default())
+        app.register_type::<Conveyor>()
+            .register_type::<HoveredTile>()
+            .insert_resource(MapConfig::default())
             .add_systems(OnEnter(GameState::Conveyor), startup)
             .add_systems(Update, track_mouse)
             .add_systems(
@@ -147,7 +149,7 @@ fn update_hovered_tile(
 
         let incoming_neighbor = neighbors.iter_with_direction().find(|(dir, entity)| {
             if let Ok(Conveyor { to, .. }) = conveyors.get(**entity) {
-                *to == opposite(dir)
+                *to == opposite((*dir).into())
             } else {
                 false
             }
@@ -155,12 +157,12 @@ fn update_hovered_tile(
 
         let conveyor = if let Some((incoming_direction, _)) = incoming_neighbor {
             Conveyor {
-                from: incoming_direction,
+                from: incoming_direction.into(),
                 to: *hovered_direction,
             }
         } else {
             Conveyor {
-                from: opposite(hovered_direction),
+                from: opposite(*hovered_direction),
                 to: *hovered_direction,
             }
         };
@@ -172,13 +174,24 @@ fn update_hovered_tile(
     }
 }
 
-fn opposite(d: &SquareDirection) -> SquareDirection {
+impl From<SquareDirection> for Direction {
+    fn from(value: SquareDirection) -> Self {
+        match value {
+            SquareDirection::North => Direction::North,
+            SquareDirection::East => Direction::East,
+            SquareDirection::South => Direction::South,
+            SquareDirection::West => Direction::West,
+            _ => panic!(),
+        }
+    }
+}
+
+fn opposite(d: Direction) -> Direction {
     match d {
-        SquareDirection::East => SquareDirection::West,
-        SquareDirection::North => SquareDirection::South,
-        SquareDirection::West => SquareDirection::East,
-        SquareDirection::South => SquareDirection::North,
-        _ => panic!(),
+        Direction::East => Direction::West,
+        Direction::North => Direction::South,
+        Direction::West => Direction::East,
+        Direction::South => Direction::North,
     }
 }
 
@@ -188,8 +201,7 @@ impl Conveyor {
         const CORNER: TileTextureIndex = TileTextureIndex(13);
         match (self.from, self.to) {
             // straights
-            (SquareDirection::West, SquareDirection::East)
-            | (SquareDirection::East, SquareDirection::East) => (
+            (Direction::West, Direction::East) | (Direction::East, Direction::East) => (
                 STRAIGHT,
                 TileFlip {
                     x: false,
@@ -197,8 +209,7 @@ impl Conveyor {
                     d: false,
                 },
             ),
-            (SquareDirection::East, SquareDirection::West)
-            | (SquareDirection::West, SquareDirection::West) => (
+            (Direction::East, Direction::West) | (Direction::West, Direction::West) => (
                 STRAIGHT,
                 TileFlip {
                     x: true,
@@ -206,8 +217,7 @@ impl Conveyor {
                     d: false,
                 },
             ),
-            (SquareDirection::North, SquareDirection::South)
-            | (SquareDirection::South, SquareDirection::South) => (
+            (Direction::North, Direction::South) | (Direction::South, Direction::South) => (
                 STRAIGHT,
                 TileFlip {
                     x: false,
@@ -215,8 +225,7 @@ impl Conveyor {
                     d: true,
                 },
             ),
-            (SquareDirection::South, SquareDirection::North)
-            | (SquareDirection::North, SquareDirection::North) => (
+            (Direction::South, Direction::North) | (Direction::North, Direction::North) => (
                 STRAIGHT,
                 TileFlip {
                     x: false,
@@ -226,7 +235,7 @@ impl Conveyor {
             ),
 
             // corners
-            (SquareDirection::East, SquareDirection::North) => (
+            (Direction::East, Direction::North) => (
                 CORNER,
                 TileFlip {
                     x: true,
@@ -234,75 +243,81 @@ impl Conveyor {
                     ..default()
                 },
             ),
-            (SquareDirection::East, SquareDirection::South) => (
+            (Direction::East, Direction::South) => (
                 CORNER,
                 TileFlip {
                     x: true,
                     ..default()
                 },
             ),
-            (SquareDirection::North, SquareDirection::East) => (
+            (Direction::North, Direction::East) => (
                 CORNER,
                 TileFlip {
                     d: true,
                     ..default()
                 },
             ),
-            (SquareDirection::North, SquareDirection::West) => (
-                CORNER,
-                TileFlip {
-                    d: true,
-                    x: true,
-                    ..default()
-                },
-            ),
-            (SquareDirection::West, SquareDirection::North) => (
-                CORNER,
-                TileFlip {
-                    y: true,
-                    ..default()
-                },
-            ),
-            (SquareDirection::West, SquareDirection::South) => (CORNER, TileFlip::default()),
-            (SquareDirection::South, SquareDirection::East) => (
-                CORNER,
-                TileFlip {
-                    d: true,
-                    y: true,
-                    ..default()
-                },
-            ),
-            (SquareDirection::South, SquareDirection::West) => (
+            (Direction::North, Direction::West) => (
                 CORNER,
                 TileFlip {
                     d: true,
                     x: true,
+                    ..default()
+                },
+            ),
+            (Direction::West, Direction::North) => (
+                CORNER,
+                TileFlip {
+                    y: true,
+                    ..default()
+                },
+            ),
+            (Direction::West, Direction::South) => (CORNER, TileFlip::default()),
+            (Direction::South, Direction::East) => (
+                CORNER,
+                TileFlip {
+                    d: true,
+                    y: true,
+                    ..default()
+                },
+            ),
+            (Direction::South, Direction::West) => (
+                CORNER,
+                TileFlip {
+                    d: true,
+                    x: true,
                     y: true,
                 },
             ),
-            _ => panic!("Didn't expect: {self:?}"),
         }
     }
 }
 
-#[derive(Component, Clone, Debug)]
-struct Conveyor {
-    from: SquareDirection,
-    to: SquareDirection,
+#[derive(PartialEq, Reflect, Clone, Copy, Debug)]
+enum Direction {
+    North,
+    South,
+    East,
+    West,
 }
 
-#[derive(Component)]
-struct HoveredTile(Option<SquareDirection>);
+#[derive(Component, Clone, Debug, Reflect)]
+struct Conveyor {
+    from: Direction,
+    to: Direction,
+}
+
+#[derive(Component, Reflect)]
+struct HoveredTile(Option<Direction>);
 
 impl HoveredTile {
     fn set_to_next_option(&mut self) {
         self.0 = match self.0 {
-            None => Some(SquareDirection::East),
-            Some(SquareDirection::East) => Some(SquareDirection::South),
-            Some(SquareDirection::South) => Some(SquareDirection::West),
-            Some(SquareDirection::West) => Some(SquareDirection::North),
-            Some(SquareDirection::North) => None,
-            _ => panic!(),
+            None => Some(Direction::East),
+            Some(Direction::East) => Some(Direction::South),
+            Some(Direction::South) => Some(Direction::West),
+            Some(Direction::West) => Some(Direction::North),
+            Some(Direction::North) => None,
         };
     }
 }
