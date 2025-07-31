@@ -1,7 +1,10 @@
 use std::ops::DerefMut;
 
 use bevy::{input::common_conditions::input_just_pressed, prelude::*};
-use bevy_ecs_tilemap::prelude::*;
+use bevy_ecs_tilemap::{
+    helpers::square_grid::neighbors::{Neighbors, SquareDirection},
+    prelude::*,
+};
 
 use crate::GameState;
 
@@ -17,7 +20,9 @@ impl Plugin for ConveyorPlugin {
                 (
                     on_click.run_if(input_just_pressed(MouseButton::Left)),
                     on_space.run_if(input_just_pressed(KeyCode::Space)),
+                    update_hovered_tile,
                 )
+                    .chain()
                     .run_if(in_state(GameState::Conveyor)),
             );
     }
@@ -73,14 +78,24 @@ fn track_mouse(
     }
 }
 
+#[allow(clippy::type_complexity)]
 fn on_click(
     mut commands: Commands,
-    hovered_tile: Single<(&TilePos, &TileTextureIndex, &TileFlip, &HoveredTile), With<HoveredTile>>,
+    hovered_tile: Single<
+        (
+            &TilePos,
+            &TileTextureIndex,
+            &TileFlip,
+            &HoveredTile,
+            Option<&Conveyor>,
+        ),
+        With<HoveredTile>,
+    >,
     mut base: Single<(Entity, &mut TileStorage), With<BaseLayer>>,
 ) {
     let (tilemap, storage) = base.deref_mut();
 
-    let (tile_pos, tile_texture_index, tile_flip, hovered_tile) = *hovered_tile;
+    let (tile_pos, tile_texture_index, tile_flip, hovered_tile, conveyor) = *hovered_tile;
     if hovered_tile.0.is_none() {
         if let Some(e) = storage.get(tile_pos) {
             storage.remove(tile_pos);
@@ -93,6 +108,7 @@ fn on_click(
                 .spawn((
                     StateScoped(GameState::Conveyor),
                     Name::new("Placed Tile"),
+                    conveyor.unwrap().clone(),
                     TileBundle {
                         texture_index: *tile_texture_index,
                         flip: *tile_flip,
@@ -106,58 +122,187 @@ fn on_click(
     }
 }
 
-fn on_space(mut q: Single<(&mut TileTextureIndex, &mut TileFlip, &mut HoveredTile)>) {
-    let (tti, tf, ht) = q.deref_mut();
+fn on_space(mut hovered_tile: Single<&mut HoveredTile>) {
+    hovered_tile.set_to_next_option();
+}
 
-    ht.set_to_next_option();
+fn update_hovered_tile(
+    mut commands: Commands,
+    mut q: Single<(
+        Entity,
+        &HoveredTile,
+        &TilePos,
+        &mut TileTextureIndex,
+        &mut TileFlip,
+    )>,
+    base: Single<(&TileStorage, &TilemapSize), With<BaseLayer>>,
+    conveyors: Query<&Conveyor>,
+) {
+    if let HoveredTile(Some(hovered_direction)) = q.1 {
+        let (_, _, tile_pos, texture_index, flip) = q.deref_mut();
+        let (storage, map_size) = *base;
 
-    if let HoveredTile(Some(flip)) = **ht {
-        **tti = TileTextureIndex(11);
-        **tf = flip;
+        let neighbors = Neighbors::get_square_neighboring_positions(tile_pos, map_size, false)
+            .entities(storage);
+
+        let incoming_neighbor = neighbors.iter_with_direction().find(|(dir, entity)| {
+            if let Ok(Conveyor { to, .. }) = conveyors.get(**entity) {
+                *to == opposite(dir)
+            } else {
+                false
+            }
+        });
+
+        let conveyor = if let Some((incoming_direction, _)) = incoming_neighbor {
+            Conveyor {
+                from: incoming_direction,
+                to: *hovered_direction,
+            }
+        } else {
+            Conveyor {
+                from: opposite(hovered_direction),
+                to: *hovered_direction,
+            }
+        };
+        (**texture_index, **flip) = conveyor.get_conveyor_tile();
+        commands.entity(q.0).insert(conveyor);
     } else {
-        **tti = TileTextureIndex(20);
+        *q.3 = TileTextureIndex(20);
+        commands.entity(q.0).try_remove::<Conveyor>();
     }
 }
 
+fn opposite(d: &SquareDirection) -> SquareDirection {
+    match d {
+        SquareDirection::East => SquareDirection::West,
+        SquareDirection::North => SquareDirection::South,
+        SquareDirection::West => SquareDirection::East,
+        SquareDirection::South => SquareDirection::North,
+        _ => panic!(),
+    }
+}
+
+impl Conveyor {
+    fn get_conveyor_tile(&self) -> (TileTextureIndex, TileFlip) {
+        const STRAIGHT: TileTextureIndex = TileTextureIndex(11);
+        const CORNER: TileTextureIndex = TileTextureIndex(13);
+        match (self.from, self.to) {
+            // straights
+            (SquareDirection::West, SquareDirection::East)
+            | (SquareDirection::East, SquareDirection::East) => (
+                STRAIGHT,
+                TileFlip {
+                    x: false,
+                    y: false,
+                    d: false,
+                },
+            ),
+            (SquareDirection::East, SquareDirection::West)
+            | (SquareDirection::West, SquareDirection::West) => (
+                STRAIGHT,
+                TileFlip {
+                    x: true,
+                    y: false,
+                    d: false,
+                },
+            ),
+            (SquareDirection::North, SquareDirection::South)
+            | (SquareDirection::South, SquareDirection::South) => (
+                STRAIGHT,
+                TileFlip {
+                    x: false,
+                    y: false,
+                    d: true,
+                },
+            ),
+            (SquareDirection::South, SquareDirection::North)
+            | (SquareDirection::North, SquareDirection::North) => (
+                STRAIGHT,
+                TileFlip {
+                    x: false,
+                    y: true,
+                    d: true,
+                },
+            ),
+
+            // corners
+            (SquareDirection::East, SquareDirection::North) => (
+                CORNER,
+                TileFlip {
+                    x: true,
+                    y: true,
+                    ..default()
+                },
+            ),
+            (SquareDirection::East, SquareDirection::South) => (
+                CORNER,
+                TileFlip {
+                    x: true,
+                    ..default()
+                },
+            ),
+            (SquareDirection::North, SquareDirection::East) => (
+                CORNER,
+                TileFlip {
+                    d: true,
+                    ..default()
+                },
+            ),
+            (SquareDirection::North, SquareDirection::West) => (
+                CORNER,
+                TileFlip {
+                    d: true,
+                    x: true,
+                    ..default()
+                },
+            ),
+            (SquareDirection::West, SquareDirection::North) => (
+                CORNER,
+                TileFlip {
+                    y: true,
+                    ..default()
+                },
+            ),
+            (SquareDirection::West, SquareDirection::South) => (CORNER, TileFlip::default()),
+            (SquareDirection::South, SquareDirection::East) => (
+                CORNER,
+                TileFlip {
+                    d: true,
+                    y: true,
+                    ..default()
+                },
+            ),
+            (SquareDirection::South, SquareDirection::West) => (
+                CORNER,
+                TileFlip {
+                    d: true,
+                    x: true,
+                    y: true,
+                },
+            ),
+            _ => panic!("Didn't expect: {self:?}"),
+        }
+    }
+}
+
+#[derive(Component, Clone, Debug)]
+struct Conveyor {
+    from: SquareDirection,
+    to: SquareDirection,
+}
+
 #[derive(Component)]
-struct HoveredTile(Option<TileFlip>);
+struct HoveredTile(Option<SquareDirection>);
 
 impl HoveredTile {
     fn set_to_next_option(&mut self) {
         self.0 = match self.0 {
-            None => Some(TileFlip {
-                d: false,
-                x: false,
-                y: false,
-            }),
-            Some(TileFlip {
-                d: false,
-                x: false,
-                y: false,
-            }) => Some(TileFlip {
-                d: true,
-                x: false,
-                y: false,
-            }),
-            Some(TileFlip {
-                d: true,
-                x: false,
-                y: false,
-            }) => Some(TileFlip {
-                d: false,
-                x: true,
-                y: false,
-            }),
-            Some(TileFlip {
-                d: false,
-                x: true,
-                y: false,
-            }) => Some(TileFlip {
-                d: true,
-                x: false,
-                y: true,
-            }),
-            _ => None,
+            None => Some(SquareDirection::East),
+            Some(SquareDirection::East) => Some(SquareDirection::South),
+            Some(SquareDirection::South) => Some(SquareDirection::West),
+            Some(SquareDirection::West) => Some(SquareDirection::North),
+            Some(SquareDirection::North) => None,
+            _ => panic!(),
         };
     }
 }
