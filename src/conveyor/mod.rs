@@ -110,7 +110,7 @@ fn on_click(
                 .spawn((
                     StateScoped(GameState::Conveyor),
                     Name::new("Placed Tile"),
-                    conveyor.unwrap().clone(),
+                    Conveyor(hovered_tile.0.unwrap()),
                     TileBundle {
                         texture_index: *tile_texture_index,
                         flip: *tile_flip,
@@ -148,29 +148,21 @@ fn update_hovered_tile(
             .entities(storage);
 
         let incoming_neighbor = neighbors.iter_with_direction().find(|(dir, entity)| {
-            if let Ok(Conveyor { to, .. }) = conveyors.get(**entity) {
-                *to == opposite((*dir).into())
+            if let Ok(Conveyor(neighbor_dir)) = conveyors.get(**entity) {
+                *neighbor_dir == opposite((*dir).into())
             } else {
                 false
             }
         });
 
-        let conveyor = if let Some((incoming_direction, _)) = incoming_neighbor {
-            Conveyor {
-                from: incoming_direction.into(),
-                to: *hovered_direction,
-            }
+        let (from, to) = if let Some((incoming_direction, _)) = incoming_neighbor {
+            (incoming_direction.into(), *hovered_direction)
         } else {
-            Conveyor {
-                from: opposite(*hovered_direction),
-                to: *hovered_direction,
-            }
+            (opposite(*hovered_direction), *hovered_direction)
         };
-        (**texture_index, **flip) = conveyor.get_conveyor_tile();
-        commands.entity(q.0).insert(conveyor);
+        (**texture_index, **flip) = get_conveyor_tile(from, to);
     } else {
         *q.3 = TileTextureIndex(20);
-        commands.entity(q.0).try_remove::<Conveyor>();
     }
 }
 
@@ -195,101 +187,99 @@ fn opposite(d: Direction) -> Direction {
     }
 }
 
-impl Conveyor {
-    fn get_conveyor_tile(&self) -> (TileTextureIndex, TileFlip) {
-        const STRAIGHT: TileTextureIndex = TileTextureIndex(11);
-        const CORNER: TileTextureIndex = TileTextureIndex(13);
-        match (self.from, self.to) {
-            // straights
-            (Direction::West, Direction::East) | (Direction::East, Direction::East) => (
-                STRAIGHT,
-                TileFlip {
-                    x: false,
-                    y: false,
-                    d: false,
-                },
-            ),
-            (Direction::East, Direction::West) | (Direction::West, Direction::West) => (
-                STRAIGHT,
-                TileFlip {
-                    x: true,
-                    y: false,
-                    d: false,
-                },
-            ),
-            (Direction::North, Direction::South) | (Direction::South, Direction::South) => (
-                STRAIGHT,
-                TileFlip {
-                    x: false,
-                    y: false,
-                    d: true,
-                },
-            ),
-            (Direction::South, Direction::North) | (Direction::North, Direction::North) => (
-                STRAIGHT,
-                TileFlip {
-                    x: false,
-                    y: true,
-                    d: true,
-                },
-            ),
+fn get_conveyor_tile(from: Direction, to: Direction) -> (TileTextureIndex, TileFlip) {
+    const STRAIGHT: TileTextureIndex = TileTextureIndex(11);
+    const CORNER: TileTextureIndex = TileTextureIndex(13);
+    match (from, to) {
+        // straights
+        (Direction::West, Direction::East) | (Direction::East, Direction::East) => (
+            STRAIGHT,
+            TileFlip {
+                x: false,
+                y: false,
+                d: false,
+            },
+        ),
+        (Direction::East, Direction::West) | (Direction::West, Direction::West) => (
+            STRAIGHT,
+            TileFlip {
+                x: true,
+                y: false,
+                d: false,
+            },
+        ),
+        (Direction::North, Direction::South) | (Direction::South, Direction::South) => (
+            STRAIGHT,
+            TileFlip {
+                x: false,
+                y: false,
+                d: true,
+            },
+        ),
+        (Direction::South, Direction::North) | (Direction::North, Direction::North) => (
+            STRAIGHT,
+            TileFlip {
+                x: false,
+                y: true,
+                d: true,
+            },
+        ),
 
-            // corners
-            (Direction::East, Direction::North) => (
-                CORNER,
-                TileFlip {
-                    x: true,
-                    y: true,
-                    ..default()
-                },
-            ),
-            (Direction::East, Direction::South) => (
-                CORNER,
-                TileFlip {
-                    x: true,
-                    ..default()
-                },
-            ),
-            (Direction::North, Direction::East) => (
-                CORNER,
-                TileFlip {
-                    d: true,
-                    ..default()
-                },
-            ),
-            (Direction::North, Direction::West) => (
-                CORNER,
-                TileFlip {
-                    d: true,
-                    x: true,
-                    ..default()
-                },
-            ),
-            (Direction::West, Direction::North) => (
-                CORNER,
-                TileFlip {
-                    y: true,
-                    ..default()
-                },
-            ),
-            (Direction::West, Direction::South) => (CORNER, TileFlip::default()),
-            (Direction::South, Direction::East) => (
-                CORNER,
-                TileFlip {
-                    d: true,
-                    y: true,
-                    ..default()
-                },
-            ),
-            (Direction::South, Direction::West) => (
-                CORNER,
-                TileFlip {
-                    d: true,
-                    x: true,
-                    y: true,
-                },
-            ),
-        }
+        // corners
+        (Direction::East, Direction::North) => (
+            CORNER,
+            TileFlip {
+                x: true,
+                y: true,
+                ..default()
+            },
+        ),
+        (Direction::East, Direction::South) => (
+            CORNER,
+            TileFlip {
+                x: true,
+                ..default()
+            },
+        ),
+        (Direction::North, Direction::East) => (
+            CORNER,
+            TileFlip {
+                d: true,
+                ..default()
+            },
+        ),
+        (Direction::North, Direction::West) => (
+            CORNER,
+            TileFlip {
+                d: true,
+                x: true,
+                ..default()
+            },
+        ),
+        (Direction::West, Direction::North) => (
+            CORNER,
+            TileFlip {
+                y: true,
+                ..default()
+            },
+        ),
+        (Direction::West, Direction::South) => (CORNER, TileFlip::default()),
+        (Direction::South, Direction::East) => (
+            CORNER,
+            TileFlip {
+                d: true,
+                y: true,
+                ..default()
+            },
+        ),
+        (Direction::South, Direction::West) => (
+            CORNER,
+            TileFlip {
+                d: true,
+                x: true,
+                y: true,
+            },
+        ),
     }
 }
 
@@ -302,10 +292,7 @@ enum Direction {
 }
 
 #[derive(Component, Clone, Debug, Reflect)]
-struct Conveyor {
-    from: Direction,
-    to: Direction,
-}
+struct Conveyor(Direction);
 
 #[derive(Component, Reflect)]
 struct HoveredTile(Option<Direction>);
