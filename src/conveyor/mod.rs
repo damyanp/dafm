@@ -229,7 +229,7 @@ fn get_conveyor_tile(from: Direction, to: Direction) -> (TileTextureIndex, TileF
         (Direction::East, Direction::North) => (
             CORNER,
             TileFlip {
-                x: true,
+                d: true,
                 y: true,
                 ..default()
             },
@@ -237,47 +237,48 @@ fn get_conveyor_tile(from: Direction, to: Direction) -> (TileTextureIndex, TileF
         (Direction::East, Direction::South) => (
             CORNER,
             TileFlip {
-                x: true,
+                d: true,
                 ..default()
             },
         ),
         (Direction::North, Direction::East) => (
             CORNER,
             TileFlip {
-                d: true,
+                y: true,
                 ..default()
             },
         ),
         (Direction::North, Direction::West) => (
             CORNER,
             TileFlip {
-                d: true,
                 x: true,
+                y: true,
                 ..default()
             },
         ),
         (Direction::West, Direction::North) => (
             CORNER,
             TileFlip {
-                y: true,
-                ..default()
-            },
-        ),
-        (Direction::West, Direction::South) => (CORNER, TileFlip::default()),
-        (Direction::South, Direction::East) => (
-            CORNER,
-            TileFlip {
                 d: true,
+                x: true,
                 y: true,
                 ..default()
             },
         ),
-        (Direction::South, Direction::West) => (
+        (Direction::West, Direction::South) => (
             CORNER,
             TileFlip {
                 d: true,
                 x: true,
-                y: true,
+                ..default()
+            },
+        ),
+        (Direction::South, Direction::East) => (CORNER, TileFlip::default()),
+        (Direction::South, Direction::West) => (
+            CORNER,
+            TileFlip {
+                x: true,
+                ..default()
             },
         ),
     }
