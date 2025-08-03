@@ -4,9 +4,16 @@ version = "0.1.0"
 edition = "2024"
 
 [dependencies]
-bevy = { version = "0.16.1", features = ["dynamic_linking"] }
+avian = "0.0.0"
+avian2d = "0.3.1"
+bevy = { version = "0.16.1", features = ["dynamic_linking", "track_location"] }
+bevy-inspector-egui = "0.32.0"
 bevy_ecs_tilemap = "0.16.0"
-bevy_pancam = "0.18.0"
+bevy_egui = "0.35.1"
+bevy_enhanced_input = "0.15.1"
+bevy_pancam = { version = "0.18.0", features = ["bevy_egui"] }
+bevy_rand = { version = "0.11.1", features = ["wyrand"] }
+pathfinding = "4.14.0"
 rand = "0.9.1"
 serde = { version = "1.0", features = ["derive"] }
 serde_json = "1.0"

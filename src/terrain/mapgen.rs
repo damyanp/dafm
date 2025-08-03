@@ -183,7 +183,7 @@ enum MapEntry {
 impl MapEntry {
     fn new(options: Vec<TileClass>) -> Self {
         MapEntry::Superposition {
-            options: options,
+            options,
             entropy: f32::MAX,
         }
     }
@@ -250,7 +250,7 @@ impl MapEntry {
 
                 if options.len() != old_len {
                     // println!(" Changed: {} --> {}", old_len, self.options.len());
-                    *entropy = calculate_entropy(options, &tile_set);
+                    *entropy = calculate_entropy(options, tile_set);
                     true
                 } else {
                     false
@@ -404,17 +404,14 @@ impl TileClasses {
 
         for (tile_index, wang_tile) in tileset.wang_sets[0].wang_tiles.iter() {
             let id = wang_tile.wang_id.0;
-            if classes.contains_key(&id) {
-                classes.get_mut(&id).unwrap().tiles.push(*tile_index);
+            if let std::collections::hash_map::Entry::Vacant(e) = classes.entry(id) {
+                e.insert(TileClassData {
+                    wang_id: WangId(id),
+                    tiles: vec![*tile_index],
+                    weight: get_wang_tile_weight(tileset, &wang_tile.wang_id),
+                });
             } else {
-                classes.insert(
-                    id.clone(),
-                    TileClassData {
-                        wang_id: WangId(id),
-                        tiles: vec![*tile_index],
-                        weight: get_wang_tile_weight(tileset, &wang_tile.wang_id),
-                    },
-                );
+                classes.get_mut(&id).unwrap().tiles.push(*tile_index);
             }
         }
 
@@ -438,10 +435,7 @@ impl TileClasses {
     }
 
     fn get_tile_classes_options(&self) -> Vec<TileClass> {
-        (0..self.classes.len())
-            .into_iter()
-            .map(|id| TileClass(id))
-            .collect()
+        (0..self.classes.len()).map(TileClass).collect()
     }
 
     fn get_weight(&self, class: &TileClass) -> f32 {
@@ -476,7 +470,7 @@ impl TileSet {
             for index in &tile_class_data.tiles {
                 tiles.push(TileOption {
                     class,
-                    index: index.clone(),
+                    index: *index,
                 });
             }
         }
@@ -488,7 +482,7 @@ impl TileSet {
 
         for (a, a_data) in classes.iter() {
             for (b, b_data) in classes.iter() {
-                let (connects_horizontally, connects_vertically) = a_data.connects_with(&b_data);
+                let (connects_horizontally, connects_vertically) = a_data.connects_with(b_data);
 
                 if connects_horizontally {
                     horizontal.push([a, b]);
