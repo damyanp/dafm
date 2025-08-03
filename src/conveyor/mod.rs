@@ -26,7 +26,8 @@ impl Plugin for ConveyorPlugin {
                 )
                     .chain()
                     .run_if(in_state(GameState::Conveyor)),
-            );
+            )
+            .add_observer(update_conveyor_tiles);
     }
 }
 
@@ -83,21 +84,12 @@ fn track_mouse(
 #[allow(clippy::type_complexity)]
 fn on_click(
     mut commands: Commands,
-    hovered_tile: Single<
-        (
-            &TilePos,
-            &TileTextureIndex,
-            &TileFlip,
-            &HoveredTile,
-            Option<&Conveyor>,
-        ),
-        With<HoveredTile>,
-    >,
+    hovered_tile: Single<(&TilePos, &HoveredTile)>,
     mut base: Single<(Entity, &mut TileStorage), With<BaseLayer>>,
 ) {
     let (tilemap, storage) = base.deref_mut();
 
-    let (tile_pos, tile_texture_index, tile_flip, hovered_tile, conveyor) = *hovered_tile;
+    let (tile_pos, hovered_tile) = *hovered_tile;
     if hovered_tile.0.is_none() {
         if let Some(e) = storage.get(tile_pos) {
             storage.remove(tile_pos);
@@ -112,8 +104,6 @@ fn on_click(
                     Name::new("Placed Tile"),
                     Conveyor(hovered_tile.0.unwrap()),
                     TileBundle {
-                        texture_index: *tile_texture_index,
-                        flip: *tile_flip,
                         tilemap_id: TilemapId(*tilemap),
                         position: *tile_pos,
                         ..default()
@@ -122,6 +112,8 @@ fn on_click(
                 .id(),
         );
     }
+
+    commands.trigger(ConveyorChanged(*tile_pos));
 }
 
 fn on_space(mut hovered_tile: Single<&mut HoveredTile>) {
@@ -129,40 +121,31 @@ fn on_space(mut hovered_tile: Single<&mut HoveredTile>) {
 }
 
 fn update_hovered_tile(
-    mut commands: Commands,
-    mut q: Single<(
-        Entity,
-        &HoveredTile,
-        &TilePos,
-        &mut TileTextureIndex,
-        &mut TileFlip,
-    )>,
-    base: Single<(&TileStorage, &TilemapSize), With<BaseLayer>>,
-    conveyors: Query<&Conveyor>,
+    mut q: Single<(Entity, &HoveredTile, &mut TileTextureIndex, &mut TileFlip)>,
 ) {
     if let HoveredTile(Some(hovered_direction)) = q.1 {
-        let (_, _, tile_pos, texture_index, flip) = q.deref_mut();
-        let (storage, map_size) = *base;
+        let (_, _, texture_index, flip) = q.deref_mut();
+        // let (storage, map_size) = *base;
 
-        let neighbors = Neighbors::get_square_neighboring_positions(tile_pos, map_size, false)
-            .entities(storage);
+        // let neighbors = Neighbors::get_square_neighboring_positions(tile_pos, map_size, false)
+        //     .entities(storage);
 
-        let incoming_neighbor = neighbors.iter_with_direction().find(|(dir, entity)| {
-            if let Ok(Conveyor(neighbor_dir)) = conveyors.get(**entity) {
-                *neighbor_dir == opposite((*dir).into())
-            } else {
-                false
-            }
-        });
+        // let incoming_neighbor = neighbors.iter_with_direction().find(|(dir, entity)| {
+        //     if let Ok(Conveyor(neighbor_dir)) = conveyors.get(**entity) {
+        //         *neighbor_dir == opposite((*dir).into())
+        //     } else {
+        //         false
+        //     }
+        // });
 
-        let (from, to) = if let Some((incoming_direction, _)) = incoming_neighbor {
-            (incoming_direction.into(), *hovered_direction)
-        } else {
-            (opposite(*hovered_direction), *hovered_direction)
-        };
-        (**texture_index, **flip) = get_conveyor_tile(from, to);
+        // let (from, to) = if let Some((incoming_direction, _)) = incoming_neighbor {
+        //     (incoming_direction.into(), *hovered_direction)
+        // } else {
+        //     (opposite(*hovered_direction), *hovered_direction)
+        // };
+        (**texture_index, **flip) = get_hover_tile(*hovered_direction);
     } else {
-        *q.3 = TileTextureIndex(20);
+        *q.2 = TileTextureIndex(20);
     }
 }
 
@@ -187,13 +170,224 @@ fn opposite(d: Direction) -> Direction {
     }
 }
 
+#[derive(Event)]
+struct ConveyorChanged(TilePos);
+
+fn update_conveyor_tiles(
+    trigger: Trigger<ConveyorChanged>,
+    mut conveyor_tiles: Query<(&TilePos, &Conveyor, &mut TileTextureIndex, &mut TileFlip)>,
+    conveyors: Query<&Conveyor>,
+    mut base: Single<(&mut TileStorage, &TilemapSize), With<BaseLayer>>,
+) {
+    let (tile_storage, map_size) = base.deref_mut();
+
+    update_conveyor_tile(
+        &trigger.0,
+        &tile_storage,
+        map_size,
+        &mut conveyor_tiles,
+        &conveyors,
+    );
+
+    for neighbor in Neighbors::get_square_neighboring_positions(&trigger.0, map_size, false).iter()
+    {
+        update_conveyor_tile(
+            neighbor,
+            &tile_storage,
+            map_size,
+            &mut conveyor_tiles,
+            &conveyors,
+        );
+    }
+}
+
+fn update_conveyor_tile(
+    tile_pos: &TilePos,
+    tile_storage: &TileStorage,
+    map_size: &TilemapSize,
+    mut conveyor_tiles: &mut Query<(&TilePos, &Conveyor, &mut TileTextureIndex, &mut TileFlip)>,
+    conveyors: &Query<&Conveyor>,
+) {
+    let this_conveyor = tile_storage
+        .get(tile_pos)
+        .and_then(|entity| conveyor_tiles.get_mut(entity).ok());
+
+    if let Some((_, Conveyor(out_dir), mut texture_index, mut flip)) = this_conveyor {
+        println!("Update {tile_pos:?} {out_dir:?}");
+
+        // Find the neighbors that have conveyors on them
+        let neighbor_conveyors =
+            get_neighbor_conveyors(&tile_storage, tile_pos, &map_size, &conveyors);
+
+        println!("  {neighbor_conveyors:?}");
+
+        // And just the conveyors pointing towards this one
+        let neighbor_conveyors = Neighbors::from_directional_closure(|dir| {
+            neighbor_conveyors.get(dir).and_then(|c| {
+                if c.0 == opposite(dir.into()) {
+                    Some(c.clone())
+                } else {
+                    None
+                }
+            })
+        });
+
+        println!("  {neighbor_conveyors:?}");
+
+        // Rotate all of this so that east is always the "out" direction
+        let neighbor_conveyors = make_east_relative(neighbor_conveyors, *out_dir);
+        println!("  {neighbor_conveyors:?}");
+
+        let (new_texture_index, y_flip) = match neighbor_conveyors {
+            Neighbors {
+                north: None,
+                east: None,
+                south: None,
+                west: Some(_),
+                ..
+            } => (WEST_TO_EAST, false),
+            Neighbors {
+                north: None,
+                east: None,
+                south: Some(_),
+                west: Some(_),
+                ..
+            } => (SOUTH_AND_WEST_TO_EAST, false),
+            Neighbors {
+                north: Some(_),
+                east: None,
+                south: None,
+                west: Some(_),
+                ..
+            } => (SOUTH_AND_WEST_TO_EAST, true),
+            Neighbors {
+                north: None,
+                east: None,
+                south: Some(_),
+                west: None,
+                ..
+            } => (SOUTH_TO_EAST, false),
+            Neighbors {
+                north: Some(_),
+                east: None,
+                south: None,
+                west: None,
+                ..
+            } => (SOUTH_TO_EAST, true),
+            Neighbors {
+                north: Some(_),
+                east: None,
+                south: Some(_),
+                west: None,
+                ..
+            } => (NORTH_AND_SOUTH_TO_EAST, false),
+            Neighbors {
+                north: Some(_),
+                east: None,
+                south: Some(_),
+                west: Some(_),
+                ..
+            } => (NORTH_AND_SOUTH_AND_WEST_TO_EAST, false),
+            _ => (WEST_TO_EAST, false),
+        };
+
+        *texture_index = new_texture_index;
+        // let y_flip = false;
+        // *texture_index = SOUTH_TO_EAST;
+
+        *flip = match out_dir {
+            Direction::North => TileFlip {
+                d: true,
+                y: !y_flip,
+                ..default()
+            },
+            Direction::South => TileFlip {
+                d: true,
+                x: true,
+                y: y_flip,
+                ..default()
+            },
+            Direction::East => TileFlip {
+                y: y_flip,
+                ..default()
+            },
+            Direction::West => TileFlip {
+                x: true,
+                y: !y_flip,
+                ..default()
+            },
+        };
+    }
+}
+
+fn steps_from_east(direction: Direction) -> u32 {
+    match direction {
+        Direction::North => 1,
+        Direction::South => 3,
+        Direction::East => 0,
+        Direction::West => 2,
+    }
+}
+
+fn make_east_relative<T>(neighbors: Neighbors<T>, direction: Direction) -> Neighbors<T>
+where
+    T: Default,
+{
+    match direction {
+        Direction::North => Neighbors {
+            north: neighbors.west,
+            east: neighbors.north,
+            south: neighbors.east,
+            west: neighbors.south,
+            ..default()
+        },
+        Direction::East => neighbors,
+        Direction::South => Neighbors {
+            north: neighbors.east,
+            east: neighbors.south,
+            south: neighbors.west,
+            west: neighbors.north,
+            ..default()
+        },
+        Direction::West => Neighbors {
+            north: neighbors.south,
+            east: neighbors.west,
+            south: neighbors.north,
+            west: neighbors.east,
+            ..default()
+        },
+    }
+}
+
+fn get_neighbor_conveyors(
+    tile_storage: &TileStorage,
+    tile_pos: &TilePos,
+    map_size: &TilemapSize,
+    conveyors: &Query<&Conveyor>,
+) -> Neighbors<Conveyor> {
+    let neighbor_positions = Neighbors::get_square_neighboring_positions(tile_pos, map_size, false);
+    let neighbor_entities = neighbor_positions.entities(&tile_storage);
+
+    neighbor_entities
+        .and_then_ref(|n| conveyors.get(*n).ok())
+        .map_ref(|c| (*c).clone())
+}
+
+const WEST_TO_EAST: TileTextureIndex = TileTextureIndex(11);
+const SOUTH_AND_WEST_TO_EAST: TileTextureIndex = TileTextureIndex(12);
+const SOUTH_TO_EAST: TileTextureIndex = TileTextureIndex(13);
+const NORTH_AND_SOUTH_TO_EAST: TileTextureIndex = TileTextureIndex(14);
+const NORTH_AND_SOUTH_AND_WEST_TO_EAST: TileTextureIndex = TileTextureIndex(15);
+
+fn get_hover_tile(direction: Direction) -> (TileTextureIndex, TileFlip) {
+    get_conveyor_tile(opposite(direction), direction)
+}
+
 fn get_conveyor_tile(from: Direction, to: Direction) -> (TileTextureIndex, TileFlip) {
-    const STRAIGHT: TileTextureIndex = TileTextureIndex(11);
-    const CORNER: TileTextureIndex = TileTextureIndex(13);
     match (from, to) {
         // straights
         (Direction::West, Direction::East) | (Direction::East, Direction::East) => (
-            STRAIGHT,
+            WEST_TO_EAST,
             TileFlip {
                 x: false,
                 y: false,
@@ -201,7 +395,7 @@ fn get_conveyor_tile(from: Direction, to: Direction) -> (TileTextureIndex, TileF
             },
         ),
         (Direction::East, Direction::West) | (Direction::West, Direction::West) => (
-            STRAIGHT,
+            WEST_TO_EAST,
             TileFlip {
                 x: true,
                 y: false,
@@ -209,7 +403,7 @@ fn get_conveyor_tile(from: Direction, to: Direction) -> (TileTextureIndex, TileF
             },
         ),
         (Direction::North, Direction::South) | (Direction::South, Direction::South) => (
-            STRAIGHT,
+            WEST_TO_EAST,
             TileFlip {
                 x: false,
                 y: false,
@@ -217,7 +411,7 @@ fn get_conveyor_tile(from: Direction, to: Direction) -> (TileTextureIndex, TileF
             },
         ),
         (Direction::South, Direction::North) | (Direction::North, Direction::North) => (
-            STRAIGHT,
+            WEST_TO_EAST,
             TileFlip {
                 x: false,
                 y: true,
@@ -227,7 +421,7 @@ fn get_conveyor_tile(from: Direction, to: Direction) -> (TileTextureIndex, TileF
 
         // corners
         (Direction::East, Direction::North) => (
-            CORNER,
+            SOUTH_TO_EAST,
             TileFlip {
                 d: true,
                 y: true,
@@ -235,21 +429,21 @@ fn get_conveyor_tile(from: Direction, to: Direction) -> (TileTextureIndex, TileF
             },
         ),
         (Direction::East, Direction::South) => (
-            CORNER,
+            SOUTH_TO_EAST,
             TileFlip {
                 d: true,
                 ..default()
             },
         ),
         (Direction::North, Direction::East) => (
-            CORNER,
+            SOUTH_TO_EAST,
             TileFlip {
                 y: true,
                 ..default()
             },
         ),
         (Direction::North, Direction::West) => (
-            CORNER,
+            SOUTH_TO_EAST,
             TileFlip {
                 x: true,
                 y: true,
@@ -257,7 +451,7 @@ fn get_conveyor_tile(from: Direction, to: Direction) -> (TileTextureIndex, TileF
             },
         ),
         (Direction::West, Direction::North) => (
-            CORNER,
+            SOUTH_TO_EAST,
             TileFlip {
                 d: true,
                 x: true,
@@ -266,16 +460,16 @@ fn get_conveyor_tile(from: Direction, to: Direction) -> (TileTextureIndex, TileF
             },
         ),
         (Direction::West, Direction::South) => (
-            CORNER,
+            SOUTH_TO_EAST,
             TileFlip {
                 d: true,
                 x: true,
                 ..default()
             },
         ),
-        (Direction::South, Direction::East) => (CORNER, TileFlip::default()),
+        (Direction::South, Direction::East) => (SOUTH_TO_EAST, TileFlip::default()),
         (Direction::South, Direction::West) => (
-            CORNER,
+            SOUTH_TO_EAST,
             TileFlip {
                 x: true,
                 ..default()
@@ -284,15 +478,16 @@ fn get_conveyor_tile(from: Direction, to: Direction) -> (TileTextureIndex, TileF
     }
 }
 
-#[derive(PartialEq, Reflect, Clone, Copy, Debug)]
+#[derive(PartialEq, Reflect, Clone, Copy, Debug, Default)]
 enum Direction {
+    #[default]
     North,
     South,
     East,
     West,
 }
 
-#[derive(Component, Clone, Debug, Reflect)]
+#[derive(Component, Clone, Debug, Reflect, Default)]
 struct Conveyor(Direction);
 
 #[derive(Component, Reflect)]
