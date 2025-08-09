@@ -203,24 +203,6 @@ fn update_hovered_tile(
 ) {
     if let HoveredTile(Some(hovered_direction)) = q.1 {
         let (_, _, texture_index, flip) = q.deref_mut();
-        // let (storage, map_size) = *base;
-
-        // let neighbors = Neighbors::get_square_neighboring_positions(tile_pos, map_size, false)
-        //     .entities(storage);
-
-        // let incoming_neighbor = neighbors.iter_with_direction().find(|(dir, entity)| {
-        //     if let Ok(Conveyor(neighbor_dir)) = conveyors.get(**entity) {
-        //         *neighbor_dir == opposite((*dir).into())
-        //     } else {
-        //         false
-        //     }
-        // });
-
-        // let (from, to) = if let Some((incoming_direction, _)) = incoming_neighbor {
-        //     (incoming_direction.into(), *hovered_direction)
-        // } else {
-        //     (opposite(*hovered_direction), *hovered_direction)
-        // };
         (**texture_index, **flip) = get_hover_tile(*hovered_direction);
     } else {
         *q.2 = TileTextureIndex(20);
