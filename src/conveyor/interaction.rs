@@ -87,12 +87,11 @@ fn on_click(
     let (tilemap, storage) = base.deref_mut();
 
     let (tile_pos, hovered_tile) = *hovered_tile;
-    if hovered_tile.0.is_none() {
-        if let Some(e) = storage.get(tile_pos) {
-            storage.remove(tile_pos);
-            commands.entity(e).despawn();
-        }
-    } else {
+    if let Some(e) = storage.get(tile_pos) {
+        storage.remove(tile_pos);
+        commands.entity(e).despawn();
+    }
+    if hovered_tile.0.is_some() {
         storage.set(
             tile_pos,
             commands
