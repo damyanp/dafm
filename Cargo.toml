@@ -6,8 +6,29 @@ edition = "2024"
 [dependencies]
 avian = "0.0.0"
 avian2d = "0.3.1"
-bevy = { version = "0.16.1", features = ["dynamic_linking", "track_location"] }
-bevy-inspector-egui = "0.32.0"
+bevy = { version = "0.16.1", features = [
+    "async_executor",
+    "bevy_asset",
+    "bevy_core_pipeline",
+    "bevy_log",
+    "bevy_render",
+    "bevy_sprite",
+    "bevy_state",
+    "bevy_text",
+    "bevy_ui",
+    "bevy_window",
+    "bevy_winit",
+    "default_font",
+    "dynamic_linking",
+    "multi_threaded",
+    "png",
+    "std",
+    "sysinfo_plugin",
+    "track_location",
+], default-features = false }
+bevy-inspector-egui = { version = "0.32.0", default-features = false, features = [
+    "bevy_render",
+] }
 bevy_ecs_tilemap = "0.16.0"
 bevy_egui = "0.35.1"
 bevy_enhanced_input = "0.15.1"
