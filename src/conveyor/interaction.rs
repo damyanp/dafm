@@ -145,113 +145,32 @@ impl HoveredTile {
     }
 }
 
-fn get_hover_tile(direction: SquareDirection) -> (TileTextureIndex, TileFlip) {
-    get_conveyor_tile(opposite(direction), direction)
-}
+const DIRECTION_ARROW: TileTextureIndex = TileTextureIndex(22);
 
-fn get_conveyor_tile(from: SquareDirection, to: SquareDirection) -> (TileTextureIndex, TileFlip) {
+fn get_hover_tile(direction: SquareDirection) -> (TileTextureIndex, TileFlip) {
     use SquareDirection::*;
 
-    match (from, to) {
-        // straights
-        (West, East) | (East, East) => (
-            super::WEST_TO_EAST,
-            TileFlip {
-                x: false,
-                y: false,
-                d: false,
-            },
-        ),
-        (East, West) | (West, West) => (
-            super::WEST_TO_EAST,
-            TileFlip {
-                x: true,
-                y: false,
-                d: false,
-            },
-        ),
-        (North, South) | (South, South) => (
-            super::WEST_TO_EAST,
-            TileFlip {
-                x: false,
-                y: false,
-                d: true,
-            },
-        ),
-        (South, North) | (North, North) => (
-            super::WEST_TO_EAST,
-            TileFlip {
-                x: false,
-                y: true,
-                d: true,
-            },
-        ),
+    let flip = match direction {
+        East => TileFlip::default(),
+        North => TileFlip {
+            d: true,
+            y: true,
+            ..default()
+        },
+        West => TileFlip {
+            x: true,
+            ..default()
+        },
+        South => TileFlip {
+            d: true,
+            ..default()
+        },
+        _ => panic!(),
+    };
 
-        // corners
-        (East, North) => (
-            super::SOUTH_TO_EAST,
-            TileFlip {
-                d: true,
-                y: true,
-                ..default()
-            },
-        ),
-        (East, South) => (
-            super::SOUTH_TO_EAST,
-            TileFlip {
-                d: true,
-                ..default()
-            },
-        ),
-        (North, East) => (
-            super::SOUTH_TO_EAST,
-            TileFlip {
-                y: true,
-                ..default()
-            },
-        ),
-        (North, West) => (
-            super::SOUTH_TO_EAST,
-            TileFlip {
-                x: true,
-                y: true,
-                ..default()
-            },
-        ),
-        (West, North) => (
-            super::SOUTH_TO_EAST,
-            TileFlip {
-                d: true,
-                x: true,
-                y: true,
-            },
-        ),
-        (West, South) => (
-            super::SOUTH_TO_EAST,
-            TileFlip {
-                d: true,
-                x: true,
-                ..default()
-            },
-        ),
-        (South, East) => (super::SOUTH_TO_EAST, TileFlip::default()),
-        (South, West) => (
-            super::SOUTH_TO_EAST,
-            TileFlip {
-                x: true,
-                ..default()
-            },
-        ),
+    (DIRECTION_ARROW, flip)
 
-        (NorthEast, _)
-        | (NorthWest, _)
-        | (SouthWest, _)
-        | (SouthEast, _)
-        | (_, NorthEast)
-        | (_, NorthWest)
-        | (_, SouthWest)
-        | (_, SouthEast) => panic!(),
-    }
+    // get_conveyor_tile(opposite(direction), direction)
 }
 
 #[derive(Component)]

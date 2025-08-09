@@ -172,8 +172,8 @@ fn update_conveyor_tile(
     }
 }
 
-pub const WEST_TO_EAST: TileTextureIndex = TileTextureIndex(11);
-pub const SOUTH_AND_WEST_TO_EAST: TileTextureIndex = TileTextureIndex(12);
-pub const SOUTH_TO_EAST: TileTextureIndex = TileTextureIndex(13);
-pub const NORTH_AND_SOUTH_TO_EAST: TileTextureIndex = TileTextureIndex(14);
-pub const NORTH_AND_SOUTH_AND_WEST_TO_EAST: TileTextureIndex = TileTextureIndex(15);
+const WEST_TO_EAST: TileTextureIndex = TileTextureIndex(11);
+const SOUTH_AND_WEST_TO_EAST: TileTextureIndex = TileTextureIndex(12);
+const SOUTH_TO_EAST: TileTextureIndex = TileTextureIndex(13);
+const NORTH_AND_SOUTH_TO_EAST: TileTextureIndex = TileTextureIndex(14);
+const NORTH_AND_SOUTH_AND_WEST_TO_EAST: TileTextureIndex = TileTextureIndex(15);
