@@ -1,4 +1,5 @@
 use bevy::prelude::*;
+use bevy_egui::input::egui_wants_any_keyboard_input;
 
 use crate::{GameState, toggle_world_inspector};
 
@@ -13,6 +14,7 @@ impl Plugin for MainMenu {
                     check_main_menu_keys.run_if(in_state(GameState::MainMenu)),
                     check_for_exit.run_if(not(in_state(GameState::MainMenu))),
                 )
+                    .run_if(not(egui_wants_any_keyboard_input))
                     .after(toggle_world_inspector),
             );
     }
@@ -35,7 +37,7 @@ fn check_main_menu_keys(mut commands: Commands, keys: Res<ButtonInput<KeyCode>>)
 }
 
 fn check_for_exit(mut commands: Commands, mut keys: ResMut<ButtonInput<KeyCode>>) {
-    if keys.clear_just_released(KeyCode::Escape) {
+    if keys.clear_just_pressed(KeyCode::Escape) {
         commands.set_state(GameState::MainMenu);
     }
 }
