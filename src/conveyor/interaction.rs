@@ -4,7 +4,7 @@ use bevy::{input::common_conditions::input_just_pressed, prelude::*};
 use bevy_ecs_tilemap::{helpers::square_grid::neighbors::SquareDirection, prelude::*};
 use bevy_egui::input::{egui_wants_any_keyboard_input, egui_wants_any_pointer_input};
 
-use super::{BaseLayer, Conveyor, ConveyorChanged, MapConfig, helpers::*};
+use super::{Conveyor, ConveyorChanged, MapConfig, helpers::*, visuals::BaseLayer};
 use crate::GameState;
 
 pub struct InteractionPlugin;
