@@ -5,6 +5,7 @@ use bevy_ecs_tilemap::{
     helpers::square_grid::neighbors::{Neighbors, SquareDirection},
     prelude::*,
 };
+use tiled::Tile;
 
 use crate::GameState;
 
@@ -23,6 +24,8 @@ impl Plugin for ConveyorPlugin {
                     on_click.run_if(input_just_pressed(MouseButton::Left)),
                     on_space.run_if(input_just_pressed(KeyCode::Space)),
                     update_hovered_tile,
+                    on_toggle_show_conveyors.run_if(input_just_pressed(KeyCode::Tab)),
+                    on_test_data.run_if(input_just_pressed(KeyCode::KeyT)),
                 )
                     .chain()
                     .run_if(in_state(GameState::Conveyor)),
@@ -116,6 +119,84 @@ fn on_click(
     commands.trigger(ConveyorChanged(*tile_pos));
 }
 
+fn on_test_data(
+    mut commands: Commands,
+    mut base: Single<(Entity, &mut TileStorage), With<BaseLayer>>,
+) {
+    let (tilemap, storage) = base.deref_mut();
+
+    let mut tile_pos = TilePos { x: 32, y: 58 };
+    let dirs = [
+        Direction::North,
+        Direction::South,
+        Direction::East,
+        Direction::West,
+    ];
+
+    let mut spawn = |pos, direction| {
+        storage.set(
+            &pos,
+            commands
+                .spawn((
+                    StateScoped(GameState::Conveyor),
+                    Name::new("Test Data Tile"),
+                    Conveyor(direction),
+                    TileBundle {
+                        tilemap_id: TilemapId(*tilemap),
+                        position: pos.clone(),
+                        ..default()
+                    },
+                ))
+                .id(),
+        );
+        commands.trigger(ConveyorChanged(pos));
+    };
+
+    for a in &dirs {
+        for b in &dirs {
+            spawn(tile_pos, *a);
+
+            match a {
+                Direction::North => spawn(
+                    TilePos {
+                        x: tile_pos.x,
+                        y: tile_pos.y + 1,
+                    },
+                    *b,
+                ),
+                Direction::South => spawn(
+                    TilePos {
+                        x: tile_pos.x,
+                        y: tile_pos.y - 1,
+                    },
+                    *b,
+                ),
+                Direction::East => spawn(
+                    TilePos {
+                        x: tile_pos.x + 1,
+                        y: tile_pos.y,
+                    },
+                    *b,
+                ),
+                Direction::West => spawn(
+                    TilePos {
+                        x: tile_pos.x - 1,
+                        y: tile_pos.y,
+                    },
+                    *b,
+                ),
+            }
+
+            tile_pos.x = tile_pos.x + 4;
+
+            if tile_pos.x > 68 {
+                tile_pos.x = 32;
+                tile_pos.y -= 4;
+            }
+        }
+    }
+}
+
 fn on_space(mut hovered_tile: Single<&mut HoveredTile>) {
     hovered_tile.set_to_next_option();
 }
@@ -146,6 +227,57 @@ fn update_hovered_tile(
         (**texture_index, **flip) = get_hover_tile(*hovered_direction);
     } else {
         *q.2 = TileTextureIndex(20);
+    }
+}
+
+#[derive(Component)]
+struct DirectionArrow;
+
+fn on_toggle_show_conveyors(
+    mut commands: Commands,
+    arrows: Query<Entity, With<DirectionArrow>>,
+    interaction_layer: Single<Entity, With<InteractionLayer>>,
+    conveyors: Query<(&Conveyor, &TilePos)>,
+    mut enabled: Local<bool>,
+) {
+    *enabled = !*enabled;
+
+    if *enabled {
+        for (conveyor, tile_pos) in conveyors {
+            let flip = match conveyor.0 {
+                Direction::North => TileFlip {
+                    y: true,
+                    d: true,
+                    ..default()
+                },
+                Direction::South => TileFlip {
+                    d: true,
+                    ..default()
+                },
+                Direction::East => TileFlip::default(),
+                Direction::West => TileFlip {
+                    x: true,
+                    ..default()
+                },
+            };
+
+            commands.spawn((
+                StateScoped(GameState::Conveyor),
+                Name::new("ConveyorDirection"),
+                DirectionArrow,
+                TileBundle {
+                    texture_index: TileTextureIndex(22),
+                    tilemap_id: TilemapId(*interaction_layer),
+                    flip,
+                    position: *tile_pos,
+                    ..default()
+                },
+            ));
+        }
+    } else {
+        arrows
+            .iter()
+            .for_each(|arrow| commands.entity(arrow).despawn());
     }
 }
 
@@ -219,7 +351,7 @@ fn update_conveyor_tile(
         let neighbor_conveyors =
             get_neighbor_conveyors(&tile_storage, tile_pos, &map_size, &conveyors);
 
-        println!("  {neighbor_conveyors:?}");
+        println!("  {neighbor_conveyors:?} - neighbors");
 
         // And just the conveyors pointing towards this one
         let neighbor_conveyors = Neighbors::from_directional_closure(|dir| {
@@ -232,11 +364,11 @@ fn update_conveyor_tile(
             })
         });
 
-        println!("  {neighbor_conveyors:?}");
+        println!("  {neighbor_conveyors:?} - pointing at us");
 
         // Rotate all of this so that east is always the "out" direction
         let neighbor_conveyors = make_east_relative(neighbor_conveyors, *out_dir);
-        println!("  {neighbor_conveyors:?}");
+        println!("  {neighbor_conveyors:?} - east relative");
 
         let (new_texture_index, y_flip) = match neighbor_conveyors {
             Neighbors {
@@ -291,6 +423,8 @@ fn update_conveyor_tile(
             _ => (WEST_TO_EAST, false),
         };
 
+        println!("{new_texture_index:?}, {y_flip:?}");
+
         *texture_index = new_texture_index;
         // let y_flip = false;
         // *texture_index = SOUTH_TO_EAST;
@@ -298,22 +432,15 @@ fn update_conveyor_tile(
         *flip = match out_dir {
             Direction::North => TileFlip {
                 d: true,
-                y: !y_flip,
                 ..default()
             },
             Direction::South => TileFlip {
                 d: true,
-                x: true,
-                y: y_flip,
                 ..default()
             },
-            Direction::East => TileFlip {
-                y: y_flip,
-                ..default()
-            },
+            Direction::East => TileFlip { ..default() },
             Direction::West => TileFlip {
                 x: true,
-                y: !y_flip,
                 ..default()
             },
         };
