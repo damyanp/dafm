@@ -15,26 +15,24 @@ pub struct ConveyorPlugin;
 mod helpers;
 use helpers::*;
 
+mod interaction;
+use interaction::InteractionPlugin;
+use interaction::*;
+
 impl Plugin for ConveyorPlugin {
     fn build(&self, app: &mut App) {
-        app.register_type::<Conveyor>()
-            .register_type::<HoveredTile>()
+        app.add_plugins(InteractionPlugin)
+            .register_type::<Conveyor>()
             .insert_resource(MapConfig::default())
             .add_systems(OnEnter(GameState::Conveyor), startup)
-            .add_systems(Update, track_mouse)
             .add_systems(
                 Update,
-                (
-                    (
-                        on_click.run_if(input_just_pressed(MouseButton::Left)),
-                        on_space.run_if(input_just_pressed(KeyCode::Space)),
-                        on_toggle_show_conveyors.run_if(input_just_pressed(KeyCode::Tab)),
-                        on_test_data.run_if(input_just_pressed(KeyCode::KeyT)),
-                    )
-                        .run_if(not(egui_wants_any_keyboard_input))
-                        .run_if(not(egui_wants_any_pointer_input)),
-                    update_hovered_tile,
+                ((
+                    on_toggle_show_conveyors.run_if(input_just_pressed(KeyCode::Tab)),
+                    on_test_data.run_if(input_just_pressed(KeyCode::KeyT)),
                 )
+                    .run_if(not(egui_wants_any_keyboard_input))
+                    .run_if(not(egui_wants_any_pointer_input)),)
                     .chain()
                     .run_if(in_state(GameState::Conveyor)),
             )
@@ -44,87 +42,7 @@ impl Plugin for ConveyorPlugin {
 
 fn startup(mut commands: Commands, asset_server: Res<AssetServer>, config: Res<MapConfig>) {
     let texture = asset_server.load("sprites.png");
-    let interaction_layer = commands
-        .spawn(make_interaction_layer(&config, texture.to_owned()))
-        .id();
-
-    commands.spawn((
-        StateScoped(GameState::Conveyor),
-        Name::new("HoveredTile"),
-        HoveredTile(None),
-        TileBundle {
-            texture_index: TileTextureIndex(20),
-            tilemap_id: TilemapId(interaction_layer),
-            ..default()
-        },
-    ));
-
     commands.spawn(make_base_layer(&config, texture.to_owned()));
-}
-
-#[allow(clippy::type_complexity)]
-fn track_mouse(
-    mut cursor_moved: EventReader<CursorMoved>,
-    camera_query: Single<(&GlobalTransform, &Camera)>,
-    interaction_layer: Single<
-        (
-            &TilemapSize,
-            &TilemapGridSize,
-            &TilemapTileSize,
-            &TilemapType,
-            &TilemapAnchor,
-        ),
-        With<InteractionLayer>,
-    >,
-    mut hovered_tile: Single<&mut TilePos, With<HoveredTile>>,
-) {
-    if let Some(e) = cursor_moved.read().last() {
-        let (global_transform, camera) = *camera_query;
-        if let Ok(p) = camera.viewport_to_world_2d(global_transform, e.position) {
-            let (size, grid_size, tile_size, map_type, anchor) = *interaction_layer;
-
-            if let Some(tile_pos) =
-                TilePos::from_world_pos(&p, size, grid_size, tile_size, map_type, anchor)
-            {
-                **hovered_tile = tile_pos;
-            }
-        }
-    }
-}
-
-#[allow(clippy::type_complexity)]
-fn on_click(
-    mut commands: Commands,
-    hovered_tile: Single<(&TilePos, &HoveredTile)>,
-    mut base: Single<(Entity, &mut TileStorage), With<BaseLayer>>,
-) {
-    let (tilemap, storage) = base.deref_mut();
-
-    let (tile_pos, hovered_tile) = *hovered_tile;
-    if hovered_tile.0.is_none() {
-        if let Some(e) = storage.get(tile_pos) {
-            storage.remove(tile_pos);
-            commands.entity(e).despawn();
-        }
-    } else {
-        storage.set(
-            tile_pos,
-            commands
-                .spawn((
-                    StateScoped(GameState::Conveyor),
-                    Name::new("Placed Tile"),
-                    Conveyor(hovered_tile.0.unwrap()),
-                    TileBundle {
-                        tilemap_id: TilemapId(*tilemap),
-                        position: *tile_pos,
-                        ..default()
-                    },
-                ))
-                .id(),
-        );
-    }
-
-    commands.trigger(ConveyorChanged(*tile_pos));
 }
 
 fn on_test_data(
@@ -167,21 +85,6 @@ fn on_test_data(
                 pos.y -= 4;
             }
         }
-    }
-}
-
-fn on_space(mut hovered_tile: Single<&mut HoveredTile>) {
-    hovered_tile.set_to_next_option();
-}
-
-fn update_hovered_tile(
-    mut q: Single<(Entity, &HoveredTile, &mut TileTextureIndex, &mut TileFlip)>,
-) {
-    if let HoveredTile(Some(hovered_direction)) = q.1 {
-        let (_, _, texture_index, flip) = q.deref_mut();
-        (**texture_index, **flip) = get_hover_tile((*hovered_direction).into());
-    } else {
-        *q.2 = TileTextureIndex(20);
     }
 }
 
@@ -390,153 +293,17 @@ const SOUTH_TO_EAST: TileTextureIndex = TileTextureIndex(13);
 const NORTH_AND_SOUTH_TO_EAST: TileTextureIndex = TileTextureIndex(14);
 const NORTH_AND_SOUTH_AND_WEST_TO_EAST: TileTextureIndex = TileTextureIndex(15);
 
-fn get_hover_tile(direction: SquareDirection) -> (TileTextureIndex, TileFlip) {
-    get_conveyor_tile(opposite(direction), direction)
-}
-
-fn get_conveyor_tile(from: SquareDirection, to: SquareDirection) -> (TileTextureIndex, TileFlip) {
-    use SquareDirection::*;
-
-    match (from, to) {
-        // straights
-        (West, East) | (East, East) => (
-            WEST_TO_EAST,
-            TileFlip {
-                x: false,
-                y: false,
-                d: false,
-            },
-        ),
-        (East, West) | (West, West) => (
-            WEST_TO_EAST,
-            TileFlip {
-                x: true,
-                y: false,
-                d: false,
-            },
-        ),
-        (North, South) | (South, South) => (
-            WEST_TO_EAST,
-            TileFlip {
-                x: false,
-                y: false,
-                d: true,
-            },
-        ),
-        (South, North) | (North, North) => (
-            WEST_TO_EAST,
-            TileFlip {
-                x: false,
-                y: true,
-                d: true,
-            },
-        ),
-
-        // corners
-        (East, North) => (
-            SOUTH_TO_EAST,
-            TileFlip {
-                d: true,
-                y: true,
-                ..default()
-            },
-        ),
-        (East, South) => (
-            SOUTH_TO_EAST,
-            TileFlip {
-                d: true,
-                ..default()
-            },
-        ),
-        (North, East) => (
-            SOUTH_TO_EAST,
-            TileFlip {
-                y: true,
-                ..default()
-            },
-        ),
-        (North, West) => (
-            SOUTH_TO_EAST,
-            TileFlip {
-                x: true,
-                y: true,
-                ..default()
-            },
-        ),
-        (West, North) => (
-            SOUTH_TO_EAST,
-            TileFlip {
-                d: true,
-                x: true,
-                y: true,
-            },
-        ),
-        (West, South) => (
-            SOUTH_TO_EAST,
-            TileFlip {
-                d: true,
-                x: true,
-                ..default()
-            },
-        ),
-        (South, East) => (SOUTH_TO_EAST, TileFlip::default()),
-        (South, West) => (
-            SOUTH_TO_EAST,
-            TileFlip {
-                x: true,
-                ..default()
-            },
-        ),
-
-        (NorthEast, _)
-        | (NorthWest, _)
-        | (SouthWest, _)
-        | (SouthEast, _)
-        | (_, NorthEast)
-        | (_, NorthWest)
-        | (_, SouthWest)
-        | (_, SouthEast) => panic!(),
-    }
-}
-
 #[derive(Component, Clone, Debug, Reflect, Default)]
 struct Conveyor(ConveyorDirection);
-
-#[derive(Component, Reflect)]
-struct HoveredTile(Option<ConveyorDirection>);
-
-impl HoveredTile {
-    fn set_to_next_option(&mut self) {
-        use ConveyorDirection::*;
-
-        self.0 = match self.0 {
-            None => Some(East),
-            Some(East) => Some(South),
-            Some(South) => Some(West),
-            Some(West) => Some(North),
-            Some(North) => None,
-        };
-    }
-}
-
-#[derive(Component)]
-struct InteractionLayer;
-
-fn make_interaction_layer(config: &MapConfig, texture: Handle<Image>) -> impl Bundle {
-    (
-        InteractionLayer,
-        make_layer(config, texture, "InteractionLayer"),
-    )
-}
 
 #[derive(Component)]
 struct BaseLayer;
 
 fn make_base_layer(config: &MapConfig, texture: Handle<Image>) -> impl Bundle {
-    (BaseLayer, make_layer(config, texture, "BaseLayer"))
+    (BaseLayer, make_layer(config, texture, 0.0, "BaseLayer"))
 }
 
-fn make_layer(config: &MapConfig, texture: Handle<Image>, name: &'static str) -> impl Bundle {
+fn make_layer(config: &MapConfig, texture: Handle<Image>, z: f32, name: &'static str) -> impl Bundle {
     (
         StateScoped(GameState::Conveyor),
         Name::new(name),
@@ -548,6 +315,7 @@ fn make_layer(config: &MapConfig, texture: Handle<Image>, name: &'static str) ->
             anchor: TilemapAnchor::Center,
             texture: TilemapTexture::Single(texture),
             storage: TileStorage::empty(config.size),
+            transform: Transform::from_xyz(0.0, 0.0, z),
             ..default()
         },
     )
