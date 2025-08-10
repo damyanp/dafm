@@ -127,7 +127,7 @@ fn transport_generator_payloads(
         for payload_entity in payloads.iter() {
             if let Ok(mut transport) = payload_transports.get_mut(payload_entity) {
                 let destination_pos =
-                    generator_pos.square_offset(&transport.direction.into(), map_size);
+                    generator_pos.square_offset(&transport.destination.into(), map_size);
                 let destination_entity = destination_pos.and_then(|pos| tile_storage.get(&pos));
 
                 if let Some(destination_entity) = destination_entity {
@@ -179,7 +179,7 @@ fn update_generator_payloads(
             let pos = if let Some(transport) = transport {
                 let half_size = Vec2::new(tile_size.x / 2.0, tile_size.y / 2.0);
 
-                let offset = match transport.direction {
+                let offset = match transport.destination {
                     ConveyorDirection::North => Vec2::new(0.0, half_size.y),
                     ConveyorDirection::South => Vec2::new(0.0, -half_size.y),
                     ConveyorDirection::East => Vec2::new(half_size.x, 0.0),

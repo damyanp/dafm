@@ -22,11 +22,16 @@ pub struct Payloads(Vec<Entity>);
 #[derive(Component, Reflect)]
 pub struct PayloadTransport {
     pub mu: f32,
-    pub direction: ConveyorDirection,
+    pub source: Option<ConveyorDirection>,
+    pub destination: ConveyorDirection,
 }
 
 impl PayloadTransport {
     pub fn new(direction: ConveyorDirection) -> Self {
-        PayloadTransport { direction, mu: 0.0 }
+        PayloadTransport {
+            source: None,
+            destination: direction,
+            mu: 0.0,
+        }
     }
 }
