@@ -4,7 +4,7 @@ use bevy::{input::common_conditions::input_just_pressed, prelude::*};
 use bevy_ecs_tilemap::{helpers::square_grid::neighbors::SquareDirection, prelude::*};
 use bevy_egui::input::{egui_wants_any_keyboard_input, egui_wants_any_pointer_input};
 
-use super::{Conveyor, ConveyorChanged, MapConfig, helpers::*, visuals::BaseLayer};
+use super::{Conveyor, MapConfig, helpers::*, visuals::BaseLayer};
 use crate::GameState;
 
 pub struct InteractionPlugin;
@@ -82,10 +82,8 @@ fn track_mouse(
 fn on_click(
     mut commands: Commands,
     hovered_tile: Single<(&TilePos, &HoveredTile)>,
-    mut base: Single<(Entity, &mut TileStorage), With<BaseLayer>>,
+    mut storage: Single<&mut TileStorage, With<BaseLayer>>,
 ) {
-    let (tilemap, storage) = base.deref_mut();
-
     let (tile_pos, hovered_tile) = *hovered_tile;
     if let Some(e) = storage.get(tile_pos) {
         storage.remove(tile_pos);
@@ -99,17 +97,11 @@ fn on_click(
                     StateScoped(GameState::Conveyor),
                     Name::new("Placed Tile"),
                     Conveyor(hovered_tile.0.unwrap()),
-                    TileBundle {
-                        tilemap_id: TilemapId(*tilemap),
-                        position: *tile_pos,
-                        ..default()
-                    },
+                    *tile_pos,
                 ))
                 .id(),
         );
     }
-
-    commands.trigger(ConveyorChanged(*tile_pos));
 }
 
 fn on_space(mut hovered_tile: Single<&mut HoveredTile>) {

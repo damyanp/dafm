@@ -41,9 +41,9 @@ impl Plugin for ConveyorPlugin {
 
 fn on_test_data(
     mut commands: Commands,
-    mut base: Single<(Entity, &mut TileStorage, &TilemapSize), With<BaseLayer>>,
+    mut base: Single<(&mut TileStorage, &TilemapSize), With<BaseLayer>>,
 ) {
-    let (tilemap, storage, map_size) = base.deref_mut();
+    let (storage, map_size) = base.deref_mut();
 
     let mut pos = SquarePos { x: 32, y: 58 };
 
@@ -56,15 +56,10 @@ fn on_test_data(
                     StateScoped(GameState::Conveyor),
                     Name::new("Test Data Tile"),
                     Conveyor(direction),
-                    TileBundle {
-                        tilemap_id: TilemapId(*tilemap),
-                        position: pos,
-                        ..default()
-                    },
+                    pos,
                 ))
                 .id(),
         );
-        commands.trigger(ConveyorChanged(pos));
     };
 
     for a in CARDINAL_SQUARE_DIRECTIONS {
@@ -135,9 +130,6 @@ fn on_toggle_show_conveyors(
 
 #[derive(Component, Clone, Debug, Reflect, Default)]
 struct Conveyor(ConveyorDirection);
-
-#[derive(Event)]
-struct ConveyorChanged(TilePos);
 
 fn make_layer(
     config: &MapConfig,

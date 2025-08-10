@@ -4,14 +4,14 @@ use bevy::prelude::*;
 use bevy_ecs_tilemap::helpers::square_grid::neighbors::{Neighbors, SquareDirection};
 use bevy_ecs_tilemap::prelude::*;
 
-use super::{Conveyor, ConveyorChanged, MapConfig, helpers::*, make_layer};
+use super::{Conveyor, MapConfig, helpers::*, make_layer};
 use crate::GameState;
 
 pub struct Visuals;
 impl Plugin for Visuals {
     fn build(&self, app: &mut App) {
         app.add_systems(OnEnter(GameState::Conveyor), startup)
-            .add_observer(update_conveyor_tiles);
+            .add_systems(Update, update_conveyor_tiles);
     }
 }
 
@@ -27,46 +27,71 @@ fn make_base_layer(config: &MapConfig, texture: Handle<Image>) -> impl Bundle {
     (BaseLayer, make_layer(config, texture, 0.0, "BaseLayer"))
 }
 
+#[allow(clippy::type_complexity)]
 fn update_conveyor_tiles(
-    trigger: Trigger<ConveyorChanged>,
-    mut conveyor_tiles: Query<(&TilePos, &Conveyor, &mut TileTextureIndex, &mut TileFlip)>,
+    mut commands: Commands,
+    new_conveyor_tiles: Query<(Entity, &TilePos), (With<Conveyor>, Without<TileTextureIndex>)>,
+    conveyor_tiles: Query<(
+        Entity,
+        &Conveyor,
+        Option<&TileTextureIndex>,
+        Option<&TileFlip>,
+    )>,
     conveyors: Query<&Conveyor>,
-    mut base: Single<(&mut TileStorage, &TilemapSize), With<BaseLayer>>,
+    mut base: Single<(Entity, &mut TileStorage, &TilemapSize), With<BaseLayer>>,
 ) {
-    let (tile_storage, map_size) = base.deref_mut();
+    let (tilemap_entity, tile_storage, map_size) = base.deref_mut();
 
-    update_conveyor_tile(
-        &trigger.0,
-        tile_storage,
-        map_size,
-        &mut conveyor_tiles,
-        &conveyors,
-    );
+    for (new_conveyor_entity, new_conveyor_pos) in new_conveyor_tiles {
+        commands
+            .entity(new_conveyor_entity)
+            .insert_if_new(TileBundle {
+                tilemap_id: TilemapId(*tilemap_entity),
+                ..default()
+            });
 
-    for neighbor in Neighbors::get_square_neighboring_positions(&trigger.0, map_size, false).iter()
-    {
         update_conveyor_tile(
-            neighbor,
+            commands.reborrow(),
+            new_conveyor_pos,
             tile_storage,
             map_size,
-            &mut conveyor_tiles,
+            &conveyor_tiles,
             &conveyors,
         );
+
+        for neighbor in
+            Neighbors::get_square_neighboring_positions(new_conveyor_pos, map_size, false).iter()
+        {
+            update_conveyor_tile(
+                commands.reborrow(),
+                neighbor,
+                tile_storage,
+                map_size,
+                &conveyor_tiles,
+                &conveyors,
+            );
+        }
     }
 }
 
 fn update_conveyor_tile(
+    mut commands: Commands,
     tile_pos: &TilePos,
     tile_storage: &TileStorage,
     map_size: &TilemapSize,
-    conveyor_tiles: &mut Query<(&TilePos, &Conveyor, &mut TileTextureIndex, &mut TileFlip)>,
+    conveyor_tiles: &Query<(
+        Entity,
+        &Conveyor,
+        Option<&TileTextureIndex>,
+        Option<&TileFlip>,
+    )>,
     conveyors: &Query<&Conveyor>,
 ) {
     let this_conveyor = tile_storage
         .get(tile_pos)
-        .and_then(|entity| conveyor_tiles.get_mut(entity).ok());
+        .and_then(|entity| conveyor_tiles.get(entity).ok());
 
-    if let Some((_, Conveyor(out_dir), mut texture_index, mut flip)) = this_conveyor {
+    if let Some((entity, Conveyor(out_dir), texture_index, flip)) = this_conveyor {
         let out_dir: SquareDirection = (*out_dir).into();
 
         // Find the neighbors that have conveyors on them
@@ -140,13 +165,11 @@ fn update_conveyor_tile(
             _ => (WEST_TO_EAST, false),
         };
 
-        *texture_index = new_texture_index;
-
         // y_flip indicates if we should flip y for the "east is always out"
         // orientation.  Now we need to rotate the tile so that the out
         // direction is correct.  For North/South this means that y_flip
         // actually becomes an x_flip.
-        *flip = match out_dir {
+        let new_flip = match out_dir {
             SquareDirection::North => TileFlip {
                 x: y_flip,
                 y: true,
@@ -169,6 +192,12 @@ fn update_conveyor_tile(
             },
             _ => panic!(),
         };
+
+        if Some(&new_texture_index) != texture_index || Some(&new_flip) != flip {
+            commands
+                .entity(entity)
+                .insert((new_texture_index, new_flip));
+        }
     }
 }
 
