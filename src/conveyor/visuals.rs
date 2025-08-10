@@ -6,14 +6,14 @@ use bevy_ecs_tilemap::prelude::*;
 
 use crate::{
     GameState,
-    conveyor::{Conveyor, ConveyorSet, MapConfig, helpers::*, make_layer},
+    conveyor::{Conveyor, ConveyorSystems, MapConfig, helpers::*, make_layer},
 };
 
 pub struct Visuals;
 impl Plugin for Visuals {
     fn build(&self, app: &mut App) {
         app.add_systems(OnEnter(GameState::Conveyor), startup)
-            .add_systems(Update, update_conveyor_tiles.in_set(ConveyorSet::Updater))
+            .add_systems(Update, update_conveyor_tiles.in_set(ConveyorSystems::Updater))
             .add_systems(PostUpdate, cleanup_tiles);
     }
 }

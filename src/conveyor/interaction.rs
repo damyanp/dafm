@@ -5,7 +5,7 @@ use bevy_egui::input::{egui_wants_any_keyboard_input, egui_wants_any_pointer_inp
 use crate::{
     GameState,
     conveyor::{
-        Conveyor, ConveyorSet, MapConfig, generator::Generator, helpers::*, visuals::BaseLayer,
+        Conveyor, ConveyorSystems, MapConfig, generator::Generator, helpers::*, visuals::BaseLayer,
     },
 };
 
@@ -28,8 +28,8 @@ impl Plugin for InteractionPlugin {
                             .run_if(input_just_pressed(KeyCode::Space))
                             .run_if(not(egui_wants_any_keyboard_input)),
                     )
-                        .in_set(ConveyorSet::Generator),
-                    update_hovered_tile.in_set(ConveyorSet::Updater),
+                        .in_set(ConveyorSystems::Generator),
+                    update_hovered_tile.in_set(ConveyorSystems::Updater),
                 ),
             );
     }

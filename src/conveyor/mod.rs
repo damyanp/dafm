@@ -28,9 +28,9 @@ impl Plugin for ConveyorPlugin {
             .configure_sets(
                 Update,
                 (
-                    ConveyorSet::Generator.run_if(in_state(GameState::Conveyor)),
-                    ConveyorSet::Updater
-                        .after(ConveyorSet::Generator)
+                    ConveyorSystems::Generator.run_if(in_state(GameState::Conveyor)),
+                    ConveyorSystems::Updater
+                        .after(ConveyorSystems::Generator)
                         .run_if(in_state(GameState::Conveyor)),
                 ),
             );
@@ -41,7 +41,7 @@ impl Plugin for ConveyorPlugin {
 struct Conveyor(ConveyorDirection);
 
 #[derive(SystemSet, Debug, Clone, PartialEq, Eq, Hash)]
-enum ConveyorSet {
+enum ConveyorSystems {
     Generator,
     Updater,
 }

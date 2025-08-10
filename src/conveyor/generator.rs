@@ -1,12 +1,12 @@
 use bevy::prelude::*;
 use bevy_ecs_tilemap::prelude::*;
 
-use crate::conveyor::{ConveyorSet, visuals::BaseLayer};
+use crate::conveyor::{ConveyorSystems, visuals::BaseLayer};
 
 pub struct GeneratorPlugin;
 impl Plugin for GeneratorPlugin {
     fn build(&self, app: &mut App) {
-        app.add_systems(Update, update_generator_tiles.in_set(ConveyorSet::Updater));
+        app.add_systems(Update, update_generator_tiles.in_set(ConveyorSystems::Updater));
     }
 }
 
