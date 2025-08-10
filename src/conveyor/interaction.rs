@@ -158,8 +158,6 @@ fn get_hover_tile(direction: SquareDirection) -> (TileTextureIndex, TileFlip) {
     };
 
     (DIRECTION_ARROW, flip)
-
-    // get_conveyor_tile(opposite(direction), direction)
 }
 
 #[derive(Component)]
