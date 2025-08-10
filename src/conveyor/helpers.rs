@@ -23,6 +23,13 @@ pub enum ConveyorDirection {
     West,
 }
 
+pub const CONVEYOR_DIRECTIONS: [ConveyorDirection; 4] = [
+    ConveyorDirection::North,
+    ConveyorDirection::East,
+    ConveyorDirection::South,
+    ConveyorDirection::West,
+];
+
 impl From<ConveyorDirection> for SquareDirection {
     fn from(value: ConveyorDirection) -> Self {
         match value {
@@ -39,7 +46,7 @@ impl From<SquareDirection> for ConveyorDirection {
         match value {
             SquareDirection::East => ConveyorDirection::East,
             SquareDirection::North => ConveyorDirection::North,
-            SquareDirection::West => ConveyorDirection::West,
+            SquareDirection::West => ConveyorDirection::West,            
             SquareDirection::South => ConveyorDirection::South,
             _ => panic!(),
         }
