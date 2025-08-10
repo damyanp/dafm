@@ -37,9 +37,9 @@ fn update_conveyor_tiles(
     mut removed_conveyors: RemovedComponents<Conveyor>,
     conveyors: Query<(&Conveyor, Option<&TileTextureIndex>, Option<&TileFlip>)>,
     tiles: Query<&TilePos>,
-    base: Single<(Entity, &mut TileStorage, &TilemapSize), With<BaseLayer>>,
+    base: Single<(Entity, &TileStorage, &TilemapSize), With<BaseLayer>>,
 ) {
-    let (tilemap_entity, mut tile_storage, map_size) = base.into_inner();
+    let (tilemap_entity, tile_storage, map_size) = base.into_inner();
 
     let mut to_check = HashSet::new();
 
@@ -72,7 +72,7 @@ fn update_conveyor_tiles(
                     entity,
                     conveyor,
                     &pos,
-                    &tile_storage,
+                    tile_storage,
                     map_size,
                     &conveyors,
                 );

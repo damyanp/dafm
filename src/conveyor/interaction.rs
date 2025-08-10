@@ -115,10 +115,11 @@ fn on_click(
             commands.entity(entity).insert(Generator);
         }
         HoveredTile::None => {
-            commands.entity(entity).try_remove::<(Conveyor, Generator)>();
+            commands
+                .entity(entity)
+                .try_remove::<(Conveyor, Generator)>();
         }
     }
-
 }
 
 fn on_space(mut hovered_tile: Single<&mut HoveredTile>) {
