@@ -9,7 +9,6 @@ mod generator;
 mod helpers;
 mod interaction;
 mod payload;
-mod visuals;
 
 use helpers::*;
 
@@ -18,7 +17,6 @@ impl Plugin for FactoryGamePlugin {
     fn build(&self, app: &mut App) {
         app.add_plugins(conveyor::ConveyorPlugin)
             .add_plugins(interaction::ConveyorInteractionPlugin)
-            .add_plugins(visuals::VisualsPlugin)
             .add_plugins(generator::GeneratorPlugin)
             .add_plugins(dev::DevPlugin)
             .add_plugins(payload::PayloadPlugin)
