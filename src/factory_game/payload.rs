@@ -7,7 +7,9 @@ impl Plugin for PayloadPlugin {
     fn build(&self, app: &mut App) {
         app.register_type::<PayloadOf>()
             .register_type::<Payloads>()
-            .register_type::<PayloadTransport>();
+            .register_type::<PayloadTransport>()
+            .add_event::<OfferPayloadEvent>()
+            .add_event::<TookPayloadEvent>();
     }
 }
 
@@ -22,16 +24,18 @@ pub struct Payloads(Vec<Entity>);
 #[derive(Component, Reflect)]
 pub struct PayloadTransport {
     pub mu: f32,
-    pub source: Option<ConveyorDirection>,
+    pub source: ConveyorDirection,
     pub destination: ConveyorDirection,
 }
 
-impl PayloadTransport {
-    pub fn new(direction: ConveyorDirection) -> Self {
-        PayloadTransport {
-            source: None,
-            destination: direction,
-            mu: 0.0,
-        }
-    }
+#[derive(Event)]
+pub struct OfferPayloadEvent {
+    pub source_direction: ConveyorDirection,
+    pub payload: Entity,
+    pub target: Entity,
+}
+
+#[derive(Event)]
+pub struct TookPayloadEvent {
+    pub payload: Entity,
 }

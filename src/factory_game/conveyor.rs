@@ -9,7 +9,7 @@ use bevy_ecs_tilemap::{
 use crate::factory_game::{
     BaseLayer, ConveyorSystems,
     helpers::{ConveyorDirection, get_neighbors_from_query, make_east_relative, opposite},
-    payload::{PayloadOf, PayloadTransport, Payloads},
+    payload::{OfferPayloadEvent, PayloadOf, PayloadTransport, Payloads, TookPayloadEvent},
 };
 
 pub struct ConveyorPlugin;
@@ -19,7 +19,9 @@ impl Plugin for ConveyorPlugin {
             Update,
             (
                 update_conveyor_tiles.in_set(ConveyorSystems::TileUpdater),
-                transport_conveyor_payloads.in_set(ConveyorSystems::TransportLogic),
+                (take_payloads, transport_conveyor_payloads)
+                    .chain()
+                    .in_set(ConveyorSystems::TransportLogic),
                 update_conveyor_payloads.in_set(ConveyorSystems::PayloadTransforms),
             ),
         );
@@ -204,18 +206,45 @@ const SOUTH_TO_EAST: TileTextureIndex = TileTextureIndex(13);
 const NORTH_AND_SOUTH_TO_EAST: TileTextureIndex = TileTextureIndex(14);
 const NORTH_AND_SOUTH_AND_WEST_TO_EAST: TileTextureIndex = TileTextureIndex(15);
 
+fn take_payloads(
+    mut commands: Commands,
+    mut offer_events: EventReader<OfferPayloadEvent>,
+    mut took_events: EventWriter<TookPayloadEvent>,
+    conveyors: Query<(&Conveyor, Option<&Payloads>)>,
+) {
+    for offer in offer_events.read() {
+        if let Ok((conveyor, payloads)) = conveyors.get(offer.target) {
+            let payload_count = payloads.map_or(0, |p| p.len());
+            if payload_count == 0 {
+                commands.entity(offer.payload).insert((
+                    PayloadOf(offer.target),
+                    PayloadTransport {
+                        mu: 0.0,
+                        source: offer.source_direction,
+                        destination: conveyor.0,
+                    },
+                ));
+                took_events.write(TookPayloadEvent {
+                    payload: offer.payload,
+                });
+            }
+        }
+    }
+}
+
 fn transport_conveyor_payloads(
     mut commands: Commands,
     time: Res<Time>,
     mut payload_transports: Query<&mut PayloadTransport>,
-    conveyors: Query<(&TilePos, &Payloads), With<Conveyor>>,
+    conveyors: Query<(&Conveyor, &TilePos, &Payloads)>,
     base: Single<(&TileStorage, &TilemapSize), With<BaseLayer>>,
+    mut offer_payload_event: EventWriter<OfferPayloadEvent>,
 ) {
     let mu_speed = time.delta_secs();
 
     let (tile_storage, map_size) = base.into_inner();
 
-    for (conveyor_pos, payloads) in conveyors {
+    for (conveyor, conveyor_pos, payloads) in conveyors {
         for payload_entity in payloads.iter() {
             if let Ok(mut transport) = payload_transports.get_mut(payload_entity) {
                 let destination_pos =
@@ -224,14 +253,13 @@ fn transport_conveyor_payloads(
 
                 transport.mu += mu_speed;
                 if transport.mu > 1.0 {
+                    transport.mu = 1.0;
                     if let Some(destination_entity) = destination_entity {
-                        transport.mu = 0.0;
-                        commands
-                            .entity(payload_entity)
-                            .insert(PayloadOf(destination_entity));
-                    } else {
-                        // destination has gone - for conveyors this just means it stops moving
-                        transport.mu = 1.0;
+                        offer_payload_event.write(OfferPayloadEvent {
+                            source_direction: opposite(transport.destination.into()).into(),
+                            payload: payload_entity,
+                            target: destination_entity,
+                        });
                     }
                 }
             }
@@ -265,20 +293,24 @@ fn update_conveyor_payloads(
             let (payload, transport, mut transform) = payloads.get_mut(payload_entity).unwrap();
 
             let pos = if let Some(transport) = transport {
-                let half_size = Vec2::new(tile_size.x / 2.0, tile_size.y / 2.0);
-
-                let offset = match transport.destination {
-                    ConveyorDirection::North => Vec2::new(0.0, half_size.y),
-                    ConveyorDirection::South => Vec2::new(0.0, -half_size.y),
-                    ConveyorDirection::East => Vec2::new(half_size.x, 0.0),
-                    ConveyorDirection::West => Vec2::new(-half_size.x, 0.0),
-                };
-
-                tile_center.lerp(tile_center + offset, transport.mu)
+                let start = tile_center + get_direction_offset(tile_size, &transport.source);
+                let end = tile_center + get_direction_offset(tile_size, &transport.destination);
+                start.lerp(end, transport.mu)
             } else {
                 tile_center
             };
             *transform = Transform::from_translation(pos.extend(2.0));
         }
+    }
+}
+
+fn get_direction_offset(tile_size: &TilemapTileSize, direction: &ConveyorDirection) -> Vec2 {
+    let half_size = Vec2::new(tile_size.x / 2.0, tile_size.y / 2.0);
+
+    match direction {
+        ConveyorDirection::North => Vec2::new(0.0, half_size.y),
+        ConveyorDirection::South => Vec2::new(0.0, -half_size.y),
+        ConveyorDirection::East => Vec2::new(half_size.x, 0.0),
+        ConveyorDirection::West => Vec2::new(-half_size.x, 0.0),
     }
 }
