@@ -41,6 +41,7 @@ fn on_test_data(
                     StateScoped(GameState::Conveyor),
                     Name::new("Test Data Tile"),
                     Conveyor(direction),
+                    BaseLayer,
                     pos,
                 ))
                 .id(),

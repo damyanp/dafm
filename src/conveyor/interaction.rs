@@ -2,28 +2,35 @@ use bevy::{input::common_conditions::input_just_pressed, prelude::*};
 use bevy_ecs_tilemap::prelude::*;
 use bevy_egui::input::{egui_wants_any_keyboard_input, egui_wants_any_pointer_input};
 
-use super::{Conveyor, MapConfig, generator::Generator, helpers::*, visuals::BaseLayer};
-use crate::GameState;
+use crate::{
+    GameState,
+    conveyor::{
+        Conveyor, ConveyorSet, MapConfig, generator::Generator, helpers::*, visuals::BaseLayer,
+    },
+};
 
 pub struct InteractionPlugin;
 impl Plugin for InteractionPlugin {
     fn build(&self, app: &mut App) {
         app.register_type::<HoveredTile>()
             .add_systems(OnEnter(GameState::Conveyor), startup)
-            .add_systems(Update, track_mouse)
             .add_systems(
                 Update,
                 (
                     (
-                        on_click.run_if(input_just_pressed(MouseButton::Left)),
-                        on_space.run_if(input_just_pressed(KeyCode::Space)),
+                        (
+                            track_mouse,
+                            on_click.run_if(input_just_pressed(MouseButton::Left)),
+                        )
+                            .chain()
+                            .run_if(not(egui_wants_any_pointer_input)),
+                        on_space
+                            .run_if(input_just_pressed(KeyCode::Space))
+                            .run_if(not(egui_wants_any_keyboard_input)),
                     )
-                        .run_if(not(egui_wants_any_keyboard_input))
-                        .run_if(not(egui_wants_any_pointer_input)),
-                    update_hovered_tile,
-                )
-                    .chain()
-                    .run_if(in_state(GameState::Conveyor)),
+                        .in_set(ConveyorSet::Generator),
+                    update_hovered_tile.in_set(ConveyorSet::Updater),
+                ),
             );
     }
 }
@@ -92,6 +99,7 @@ fn on_click(
             .spawn((
                 StateScoped(GameState::Conveyor),
                 Name::new("Placed Tile"),
+                BaseLayer,
                 *tile_pos,
             ))
             .id();
@@ -107,9 +115,10 @@ fn on_click(
             commands.entity(entity).insert(Generator);
         }
         HoveredTile::None => {
-            commands.entity(entity).try_remove::<Conveyor>();
+            commands.entity(entity).try_remove::<(Conveyor, Generator)>();
         }
     }
+
 }
 
 fn on_space(mut hovered_tile: Single<&mut HoveredTile>) {

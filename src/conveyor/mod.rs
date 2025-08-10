@@ -24,13 +24,27 @@ impl Plugin for ConveyorPlugin {
             .add_plugins(generator::GeneratorPlugin)
             .add_plugins(dev::Dev)
             .register_type::<Conveyor>()
-            .insert_resource(MapConfig::default());
+            .insert_resource(MapConfig::default())
+            .configure_sets(
+                Update,
+                (
+                    ConveyorSet::Generator.run_if(in_state(GameState::Conveyor)),
+                    ConveyorSet::Updater
+                        .after(ConveyorSet::Generator)
+                        .run_if(in_state(GameState::Conveyor)),
+                ),
+            );
     }
 }
 
 #[derive(Component, Clone, Debug, Reflect, Default)]
 struct Conveyor(ConveyorDirection);
 
+#[derive(SystemSet, Debug, Clone, PartialEq, Eq, Hash)]
+enum ConveyorSet {
+    Generator,
+    Updater,
+}
 
 fn make_layer(
     config: &MapConfig,

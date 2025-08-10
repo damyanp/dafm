@@ -4,14 +4,17 @@ use bevy::prelude::*;
 use bevy_ecs_tilemap::helpers::square_grid::neighbors::{Neighbors, SquareDirection};
 use bevy_ecs_tilemap::prelude::*;
 
-use super::{Conveyor, MapConfig, helpers::*, make_layer};
-use crate::GameState;
+use crate::{
+    GameState,
+    conveyor::{Conveyor, ConveyorSet, MapConfig, helpers::*, make_layer},
+};
 
 pub struct Visuals;
 impl Plugin for Visuals {
     fn build(&self, app: &mut App) {
         app.add_systems(OnEnter(GameState::Conveyor), startup)
-            .add_systems(Update, update_conveyor_tiles);
+            .add_systems(Update, update_conveyor_tiles.in_set(ConveyorSet::Updater))
+            .add_systems(PostUpdate, cleanup_tiles);
     }
 }
 
@@ -73,9 +76,6 @@ fn update_conveyor_tiles(
                     map_size,
                     &conveyors,
                 );
-            } else {
-                commands.entity(entity).despawn();
-                tile_storage.remove(&pos);
             }
         }
     }
@@ -196,6 +196,18 @@ fn update_conveyor_tile(
         commands
             .entity(entity)
             .insert((new_texture_index, new_flip));
+    }
+}
+
+fn cleanup_tiles(
+    mut commands: Commands,
+    mut storage: Single<&mut TileStorage, With<BaseLayer>>,
+    dead_tiles: Query<&TilePos, (With<BaseLayer>, Without<TileTextureIndex>)>,
+) {
+    for dead_tile in dead_tiles {
+        if let Some(entity) = storage.remove(dead_tile) {
+            commands.entity(entity).despawn();
+        }
     }
 }
 
