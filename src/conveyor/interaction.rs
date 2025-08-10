@@ -83,22 +83,28 @@ fn on_click(
     mut storage: Single<&mut TileStorage, With<BaseLayer>>,
 ) {
     let (tile_pos, hovered_tile) = *hovered_tile;
-    if let Some(e) = storage.get(tile_pos) {
-        storage.remove(tile_pos);
-        commands.entity(e).despawn();
-    }
+
+    let entity = if let Some(e) = storage.get(tile_pos) {
+        commands.entity(e).try_remove::<TileTextureIndex>();
+        e
+    } else {
+        let e = commands
+            .spawn((
+                StateScoped(GameState::Conveyor),
+                Name::new("Placed Tile"),
+                *tile_pos,
+            ))
+            .id();
+        storage.set(tile_pos, e.clone());
+        e
+    };
+
     if hovered_tile.0.is_some() {
-        storage.set(
-            tile_pos,
-            commands
-                .spawn((
-                    StateScoped(GameState::Conveyor),
-                    Name::new("Placed Tile"),
-                    Conveyor(hovered_tile.0.unwrap()),
-                    *tile_pos,
-                ))
-                .id(),
-        );
+        commands
+            .entity(entity)
+            .insert(Conveyor(hovered_tile.0.unwrap()));
+    } else {
+        commands.entity(entity).try_remove::<Conveyor>();
     }
 }
 
