@@ -71,7 +71,7 @@ fn update_conveyor_tiles(
                     &pos,
                     &tile_storage,
                     map_size,
-                    &conveyors
+                    &conveyors,
                 );
             } else {
                 commands.entity(entity).despawn();
@@ -84,7 +84,7 @@ fn update_conveyor_tiles(
 fn update_conveyor_tile(
     mut commands: Commands,
     entity: Entity,
-    conveyor: (&Conveyor, Option<&TileTextureIndex>, Option<&TileFlip>),    
+    conveyor: (&Conveyor, Option<&TileTextureIndex>, Option<&TileFlip>),
     tile_pos: &TilePos,
     tile_storage: &TileStorage,
     map_size: &TilemapSize,

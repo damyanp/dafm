@@ -95,7 +95,7 @@ fn on_click(
                 *tile_pos,
             ))
             .id();
-        storage.set(tile_pos, e.clone());
+        storage.set(tile_pos, e);
         e
     };
 
