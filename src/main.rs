@@ -49,7 +49,7 @@ fn main() {
         .add_plugins(EntropyPlugin::<WyRand>::default())
         .add_plugins(main_menu::MainMenu)
         .add_plugins(space_shooter::Game)
-        .add_plugins(conveyor::ConveyorPlugin)
+        .add_plugins(conveyor::ConveyorStatePlugin)
         .add_systems(Startup, startup)
         .run();
 }

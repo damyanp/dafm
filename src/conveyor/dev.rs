@@ -7,7 +7,9 @@ use bevy_egui::input::{egui_wants_any_keyboard_input, egui_wants_any_pointer_inp
 
 use crate::{
     GameState,
-    conveyor::{Conveyor, ConveyorDirection, interaction::InteractionLayer, visuals::BaseLayer},
+    conveyor::{
+        ConveyorDirection, conveyor::Conveyor, interaction::InteractionLayer, visuals::BaseLayer,
+    },
 };
 
 pub struct DevPlugin;

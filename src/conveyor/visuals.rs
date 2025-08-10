@@ -4,16 +4,20 @@ use bevy::prelude::*;
 use bevy_ecs_tilemap::helpers::square_grid::neighbors::{Neighbors, SquareDirection};
 use bevy_ecs_tilemap::prelude::*;
 
+use crate::conveyor::conveyor::Conveyor;
 use crate::{
     GameState,
-    conveyor::{Conveyor, ConveyorSystems, MapConfig, helpers::*, make_layer},
+    conveyor::{ConveyorSystems, MapConfig, helpers::*, make_layer},
 };
 
 pub struct VisualsPlugin;
 impl Plugin for VisualsPlugin {
     fn build(&self, app: &mut App) {
         app.add_systems(OnEnter(GameState::Conveyor), startup)
-            .add_systems(Update, update_conveyor_tiles.in_set(ConveyorSystems::TileUpdater))
+            .add_systems(
+                Update,
+                update_conveyor_tiles.in_set(ConveyorSystems::TileUpdater),
+            )
             .add_systems(PostUpdate, cleanup_tiles);
     }
 }

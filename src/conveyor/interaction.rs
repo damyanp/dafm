@@ -5,7 +5,8 @@ use bevy_egui::input::{egui_wants_any_keyboard_input, egui_wants_any_pointer_inp
 use crate::{
     GameState,
     conveyor::{
-        Conveyor, ConveyorSystems, MapConfig, generator::Generator, helpers::*, visuals::BaseLayer,
+        ConveyorSystems, MapConfig, conveyor::Conveyor, generator::Generator, helpers::*,
+        visuals::BaseLayer,
     },
 };
 

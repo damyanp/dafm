@@ -3,6 +3,7 @@ use bevy_ecs_tilemap::prelude::*;
 
 use crate::GameState;
 
+mod conveyor;
 mod dev;
 mod generator;
 mod helpers;
@@ -12,15 +13,15 @@ mod visuals;
 
 use helpers::*;
 
-pub struct ConveyorPlugin;
-impl Plugin for ConveyorPlugin {
+pub struct ConveyorStatePlugin;
+impl Plugin for ConveyorStatePlugin {
     fn build(&self, app: &mut App) {
-        app.add_plugins(interaction::ConveyorInteractionPlugin)
+        app.add_plugins(conveyor::ConveyorPlugin)
+            .add_plugins(interaction::ConveyorInteractionPlugin)
             .add_plugins(visuals::VisualsPlugin)
             .add_plugins(generator::GeneratorPlugin)
             .add_plugins(dev::DevPlugin)
             .add_plugins(payload::PayloadPlugin)
-            .register_type::<Conveyor>()
             .insert_resource(MapConfig::default())
             .configure_sets(
                 Update,
@@ -35,9 +36,6 @@ impl Plugin for ConveyorPlugin {
             );
     }
 }
-
-#[derive(Component, Clone, Debug, Reflect, Default)]
-struct Conveyor(ConveyorDirection);
 
 #[derive(SystemSet, Debug, Clone, PartialEq, Eq, Hash)]
 enum ConveyorSystems {

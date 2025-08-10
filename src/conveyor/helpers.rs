@@ -46,7 +46,7 @@ impl From<SquareDirection> for ConveyorDirection {
         match value {
             SquareDirection::East => ConveyorDirection::East,
             SquareDirection::North => ConveyorDirection::North,
-            SquareDirection::West => ConveyorDirection::West,            
+            SquareDirection::West => ConveyorDirection::West,
             SquareDirection::South => ConveyorDirection::South,
             _ => panic!(),
         }

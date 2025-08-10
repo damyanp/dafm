@@ -27,9 +27,6 @@ pub struct PayloadTransport {
 
 impl PayloadTransport {
     pub fn new(direction: ConveyorDirection) -> Self {
-        PayloadTransport {
-            direction,
-            mu: 0.0
-        }
+        PayloadTransport { direction, mu: 0.0 }
     }
 }

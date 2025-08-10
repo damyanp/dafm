@@ -4,7 +4,8 @@ use bevy_ecs_tilemap::prelude::*;
 use crate::{
     GameState,
     conveyor::{
-        Conveyor, ConveyorSystems,
+        ConveyorSystems,
+        conveyor::Conveyor,
         helpers::{CONVEYOR_DIRECTIONS, ConveyorDirection, get_neighbors_from_query},
         payload::{PayloadOf, PayloadTransport, Payloads},
         visuals::BaseLayer,
