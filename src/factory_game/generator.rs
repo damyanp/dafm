@@ -3,7 +3,7 @@ use bevy_ecs_tilemap::prelude::*;
 
 use crate::{
     GameState,
-    conveyor::{
+    factory_game::{
         ConveyorSystems,
         conveyor::Conveyor,
         helpers::{CONVEYOR_DIRECTIONS, ConveyorDirection, get_neighbors_from_query},
@@ -70,7 +70,7 @@ fn generate_payloads(
     for (entity, mut generator, payloads) in generators {
         if time.elapsed_secs() > generator.next_generate_time && payloads.is_none() {
             commands.spawn((
-                StateScoped(GameState::Conveyor),
+                StateScoped(GameState::FactoryGame),
                 Name::new("Payload"),
                 PayloadOf(entity),
                 Text2d::new("X"),

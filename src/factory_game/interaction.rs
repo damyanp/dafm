@@ -4,7 +4,7 @@ use bevy_egui::input::{egui_wants_any_keyboard_input, egui_wants_any_pointer_inp
 
 use crate::{
     GameState,
-    conveyor::{
+    factory_game::{
         ConveyorSystems, MapConfig, conveyor::Conveyor, generator::Generator, helpers::*,
         visuals::BaseLayer,
     },
@@ -14,7 +14,7 @@ pub struct ConveyorInteractionPlugin;
 impl Plugin for ConveyorInteractionPlugin {
     fn build(&self, app: &mut App) {
         app.register_type::<HoveredTile>()
-            .add_systems(OnEnter(GameState::Conveyor), startup)
+            .add_systems(OnEnter(GameState::FactoryGame), startup)
             .add_systems(
                 Update,
                 (
@@ -43,7 +43,7 @@ fn startup(mut commands: Commands, asset_server: Res<AssetServer>, config: Res<M
         .id();
 
     commands.spawn((
-        StateScoped(GameState::Conveyor),
+        StateScoped(GameState::FactoryGame),
         Name::new("HoveredTile"),
         HoveredTile::None,
         TileBundle {
@@ -98,7 +98,7 @@ fn on_click(
     } else {
         let e = commands
             .spawn((
-                StateScoped(GameState::Conveyor),
+                StateScoped(GameState::FactoryGame),
                 Name::new("Placed Tile"),
                 BaseLayer,
                 *tile_pos,

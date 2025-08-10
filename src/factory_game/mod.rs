@@ -13,8 +13,8 @@ mod visuals;
 
 use helpers::*;
 
-pub struct ConveyorStatePlugin;
-impl Plugin for ConveyorStatePlugin {
+pub struct FactoryGamePlugin;
+impl Plugin for FactoryGamePlugin {
     fn build(&self, app: &mut App) {
         app.add_plugins(conveyor::ConveyorPlugin)
             .add_plugins(interaction::ConveyorInteractionPlugin)
@@ -32,7 +32,7 @@ impl Plugin for ConveyorStatePlugin {
                     ConveyorSystems::PayloadTransforms,
                 )
                     .chain()
-                    .run_if(in_state(GameState::Conveyor)),
+                    .run_if(in_state(GameState::FactoryGame)),
             );
     }
 }
@@ -52,7 +52,7 @@ fn make_layer(
     name: &'static str,
 ) -> impl Bundle {
     (
-        StateScoped(GameState::Conveyor),
+        StateScoped(GameState::FactoryGame),
         Name::new(name),
         TilemapBundle {
             size: config.size,

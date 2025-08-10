@@ -31,7 +31,7 @@ fn on_enter(mut commands: Commands) {
 fn check_main_menu_keys(mut commands: Commands, keys: Res<ButtonInput<KeyCode>>) {
     match keys.get_just_released().next() {
         Some(KeyCode::Digit1) => commands.set_state(GameState::SpaceShooter),
-        Some(KeyCode::Digit2) => commands.set_state(GameState::Conveyor),
+        Some(KeyCode::Digit2) => commands.set_state(GameState::FactoryGame),
         _ => (),
     }
 }

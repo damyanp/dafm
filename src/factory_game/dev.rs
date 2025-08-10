@@ -7,7 +7,7 @@ use bevy_egui::input::{egui_wants_any_keyboard_input, egui_wants_any_pointer_inp
 
 use crate::{
     GameState,
-    conveyor::{
+    factory_game::{
         ConveyorDirection, conveyor::Conveyor, interaction::InteractionLayer, visuals::BaseLayer,
     },
 };
@@ -24,7 +24,7 @@ impl Plugin for DevPlugin {
                 .run_if(not(egui_wants_any_keyboard_input))
                 .run_if(not(egui_wants_any_pointer_input)),)
                 .chain()
-                .run_if(in_state(GameState::Conveyor)),
+                .run_if(in_state(GameState::FactoryGame)),
         );
     }
 }
@@ -43,7 +43,7 @@ fn on_test_data(
             &pos,
             commands
                 .spawn((
-                    StateScoped(GameState::Conveyor),
+                    StateScoped(GameState::FactoryGame),
                     Name::new("Test Data Tile"),
                     Conveyor(direction),
                     BaseLayer,
@@ -100,7 +100,7 @@ fn on_toggle_show_conveyors(
             };
 
             commands.spawn((
-                StateScoped(GameState::Conveyor),
+                StateScoped(GameState::FactoryGame),
                 Name::new("ConveyorDirection"),
                 DirectionArrow,
                 TileBundle {

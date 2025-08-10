@@ -1,6 +1,6 @@
 use bevy::prelude::*;
 
-use crate::conveyor::helpers::ConveyorDirection;
+use crate::factory_game::helpers::ConveyorDirection;
 
 pub struct PayloadPlugin;
 impl Plugin for PayloadPlugin {
