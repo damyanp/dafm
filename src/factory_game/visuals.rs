@@ -4,34 +4,18 @@ use bevy::prelude::*;
 use bevy_ecs_tilemap::helpers::square_grid::neighbors::{Neighbors, SquareDirection};
 use bevy_ecs_tilemap::prelude::*;
 
+use crate::factory_game::BaseLayer;
 use crate::factory_game::conveyor::Conveyor;
-use crate::{
-    GameState,
-    factory_game::{ConveyorSystems, MapConfig, helpers::*, make_layer},
-};
+use crate::factory_game::{ConveyorSystems, helpers::*};
 
 pub struct VisualsPlugin;
 impl Plugin for VisualsPlugin {
     fn build(&self, app: &mut App) {
-        app.add_systems(OnEnter(GameState::FactoryGame), startup)
-            .add_systems(
-                Update,
-                update_conveyor_tiles.in_set(ConveyorSystems::TileUpdater),
-            )
-            .add_systems(PostUpdate, cleanup_tiles);
+        app.add_systems(
+            Update,
+            update_conveyor_tiles.in_set(ConveyorSystems::TileUpdater),
+        );
     }
-}
-
-fn startup(mut commands: Commands, asset_server: Res<AssetServer>, config: Res<MapConfig>) {
-    let texture = asset_server.load("sprites.png");
-    commands.spawn(make_base_layer(&config, texture.to_owned()));
-}
-
-#[derive(Component)]
-pub struct BaseLayer;
-
-fn make_base_layer(config: &MapConfig, texture: Handle<Image>) -> impl Bundle {
-    (BaseLayer, make_layer(config, texture, 0.0, "BaseLayer"))
 }
 
 #[allow(clippy::type_complexity)]
@@ -200,18 +184,6 @@ fn update_conveyor_tile(
         commands
             .entity(entity)
             .insert((new_texture_index, new_flip));
-    }
-}
-
-fn cleanup_tiles(
-    mut commands: Commands,
-    mut storage: Single<&mut TileStorage, With<BaseLayer>>,
-    dead_tiles: Query<&TilePos, (With<BaseLayer>, Without<TileTextureIndex>)>,
-) {
-    for dead_tile in dead_tiles {
-        if let Some(entity) = storage.remove(dead_tile) {
-            commands.entity(entity).despawn();
-        }
     }
 }
 

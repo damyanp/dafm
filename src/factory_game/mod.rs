@@ -33,7 +33,9 @@ impl Plugin for FactoryGamePlugin {
                 )
                     .chain()
                     .run_if(in_state(GameState::FactoryGame)),
-            );
+            )
+            .add_systems(PostUpdate, cleanup_tiles)
+            .add_systems(OnEnter(GameState::FactoryGame), make_base_layer);
     }
 }
 
@@ -87,6 +89,26 @@ impl Default for MapConfig {
             tile_size,
             grid_size,
             map_type: Default::default(),
+        }
+    }
+}
+
+#[derive(Component)]
+pub struct BaseLayer;
+
+fn make_base_layer(mut commands: Commands, asset_server: Res<AssetServer>, config: Res<MapConfig>) {
+    let texture = asset_server.load("sprites.png");
+    commands.spawn((BaseLayer, make_layer(&config, texture, 0.0, "BaseLayer")));
+}
+
+fn cleanup_tiles(
+    mut commands: Commands,
+    mut storage: Single<&mut TileStorage, With<BaseLayer>>,
+    dead_tiles: Query<&TilePos, (With<BaseLayer>, Without<TileTextureIndex>)>,
+) {
+    for dead_tile in dead_tiles {
+        if let Some(entity) = storage.remove(dead_tile) {
+            commands.entity(entity).despawn();
         }
     }
 }
