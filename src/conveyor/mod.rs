@@ -1,27 +1,23 @@
-use crate::GameState;
 use bevy::prelude::*;
 use bevy_ecs_tilemap::prelude::*;
 
-mod helpers;
-use helpers::*;
-
-mod interaction;
-use interaction::*;
-
-mod visuals;
-use visuals::*;
+use crate::GameState;
 
 mod dev;
-
 mod generator;
+mod helpers;
+mod interaction;
+mod visuals;
+
+use helpers::*;
 
 pub struct ConveyorPlugin;
 impl Plugin for ConveyorPlugin {
     fn build(&self, app: &mut App) {
-        app.add_plugins(ConveyorInteractionPlugin)
-            .add_plugins(Visuals)
+        app.add_plugins(interaction::ConveyorInteractionPlugin)
+            .add_plugins(visuals::VisualsPlugin)
             .add_plugins(generator::GeneratorPlugin)
-            .add_plugins(dev::Dev)
+            .add_plugins(dev::DevPlugin)
             .register_type::<Conveyor>()
             .insert_resource(MapConfig::default())
             .configure_sets(

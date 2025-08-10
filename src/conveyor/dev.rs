@@ -1,5 +1,3 @@
-use super::{BaseLayer, Conveyor, ConveyorDirection, InteractionLayer};
-use crate::GameState;
 use bevy::{input::common_conditions::input_just_pressed, prelude::*};
 use bevy_ecs_tilemap::{
     helpers::square_grid::{SquarePos, neighbors::CARDINAL_SQUARE_DIRECTIONS},
@@ -7,8 +5,13 @@ use bevy_ecs_tilemap::{
 };
 use bevy_egui::input::{egui_wants_any_keyboard_input, egui_wants_any_pointer_input};
 
-pub struct Dev;
-impl Plugin for Dev {
+use crate::{
+    GameState,
+    conveyor::{Conveyor, ConveyorDirection, interaction::InteractionLayer, visuals::BaseLayer},
+};
+
+pub struct DevPlugin;
+impl Plugin for DevPlugin {
     fn build(&self, app: &mut App) {
         app.add_systems(
             Update,

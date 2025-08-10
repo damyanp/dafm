@@ -9,8 +9,8 @@ use crate::{
     conveyor::{Conveyor, ConveyorSystems, MapConfig, helpers::*, make_layer},
 };
 
-pub struct Visuals;
-impl Plugin for Visuals {
+pub struct VisualsPlugin;
+impl Plugin for VisualsPlugin {
     fn build(&self, app: &mut App) {
         app.add_systems(OnEnter(GameState::Conveyor), startup)
             .add_systems(Update, update_conveyor_tiles.in_set(ConveyorSystems::Updater))
