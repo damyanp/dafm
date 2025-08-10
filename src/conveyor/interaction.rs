@@ -9,8 +9,8 @@ use crate::{
     },
 };
 
-pub struct InteractionPlugin;
-impl Plugin for InteractionPlugin {
+pub struct ConveyorInteractionPlugin;
+impl Plugin for ConveyorInteractionPlugin {
     fn build(&self, app: &mut App) {
         app.register_type::<HoveredTile>()
             .add_systems(OnEnter(GameState::Conveyor), startup)

@@ -6,7 +6,6 @@ mod helpers;
 use helpers::*;
 
 mod interaction;
-use interaction::InteractionPlugin;
 use interaction::*;
 
 mod visuals;
@@ -19,7 +18,7 @@ mod generator;
 pub struct ConveyorPlugin;
 impl Plugin for ConveyorPlugin {
     fn build(&self, app: &mut App) {
-        app.add_plugins(InteractionPlugin)
+        app.add_plugins(ConveyorInteractionPlugin)
             .add_plugins(Visuals)
             .add_plugins(generator::GeneratorPlugin)
             .add_plugins(dev::Dev)
