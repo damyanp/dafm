@@ -14,11 +14,14 @@ use visuals::*;
 
 mod dev;
 
+mod generator;
+
 pub struct ConveyorPlugin;
 impl Plugin for ConveyorPlugin {
     fn build(&self, app: &mut App) {
         app.add_plugins(InteractionPlugin)
             .add_plugins(Visuals)
+            .add_plugins(generator::GeneratorPlugin)
             .add_plugins(dev::Dev)
             .register_type::<Conveyor>()
             .insert_resource(MapConfig::default());
@@ -27,6 +30,7 @@ impl Plugin for ConveyorPlugin {
 
 #[derive(Component, Clone, Debug, Reflect, Default)]
 struct Conveyor(ConveyorDirection);
+
 
 fn make_layer(
     config: &MapConfig,

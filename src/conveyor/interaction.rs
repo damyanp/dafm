@@ -1,8 +1,8 @@
 use bevy::{input::common_conditions::input_just_pressed, prelude::*};
-use bevy_ecs_tilemap::{helpers::square_grid::neighbors::SquareDirection, prelude::*};
+use bevy_ecs_tilemap::prelude::*;
 use bevy_egui::input::{egui_wants_any_keyboard_input, egui_wants_any_pointer_input};
 
-use super::{Conveyor, MapConfig, helpers::*, visuals::BaseLayer};
+use super::{Conveyor, MapConfig, generator::Generator, helpers::*, visuals::BaseLayer};
 use crate::GameState;
 
 pub struct InteractionPlugin;
@@ -37,7 +37,7 @@ fn startup(mut commands: Commands, asset_server: Res<AssetServer>, config: Res<M
     commands.spawn((
         StateScoped(GameState::Conveyor),
         Name::new("HoveredTile"),
-        HoveredTile(None),
+        HoveredTile::None,
         TileBundle {
             texture_index: TileTextureIndex(20),
             tilemap_id: TilemapId(interaction_layer),
@@ -99,12 +99,16 @@ fn on_click(
         e
     };
 
-    if hovered_tile.0.is_some() {
-        commands
-            .entity(entity)
-            .insert(Conveyor(hovered_tile.0.unwrap()));
-    } else {
-        commands.entity(entity).try_remove::<Conveyor>();
+    match hovered_tile {
+        HoveredTile::Conveyor(direction) => {
+            commands.entity(entity).insert(Conveyor(*direction));
+        }
+        HoveredTile::Source => {
+            commands.entity(entity).insert(Generator);
+        }
+        HoveredTile::None => {
+            commands.entity(entity).try_remove::<Conveyor>();
+        }
     }
 }
 
@@ -112,58 +116,63 @@ fn on_space(mut hovered_tile: Single<&mut HoveredTile>) {
     hovered_tile.set_to_next_option();
 }
 
-fn update_hovered_tile(
-    mut q: Single<(Entity, &HoveredTile, &mut TileTextureIndex, &mut TileFlip)>,
-) {
-    if let HoveredTile(Some(hovered_direction)) = q.1 {
-        let (_, _, mut texture_index, mut flip) = q.into_inner();
-        (*texture_index, *flip) = get_hover_tile((*hovered_direction).into());
-    } else {
-        *q.2 = TileTextureIndex(20);
-    }
+fn update_hovered_tile(q: Single<(&HoveredTile, &mut TileTextureIndex, &mut TileFlip)>) {
+    let (hovered_tile, mut texture_index, mut flip) = q.into_inner();
+    (*texture_index, *flip) = get_hovered_tile_texture(hovered_tile);
 }
 
 #[derive(Component, Reflect)]
-struct HoveredTile(Option<ConveyorDirection>);
+enum HoveredTile {
+    None,
+    Conveyor(ConveyorDirection),
+    Source,
+}
 
 impl HoveredTile {
     fn set_to_next_option(&mut self) {
         use ConveyorDirection::*;
+        use HoveredTile::*;
 
-        self.0 = match self.0 {
-            None => Some(East),
-            Some(East) => Some(South),
-            Some(South) => Some(West),
-            Some(West) => Some(North),
-            Some(North) => None,
+        *self = match self {
+            None => Conveyor(East),
+            Conveyor(East) => Conveyor(South),
+            Conveyor(South) => Conveyor(West),
+            Conveyor(West) => Conveyor(North),
+            Conveyor(North) => Source,
+            Source => None,
         };
     }
 }
 
 const DIRECTION_ARROW: TileTextureIndex = TileTextureIndex(22);
 
-fn get_hover_tile(direction: SquareDirection) -> (TileTextureIndex, TileFlip) {
-    use SquareDirection::*;
+fn get_hovered_tile_texture(hovered_tile: &HoveredTile) -> (TileTextureIndex, TileFlip) {
+    use ConveyorDirection::*;
+    use HoveredTile::*;
 
-    let flip = match direction {
-        East => TileFlip::default(),
-        North => TileFlip {
-            d: true,
-            y: true,
-            ..default()
-        },
-        West => TileFlip {
-            x: true,
-            ..default()
-        },
-        South => TileFlip {
-            d: true,
-            ..default()
-        },
-        _ => panic!(),
-    };
-
-    (DIRECTION_ARROW, flip)
+    match hovered_tile {
+        Conveyor(direction) => (
+            DIRECTION_ARROW,
+            match direction {
+                East => TileFlip::default(),
+                North => TileFlip {
+                    d: true,
+                    y: true,
+                    ..default()
+                },
+                West => TileFlip {
+                    x: true,
+                    ..default()
+                },
+                South => TileFlip {
+                    d: true,
+                    ..default()
+                },
+            },
+        ),
+        Source => (TileTextureIndex(30), TileFlip::default()),
+        None => (TileTextureIndex(20), TileFlip::default()),
+    }
 }
 
 #[derive(Component)]
