@@ -1,5 +1,3 @@
-use std::ops::DerefMut;
-
 use bevy::prelude::*;
 use bevy_ecs_tilemap::helpers::square_grid::neighbors::{Neighbors, SquareDirection};
 use bevy_ecs_tilemap::prelude::*;
@@ -38,22 +36,22 @@ fn update_conveyor_tiles(
         Option<&TileFlip>,
     )>,
     conveyors: Query<&Conveyor>,
-    mut base: Single<(Entity, &mut TileStorage, &TilemapSize), With<BaseLayer>>,
+    base: Single<(Entity, &mut TileStorage, &TilemapSize), With<BaseLayer>>,
 ) {
-    let (tilemap_entity, tile_storage, map_size) = base.deref_mut();
+    let (tilemap_entity, tile_storage, map_size) = base.into_inner();
 
     for (new_conveyor_entity, new_conveyor_pos) in new_conveyor_tiles {
         commands
             .entity(new_conveyor_entity)
             .insert_if_new(TileBundle {
-                tilemap_id: TilemapId(*tilemap_entity),
+                tilemap_id: TilemapId(tilemap_entity),
                 ..default()
             });
 
         update_conveyor_tile(
             commands.reborrow(),
             new_conveyor_pos,
-            tile_storage,
+            &tile_storage,
             map_size,
             &conveyor_tiles,
             &conveyors,
@@ -65,7 +63,7 @@ fn update_conveyor_tiles(
             update_conveyor_tile(
                 commands.reborrow(),
                 neighbor,
-                tile_storage,
+                &tile_storage,
                 map_size,
                 &conveyor_tiles,
                 &conveyors,

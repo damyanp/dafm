@@ -5,7 +5,6 @@ use bevy_ecs_tilemap::{
     prelude::*,
 };
 use bevy_egui::input::{egui_wants_any_keyboard_input, egui_wants_any_pointer_input};
-use std::ops::DerefMut;
 
 pub struct ConveyorPlugin;
 
@@ -41,9 +40,9 @@ impl Plugin for ConveyorPlugin {
 
 fn on_test_data(
     mut commands: Commands,
-    mut base: Single<(&mut TileStorage, &TilemapSize), With<BaseLayer>>,
+    base: Single<(&mut TileStorage, &TilemapSize), With<BaseLayer>>,
 ) {
-    let (storage, map_size) = base.deref_mut();
+    let (mut storage, map_size) = base.into_inner();
 
     let mut pos = SquarePos { x: 32, y: 58 };
 

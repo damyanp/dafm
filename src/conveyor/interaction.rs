@@ -1,5 +1,3 @@
-use std::ops::DerefMut;
-
 use bevy::{input::common_conditions::input_just_pressed, prelude::*};
 use bevy_ecs_tilemap::{helpers::square_grid::neighbors::SquareDirection, prelude::*};
 use bevy_egui::input::{egui_wants_any_keyboard_input, egui_wants_any_pointer_input};
@@ -112,8 +110,8 @@ fn update_hovered_tile(
     mut q: Single<(Entity, &HoveredTile, &mut TileTextureIndex, &mut TileFlip)>,
 ) {
     if let HoveredTile(Some(hovered_direction)) = q.1 {
-        let (_, _, texture_index, flip) = q.deref_mut();
-        (**texture_index, **flip) = get_hover_tile((*hovered_direction).into());
+        let (_, _, mut texture_index, mut flip) = q.into_inner();
+        (*texture_index, *flip) = get_hover_tile((*hovered_direction).into());
     } else {
         *q.2 = TileTextureIndex(20);
     }
