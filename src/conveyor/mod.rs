@@ -7,6 +7,7 @@ mod dev;
 mod generator;
 mod helpers;
 mod interaction;
+mod payload;
 mod visuals;
 
 use helpers::*;
@@ -18,16 +19,19 @@ impl Plugin for ConveyorPlugin {
             .add_plugins(visuals::VisualsPlugin)
             .add_plugins(generator::GeneratorPlugin)
             .add_plugins(dev::DevPlugin)
+            .add_plugins(payload::PayloadPlugin)
             .register_type::<Conveyor>()
             .insert_resource(MapConfig::default())
             .configure_sets(
                 Update,
                 (
-                    ConveyorSystems::Generator.run_if(in_state(GameState::Conveyor)),
-                    ConveyorSystems::Updater
-                        .after(ConveyorSystems::Generator)
-                        .run_if(in_state(GameState::Conveyor)),
-                ),
+                    ConveyorSystems::TileGenerator,
+                    ConveyorSystems::TileUpdater,
+                    ConveyorSystems::TransportLogic,
+                    ConveyorSystems::PayloadTransforms,
+                )
+                    .chain()
+                    .run_if(in_state(GameState::Conveyor)),
             );
     }
 }
@@ -37,8 +41,10 @@ struct Conveyor(ConveyorDirection);
 
 #[derive(SystemSet, Debug, Clone, PartialEq, Eq, Hash)]
 enum ConveyorSystems {
-    Generator,
-    Updater,
+    TileGenerator,
+    TileUpdater,
+    TransportLogic,
+    PayloadTransforms,
 }
 
 fn make_layer(

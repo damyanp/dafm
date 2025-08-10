@@ -13,7 +13,7 @@ pub struct VisualsPlugin;
 impl Plugin for VisualsPlugin {
     fn build(&self, app: &mut App) {
         app.add_systems(OnEnter(GameState::Conveyor), startup)
-            .add_systems(Update, update_conveyor_tiles.in_set(ConveyorSystems::Updater))
+            .add_systems(Update, update_conveyor_tiles.in_set(ConveyorSystems::TileUpdater))
             .add_systems(PostUpdate, cleanup_tiles);
     }
 }

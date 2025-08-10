@@ -28,8 +28,8 @@ impl Plugin for ConveyorInteractionPlugin {
                             .run_if(input_just_pressed(KeyCode::Space))
                             .run_if(not(egui_wants_any_keyboard_input)),
                     )
-                        .in_set(ConveyorSystems::Generator),
-                    update_hovered_tile.in_set(ConveyorSystems::Updater),
+                        .in_set(ConveyorSystems::TileGenerator),
+                    update_hovered_tile.in_set(ConveyorSystems::TileUpdater),
                 ),
             );
     }
@@ -112,7 +112,7 @@ fn on_click(
             commands.entity(entity).insert(Conveyor(*direction));
         }
         HoveredTile::Source => {
-            commands.entity(entity).insert(Generator);
+            commands.entity(entity).insert(Generator::default());
         }
         HoveredTile::None => {
             commands
