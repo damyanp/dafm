@@ -2,12 +2,9 @@ use bevy::prelude::*;
 use bevy_ecs_tilemap::prelude::*;
 
 use crate::{
-    GameState,
     factory_game::{
-        BaseLayer, ConveyorSystems,
-        conveyor::{Conveyor, OfferPayloadEvent, PayloadOf, Payloads, TookPayloadEvent},
-        helpers::{CONVEYOR_DIRECTIONS, ConveyorDirection, get_neighbors_from_query, opposite},
-    },
+        conveyor::{Conveyor, OfferPayloadEvent, PayloadOf, Payloads, TookPayloadEvent}, helpers::{get_neighbors_from_query, opposite, ConveyorDirection, ConveyorDirections, CONVEYOR_DIRECTIONS}, BaseLayer, ConveyorSystems
+    }, GameState
 };
 
 pub struct GeneratorPlugin;
@@ -35,6 +32,7 @@ impl Plugin for GeneratorPlugin {
 }
 
 #[derive(Component, Default, Debug)]
+#[require(Conveyor(ConveyorDirections::all()))]
 pub struct Generator {
     next_generate_time: f32,
     next_transport_direction_index: u32,

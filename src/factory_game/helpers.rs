@@ -44,6 +44,17 @@ impl ConveyorDirections {
         Self(direction.into())
     }
 
+    pub fn all() -> Self {
+        use ConveyorDirection::*;
+
+        let n: u8 = North.into();
+        let e: u8 = East.into();
+        let s: u8 = South.into();
+        let w: u8 = West.into();
+
+        Self(n | e | s | w)
+    }
+
     pub fn is_set(&self, direction: ConveyorDirection) -> bool {
         let direction: u8 = direction.into();
         (self.0 & direction) != 0u8
