@@ -14,7 +14,7 @@ pub fn opposite(d: SquareDirection) -> SquareDirection {
     }
 }
 
-#[derive(PartialEq, Reflect, Clone, Copy, Debug, Default)]
+#[derive(PartialEq, Eq, Reflect, Clone, Copy, Debug, Default)]
 pub enum ConveyorDirection {
     #[default]
     North,

@@ -5,7 +5,8 @@ use bevy_egui::input::{egui_wants_any_keyboard_input, egui_wants_any_pointer_inp
 use crate::{
     GameState,
     factory_game::{
-        BaseLayer, ConveyorSystems, MapConfig, conveyor::Conveyor, generator::Generator, helpers::*,
+        BaseLayer, BaseLayerEntityDespawned, ConveyorSystems, MapConfig, conveyor::Conveyor,
+        generator::Generator, helpers::*,
     },
 };
 
@@ -88,14 +89,17 @@ fn on_click(
     mut commands: Commands,
     hovered_tile: Single<(&TilePos, &HoveredTile)>,
     mut storage: Single<&mut TileStorage, With<BaseLayer>>,
+    mut despawned_event: EventWriter<BaseLayerEntityDespawned>,
 ) {
     let (tile_pos, hovered_tile) = *hovered_tile;
 
-    let entity = if let Some(e) = storage.get(tile_pos) {
-        commands.entity(e).try_remove::<TileTextureIndex>();
-        e
-    } else {
-        let e = commands
+    if let Some(old_entity) = storage.remove(tile_pos) {
+        commands.entity(old_entity).despawn();
+        despawned_event.write(BaseLayerEntityDespawned(*tile_pos));
+    }
+
+    if *hovered_tile != HoveredTile::None {
+        let entity = commands
             .spawn((
                 StateScoped(GameState::FactoryGame),
                 Name::new("Placed Tile"),
@@ -103,21 +107,16 @@ fn on_click(
                 *tile_pos,
             ))
             .id();
-        storage.set(tile_pos, e);
-        e
-    };
+        storage.set(tile_pos, entity.clone());
 
-    match hovered_tile {
-        HoveredTile::Conveyor(direction) => {
-            commands.entity(entity).insert(Conveyor(*direction));
-        }
-        HoveredTile::Source => {
-            commands.entity(entity).insert(Generator::default());
-        }
-        HoveredTile::None => {
-            commands
-                .entity(entity)
-                .try_remove::<(Conveyor, Generator)>();
+        match hovered_tile {
+            HoveredTile::Conveyor(direction) => {
+                commands.entity(entity).insert(Conveyor(*direction));
+            }
+            HoveredTile::Source => {
+                commands.entity(entity).insert(Generator::default());
+            }
+            HoveredTile::None => panic!(),
         }
     }
 }
@@ -131,7 +130,7 @@ fn update_hovered_tile(q: Single<(&HoveredTile, &mut TileTextureIndex, &mut Tile
     (*texture_index, *flip) = get_hovered_tile_texture(hovered_tile);
 }
 
-#[derive(Component, Reflect)]
+#[derive(Component, Reflect, PartialEq, Eq)]
 enum HoveredTile {
     None,
     Conveyor(ConveyorDirection),

@@ -50,7 +50,6 @@ struct GeneratedPayloadTransport {
 fn update_generator_tiles(
     mut commands: Commands,
     new_generators: Query<Entity, (With<Generator>, Without<TileTextureIndex>)>,
-    mut removed_generators: RemovedComponents<Generator>,
     tilemap_entity: Single<Entity, (With<BaseLayer>, With<TileStorage>)>,
 ) {
     for new_generator in new_generators {
@@ -59,12 +58,6 @@ fn update_generator_tiles(
             texture_index: TileTextureIndex(30),
             ..default()
         },));
-    }
-
-    for removed_generator in removed_generators.read() {
-        commands
-            .entity(removed_generator)
-            .remove::<TileTextureIndex>();
     }
 }
 

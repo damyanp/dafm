@@ -21,6 +21,7 @@ impl Plugin for FactoryGamePlugin {
             .add_plugins(dev::DevPlugin)
             .add_plugins(payload::PayloadPlugin)
             .insert_resource(MapConfig::default())
+            .add_event::<BaseLayerEntityDespawned>()
             .configure_sets(
                 Update,
                 (
@@ -32,7 +33,6 @@ impl Plugin for FactoryGamePlugin {
                     .chain()
                     .run_if(in_state(GameState::FactoryGame)),
             )
-            .add_systems(PostUpdate, cleanup_tiles)
             .add_systems(OnEnter(GameState::FactoryGame), make_base_layer);
     }
 }
@@ -99,14 +99,5 @@ fn make_base_layer(mut commands: Commands, asset_server: Res<AssetServer>, confi
     commands.spawn((BaseLayer, make_layer(&config, texture, 0.0, "BaseLayer")));
 }
 
-fn cleanup_tiles(
-    mut commands: Commands,
-    mut storage: Single<&mut TileStorage, With<BaseLayer>>,
-    dead_tiles: Query<&TilePos, (With<BaseLayer>, Without<TileTextureIndex>)>,
-) {
-    for dead_tile in dead_tiles {
-        if let Some(entity) = storage.remove(dead_tile) {
-            commands.entity(entity).despawn();
-        }
-    }
-}
+#[derive(Event)]
+pub struct BaseLayerEntityDespawned(TilePos);

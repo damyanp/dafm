@@ -7,7 +7,7 @@ use bevy_ecs_tilemap::{
 };
 
 use crate::factory_game::{
-    BaseLayer, ConveyorSystems,
+    BaseLayer, BaseLayerEntityDespawned, ConveyorSystems,
     helpers::{ConveyorDirection, get_neighbors_from_query, make_east_relative, opposite},
     payload::{OfferPayloadEvent, PayloadOf, PayloadTransport, Payloads, TookPayloadEvent},
 };
@@ -35,7 +35,7 @@ pub struct Conveyor(pub ConveyorDirection);
 fn update_conveyor_tiles(
     mut commands: Commands,
     new_conveyors: Query<&TilePos, (With<Conveyor>, Without<TileTextureIndex>)>,
-    mut removed_conveyors: RemovedComponents<Conveyor>,
+    mut removed_entities: EventReader<BaseLayerEntityDespawned>,
     conveyors: Query<(&Conveyor, Option<&TileTextureIndex>, Option<&TileFlip>)>,
     tiles: Query<&TilePos>,
     base: Single<(Entity, &TileStorage, &TilemapSize), With<BaseLayer>>,
@@ -47,8 +47,9 @@ fn update_conveyor_tiles(
     new_conveyors.iter().for_each(|pos| {
         to_check.insert(*pos);
     });
-    removed_conveyors.read().for_each(|entity| {
-        to_check.insert(*tiles.get(entity).unwrap());
+
+    removed_entities.read().for_each(|entity| {
+        to_check.insert(entity.0);
     });
 
     let sources: Vec<_> = to_check.iter().cloned().collect();
