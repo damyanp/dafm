@@ -6,10 +6,9 @@ use bevy_ecs_tilemap::{
 use bevy_egui::input::{egui_wants_any_keyboard_input, egui_wants_any_pointer_input};
 
 use crate::{
-    GameState,
     factory_game::{
-        BaseLayer, ConveyorDirection, conveyor::Conveyor, interaction::InteractionLayer,
-    },
+        conveyor::{Conveyor, ConveyorBelt}, helpers::ConveyorDirections, interaction::InteractionLayer, BaseLayer, ConveyorDirection
+    }, GameState
 };
 
 pub struct DevPlugin;
@@ -45,7 +44,7 @@ fn on_test_data(
                 .spawn((
                     StateScoped(GameState::FactoryGame),
                     Name::new("Test Data Tile"),
-                    Conveyor(direction),
+                    Conveyor(ConveyorDirections::new(direction)),
                     BaseLayer,
                     pos,
                 ))
@@ -75,14 +74,14 @@ fn on_toggle_show_conveyors(
     mut commands: Commands,
     arrows: Query<Entity, With<DirectionArrow>>,
     interaction_layer: Single<Entity, With<InteractionLayer>>,
-    conveyors: Query<(&Conveyor, &TilePos)>,
+    conveyors: Query<(&Conveyor, &TilePos), With<ConveyorBelt>>,
     mut enabled: Local<bool>,
 ) {
     *enabled = !*enabled;
 
     if *enabled {
         for (conveyor, tile_pos) in conveyors {
-            let flip = match conveyor.0 {
+            let flip = match conveyor.0.single() {
                 ConveyorDirection::North => TileFlip {
                     y: true,
                     d: true,

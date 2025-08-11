@@ -5,8 +5,10 @@ use bevy_egui::input::{egui_wants_any_keyboard_input, egui_wants_any_pointer_inp
 use crate::{
     GameState,
     factory_game::{
-        BaseLayer, BaseLayerEntityDespawned, ConveyorSystems, MapConfig, conveyor::Conveyor,
-        generator::Generator, helpers::*,
+        BaseLayer, BaseLayerEntityDespawned, ConveyorSystems, MapConfig,
+        conveyor::{Conveyor, ConveyorBelt},
+        generator::Generator,
+        helpers::*,
     },
 };
 
@@ -111,7 +113,9 @@ fn on_click(
 
         match hovered_tile {
             HoveredTile::Conveyor(direction) => {
-                commands.entity(entity).insert(Conveyor(*direction));
+                commands
+                    .entity(entity)
+                    .insert((Conveyor(ConveyorDirections::new(*direction)), ConveyorBelt));
             }
             HoveredTile::Source => {
                 commands.entity(entity).insert(Generator::default());

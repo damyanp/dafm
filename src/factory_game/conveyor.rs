@@ -8,7 +8,10 @@ use bevy_ecs_tilemap::{
 
 use crate::factory_game::{
     BaseLayer, BaseLayerEntityDespawned, ConveyorSystems,
-    helpers::{ConveyorDirection, get_neighbors_from_query, make_east_relative, opposite},
+    helpers::{
+        ConveyorDirection, ConveyorDirections, get_neighbors_from_query, make_east_relative,
+        opposite,
+    },
     payload::{OfferPayloadEvent, PayloadOf, PayloadTransport, Payloads, TookPayloadEvent},
 };
 
@@ -29,7 +32,10 @@ impl Plugin for ConveyorPlugin {
 }
 
 #[derive(Component, Clone, Debug, Reflect, Default)]
-pub struct Conveyor(pub ConveyorDirection);
+pub struct Conveyor(pub ConveyorDirections);
+
+#[derive(Component)]
+pub struct ConveyorBelt;
 
 fn update_conveyor_tiles(
     mut commands: Commands,
@@ -67,7 +73,7 @@ fn update_conveyor_tiles(
                     ..default()
                 });
 
-                update_conveyor_tile(
+                update_conveyor_belt_tile(
                     commands.reborrow(),
                     entity,
                     conveyor,
@@ -81,7 +87,7 @@ fn update_conveyor_tiles(
     }
 }
 
-fn update_conveyor_tile(
+fn update_conveyor_belt_tile(
     mut commands: Commands,
     entity: Entity,
     conveyor: (&Conveyor, Option<&TileTextureIndex>, Option<&TileFlip>),
@@ -92,15 +98,17 @@ fn update_conveyor_tile(
 ) {
     let (Conveyor(out_dir), texture_index, flip) = conveyor;
 
-    let out_dir: SquareDirection = (*out_dir).into();
+    let out_dir: SquareDirection = (out_dir.single()).into();
 
     // Find the neighbors that have conveyors on them
     let neighbor_conveyors = get_neighbors_from_query(tile_storage, tile_pos, map_size, conveyors);
 
     // And just the conveyors pointing towards this one
     let neighbor_conveyors = Neighbors::from_directional_closure(|dir| {
-        neighbor_conveyors.get(dir).and_then(|c| {
-            if c.0.0 == opposite(dir).into() {
+        neighbor_conveyors.get(dir).and_then(|(c, _, _)| {
+            let directions = c.0;
+
+            if directions.is_set(opposite(dir).into()) {
                 Some(*c)
             } else {
                 None
@@ -226,7 +234,7 @@ fn take_payloads(
                     PayloadTransport {
                         mu: 0.0,
                         source: offer.source_direction,
-                        destination: conveyor.0,
+                        destination: conveyor.0.single(),
                     },
                 ));
                 took_events.write(TookPayloadEvent {

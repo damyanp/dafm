@@ -23,6 +23,57 @@ pub enum ConveyorDirection {
     West,
 }
 
+impl ConveyorDirection {
+    #[allow(dead_code)]
+    pub fn opposite(&self) -> Self {
+        use ConveyorDirection::*;
+        match self {
+            East => West,
+            North => South,
+            West => East,
+            South => North,
+        }
+    }
+}
+
+#[derive(PartialEq, Eq, Reflect, Clone, Copy, Debug, Default)]
+pub struct ConveyorDirections(u8);
+
+impl ConveyorDirections {
+    pub fn new(direction: ConveyorDirection) -> Self {
+        Self(direction.into())
+    }
+
+    pub fn is_set(&self, direction: ConveyorDirection) -> bool {
+        let direction: u8 = direction.into();
+        (self.0 & direction) != 0u8
+    }
+
+    pub fn single(&self) -> ConveyorDirection {
+        let mut iter = self.iter();
+        let direction = iter.next().unwrap();
+        if iter.next().is_some() {
+            panic!("Expected exactly one direction");
+        }
+        direction
+    }
+
+    pub fn iter(&self) -> impl Iterator<Item = ConveyorDirection> {
+        CONVEYOR_DIRECTIONS.into_iter().filter(|d| self.is_set(*d))
+    }
+}
+
+impl From<ConveyorDirection> for u8 {
+    fn from(value: ConveyorDirection) -> Self {
+        match value {
+            ConveyorDirection::North => 1,
+            ConveyorDirection::East => 2,
+            ConveyorDirection::South => 4,
+            ConveyorDirection::West => 8,
+        }
+    }
+}
+
 pub const CONVEYOR_DIRECTIONS: [ConveyorDirection; 4] = [
     ConveyorDirection::North,
     ConveyorDirection::East,
