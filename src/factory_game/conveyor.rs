@@ -81,18 +81,18 @@ fn take_payloads(
     for offer in offer_events.read() {
         if !conveyors_accepted.contains(&offer.target)
             && let Ok(conveyor) = conveyors.get(offer.target)
+            && conveyor.accepts_input
+            && !conveyor.is_full
         {
-            if conveyor.accepts_input && !conveyor.is_full {
-                commands.entity(offer.payload).insert((
-                    PayloadOf(offer.target),
-                    PayloadTransport {
-                        mu: 0.0,
-                        source: Some(offer.source_direction),
-                        destination: None,
-                    },
-                ));
-                conveyors_accepted.insert(offer.target);
-            }
+            commands.entity(offer.payload).insert((
+                PayloadOf(offer.target),
+                PayloadTransport {
+                    mu: 0.0,
+                    source: Some(offer.source_direction),
+                    destination: None,
+                },
+            ));
+            conveyors_accepted.insert(offer.target);
         }
     }
 }
