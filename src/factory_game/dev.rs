@@ -46,7 +46,10 @@ fn on_test_data(
                 .spawn((
                     StateScoped(GameState::FactoryGame),
                     Name::new("Test Data Tile"),
-                    Conveyor(ConveyorDirections::new(direction)),
+                    Conveyor {
+                        outputs: ConveyorDirections::new(direction),
+                        accepts_input: true,
+                    },
                     ConveyorBelt,
                     BaseLayer,
                     pos,
@@ -84,7 +87,7 @@ fn on_toggle_show_conveyors(
 
     if *enabled {
         for (conveyor, tile_pos) in conveyors {
-            let flip = match conveyor.0.single() {
+            let flip = match conveyor.outputs.single() {
                 ConveyorDirection::North => TileFlip {
                     y: true,
                     d: true,

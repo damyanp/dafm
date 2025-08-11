@@ -28,14 +28,7 @@ pub struct ConveyorBelt;
 #[allow(clippy::type_complexity)]
 fn update_conveyor_belt_tiles(
     mut commands: Commands,
-    new_conveyor_belts: Query<
-        &TilePos,
-        (
-            With<Conveyor>,
-            With<ConveyorBelt>,
-            Without<TileTextureIndex>,
-        ),
-    >,
+    new_conveyor_belts: Query<&TilePos, With<Conveyor>>,
     mut removed_entities: EventReader<BaseLayerEntityDespawned>,
     conveyors: Query<&Conveyor>,
     conveyor_belts: Query<
@@ -96,7 +89,13 @@ fn update_conveyor_belt_tile(
     map_size: &TilemapSize,
     conveyors: &Query<&Conveyor>,
 ) {
-    let (Conveyor(out_dir), texture_index, flip) = conveyor_belt;
+    let (
+        Conveyor {
+            outputs: out_dir, ..
+        },
+        texture_index,
+        flip,
+    ) = conveyor_belt;
 
     let out_dir: SquareDirection = (out_dir.single()).into();
 
@@ -106,9 +105,7 @@ fn update_conveyor_belt_tile(
     // And just the conveyors pointing towards this one
     let neighbor_conveyors = Neighbors::from_directional_closure(|dir| {
         neighbor_conveyors.get(dir).and_then(|c| {
-            let directions = c.0;
-
-            if directions.is_set(opposite(dir).into()) {
+            if c.outputs.is_set(opposite(dir).into()) {
                 Some(*c)
             } else {
                 None

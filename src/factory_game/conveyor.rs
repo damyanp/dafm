@@ -30,7 +30,10 @@ impl Plugin for PayloadPlugin {
 }
 
 #[derive(Component, Clone, Debug, Reflect, Default)]
-pub struct Conveyor(pub ConveyorDirections);
+pub struct Conveyor {
+    pub outputs: ConveyorDirections,
+    pub accepts_input: bool
+}
 
 #[derive(Component, Reflect, Debug)]
 #[relationship(relationship_target = Payloads)]
@@ -43,8 +46,8 @@ pub struct Payloads(Vec<Entity>);
 #[derive(Component, Reflect)]
 pub struct PayloadTransport {
     pub mu: f32,
-    pub source: ConveyorDirection,
-    pub destination: ConveyorDirection,
+    pub source: Option<ConveyorDirection>,
+    pub destination: Option<ConveyorDirection>,
 }
 
 #[derive(Event)]
@@ -79,8 +82,8 @@ fn take_payloads(
                     PayloadOf(offer.target),
                     PayloadTransport {
                         mu: 0.0,
-                        source: offer.source_direction,
-                        destination: conveyor.0.single(),
+                        source: Some(offer.source_direction),
+                        destination: Some(conveyor.outputs.single()),
                     },
                 ));
                 took_events.write(TookPayloadEvent {
@@ -105,9 +108,11 @@ fn transport_conveyor_payloads(
 
     for (conveyor_pos, payloads) in conveyors {
         for payload_entity in payloads.iter() {
-            if let Ok(mut transport) = payload_transports.get_mut(payload_entity) {
-                let destination_pos =
-                    conveyor_pos.square_offset(&transport.destination.into(), map_size);
+            if let Ok(mut transport) = payload_transports.get_mut(payload_entity)
+                && let Some(destination) = transport.destination
+            {
+                let destination = destination.into();
+                let destination_pos = conveyor_pos.square_offset(&destination, map_size);
                 let destination_entity = destination_pos.and_then(|pos| tile_storage.get(&pos));
 
                 transport.mu += mu_speed;
@@ -115,7 +120,7 @@ fn transport_conveyor_payloads(
                     transport.mu = 1.0;
                     if let Some(destination_entity) = destination_entity {
                         offer_payload_event.write(OfferPayloadEvent {
-                            source_direction: opposite(transport.destination.into()).into(),
+                            source_direction: opposite(destination).into(),
                             payload: payload_entity,
                             target: destination_entity,
                         });
@@ -167,13 +172,17 @@ fn update_conveyor_payloads(
     }
 }
 
-fn get_direction_offset(tile_size: &TilemapTileSize, direction: &ConveyorDirection) -> Vec2 {
+fn get_direction_offset(
+    tile_size: &TilemapTileSize,
+    direction: &Option<ConveyorDirection>,
+) -> Vec2 {
     let half_size = Vec2::new(tile_size.x / 2.0, tile_size.y / 2.0);
 
     match direction {
-        ConveyorDirection::North => Vec2::new(0.0, half_size.y),
-        ConveyorDirection::South => Vec2::new(0.0, -half_size.y),
-        ConveyorDirection::East => Vec2::new(half_size.x, 0.0),
-        ConveyorDirection::West => Vec2::new(-half_size.x, 0.0),
+        Some(ConveyorDirection::North) => Vec2::new(0.0, half_size.y),
+        Some(ConveyorDirection::South) => Vec2::new(0.0, -half_size.y),
+        Some(ConveyorDirection::East) => Vec2::new(half_size.x, 0.0),
+        Some(ConveyorDirection::West) => Vec2::new(-half_size.x, 0.0),
+        None => Vec2::default(),
     }
 }

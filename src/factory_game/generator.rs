@@ -2,9 +2,15 @@ use bevy::prelude::*;
 use bevy_ecs_tilemap::prelude::*;
 
 use crate::{
+    GameState,
     factory_game::{
-        conveyor::{Conveyor, OfferPayloadEvent, PayloadOf, Payloads, TookPayloadEvent}, helpers::{get_neighbors_from_query, opposite, ConveyorDirection, ConveyorDirections, CONVEYOR_DIRECTIONS}, BaseLayer, ConveyorSystems
-    }, GameState
+        BaseLayer, ConveyorSystems,
+        conveyor::{Conveyor, OfferPayloadEvent, PayloadOf, Payloads, TookPayloadEvent},
+        helpers::{
+            CONVEYOR_DIRECTIONS, ConveyorDirection, ConveyorDirections, get_neighbors_from_query,
+            opposite,
+        },
+    },
 };
 
 pub struct GeneratorPlugin;
@@ -32,7 +38,7 @@ impl Plugin for GeneratorPlugin {
 }
 
 #[derive(Component, Default, Debug)]
-#[require(Conveyor(ConveyorDirections::all()))]
+#[require(Conveyor{outputs: ConveyorDirections::all(), accepts_input: false})]
 pub struct Generator {
     next_generate_time: f32,
     next_transport_direction_index: u32,
@@ -115,7 +121,7 @@ fn update_generator_payload_transports(
     time: Res<Time>,
     generated_payloads: Query<(Entity, &mut GeneratedPayloadTransport, &PayloadOf)>,
     generators: Query<&TilePos, With<Generator>>,
-    conveyors: Query<(), With<Conveyor>>,
+    conveyors: Query<&Conveyor>,
     base: Single<(&TileStorage, &TilemapSize), With<BaseLayer>>,
     mut offer_payload_event: EventWriter<OfferPayloadEvent>,
 ) {
@@ -132,7 +138,9 @@ fn update_generator_payload_transports(
             let destination_conveyor =
                 destination_entity.and_then(|entity| conveyors.get(entity).ok());
 
-            if destination_conveyor.is_some() {
+            if let Some(destination_conveyor) = destination_conveyor
+                && destination_conveyor.accepts_input
+            {
                 generated_payload.mu += mu_speed;
                 if generated_payload.mu > 1.0 {
                     generated_payload.mu = 1.0;
