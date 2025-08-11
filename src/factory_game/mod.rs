@@ -9,6 +9,7 @@ mod dev;
 mod generator;
 mod helpers;
 mod interaction;
+mod sink;
 
 use helpers::*;
 
@@ -18,6 +19,7 @@ impl Plugin for FactoryGamePlugin {
         app.add_plugins(conveyor_belts::ConveyorBeltsPlugin)
             .add_plugins(interaction::ConveyorInteractionPlugin)
             .add_plugins(generator::GeneratorPlugin)
+            .add_plugins(sink::SinkPlugin)
             .add_plugins(dev::DevPlugin)
             .add_plugins(conveyor::PayloadPlugin)
             .insert_resource(MapConfig::default())

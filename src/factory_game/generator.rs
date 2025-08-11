@@ -15,11 +15,10 @@ impl Plugin for GeneratorPlugin {
     fn build(&self, app: &mut App) {
         app.add_systems(
             Update,
-            update_generator_tiles.in_set(ConveyorSystems::TileUpdater),
-        )
-        .add_systems(
-            Update,
-            generate_payloads.in_set(ConveyorSystems::TransportLogic),
+            (
+                update_generator_tiles.in_set(ConveyorSystems::TileUpdater),
+                generate_payloads.in_set(ConveyorSystems::TransportLogic),
+            ),
         );
     }
 }

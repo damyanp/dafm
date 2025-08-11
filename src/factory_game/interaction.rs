@@ -3,11 +3,9 @@ use bevy_ecs_tilemap::prelude::*;
 use bevy_egui::input::{egui_wants_any_keyboard_input, egui_wants_any_pointer_input};
 
 use crate::{
-    GameState,
     factory_game::{
-        BaseLayer, BaseLayerEntityDespawned, ConveyorSystems, MapConfig, conveyor::Conveyor,
-        conveyor_belts::ConveyorBelt, generator::Generator, helpers::*,
-    },
+        conveyor::Conveyor, conveyor_belts::ConveyorBelt, generator::Generator, helpers::*, sink::Sink, BaseLayer, BaseLayerEntityDespawned, ConveyorSystems, MapConfig
+    }, GameState
 };
 
 pub struct ConveyorInteractionPlugin;
@@ -118,6 +116,9 @@ fn on_click(
             HoveredTile::Source => {
                 commands.entity(entity).insert(Generator::default());
             }
+            HoveredTile::Sink => {
+                commands.entity(entity).insert(Sink);
+            },
             HoveredTile::None => panic!(),
         }
     }
@@ -137,6 +138,7 @@ enum HoveredTile {
     None,
     Conveyor(ConveyorDirection),
     Source,
+    Sink,
 }
 
 impl HoveredTile {
@@ -150,7 +152,8 @@ impl HoveredTile {
             Conveyor(South) => Conveyor(West),
             Conveyor(West) => Conveyor(North),
             Conveyor(North) => Source,
-            Source => None,
+            Source => Sink,
+            Sink => None,
         };
     }
 }
@@ -182,6 +185,7 @@ fn get_hovered_tile_texture(hovered_tile: &HoveredTile) -> (TileTextureIndex, Ti
             },
         ),
         Source => (TileTextureIndex(30), TileFlip::default()),
+        Sink => (TileTextureIndex(31), TileFlip::default()),
         None => (TileTextureIndex(20), TileFlip::default()),
     }
 }
