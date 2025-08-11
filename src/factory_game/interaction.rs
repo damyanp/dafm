@@ -5,10 +5,8 @@ use bevy_egui::input::{egui_wants_any_keyboard_input, egui_wants_any_pointer_inp
 use crate::{
     GameState,
     factory_game::{
-        BaseLayer, BaseLayerEntityDespawned, ConveyorSystems, MapConfig,
-        conveyor::{Conveyor, ConveyorBelt},
-        generator::Generator,
-        helpers::*,
+        BaseLayer, BaseLayerEntityDespawned, ConveyorSystems, MapConfig, conveyor::Conveyor,
+        conveyor_belts::ConveyorBelt, generator::Generator, helpers::*,
     },
 };
 

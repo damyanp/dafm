@@ -4,22 +4,22 @@ use bevy_ecs_tilemap::prelude::*;
 use crate::GameState;
 
 mod conveyor;
+mod conveyor_belts;
 mod dev;
 mod generator;
 mod helpers;
 mod interaction;
-mod payload;
 
 use helpers::*;
 
 pub struct FactoryGamePlugin;
 impl Plugin for FactoryGamePlugin {
     fn build(&self, app: &mut App) {
-        app.add_plugins(conveyor::ConveyorPlugin)
+        app.add_plugins(conveyor_belts::ConveyorBeltsPlugin)
             .add_plugins(interaction::ConveyorInteractionPlugin)
             .add_plugins(generator::GeneratorPlugin)
             .add_plugins(dev::DevPlugin)
-            .add_plugins(payload::PayloadPlugin)
+            .add_plugins(conveyor::PayloadPlugin)
             .insert_resource(MapConfig::default())
             .add_event::<BaseLayerEntityDespawned>()
             .configure_sets(

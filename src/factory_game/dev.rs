@@ -6,9 +6,11 @@ use bevy_ecs_tilemap::{
 use bevy_egui::input::{egui_wants_any_keyboard_input, egui_wants_any_pointer_input};
 
 use crate::{
+    GameState,
     factory_game::{
-        conveyor::{Conveyor, ConveyorBelt}, helpers::ConveyorDirections, interaction::InteractionLayer, BaseLayer, ConveyorDirection
-    }, GameState
+        BaseLayer, ConveyorDirection, conveyor::Conveyor, conveyor_belts::ConveyorBelt,
+        helpers::ConveyorDirections, interaction::InteractionLayer,
+    },
 };
 
 pub struct DevPlugin;
@@ -45,6 +47,7 @@ fn on_test_data(
                     StateScoped(GameState::FactoryGame),
                     Name::new("Test Data Tile"),
                     Conveyor(ConveyorDirections::new(direction)),
+                    ConveyorBelt,
                     BaseLayer,
                     pos,
                 ))

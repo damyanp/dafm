@@ -5,9 +5,8 @@ use crate::{
     GameState,
     factory_game::{
         BaseLayer, ConveyorSystems,
-        conveyor::Conveyor,
+        conveyor::{Conveyor, OfferPayloadEvent, PayloadOf, Payloads, TookPayloadEvent},
         helpers::{CONVEYOR_DIRECTIONS, ConveyorDirection, get_neighbors_from_query, opposite},
-        payload::{OfferPayloadEvent, PayloadOf, Payloads, TookPayloadEvent},
     },
 };
 
