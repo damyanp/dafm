@@ -18,7 +18,7 @@ impl Plugin for PayloadPlugin {
 pub struct PayloadOf(pub Entity);
 
 #[derive(Component, Reflect)]
-#[relationship_target(relationship = PayloadOf)]
+#[relationship_target(relationship = PayloadOf, linked_spawn)]
 pub struct Payloads(Vec<Entity>);
 
 #[derive(Component, Reflect)]
