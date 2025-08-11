@@ -111,13 +111,9 @@ fn on_click(
 
         match hovered_tile {
             HoveredTile::Conveyor(direction) => {
-                commands.entity(entity).insert((
-                    Conveyor {
-                        outputs: ConveyorDirections::new(*direction),
-                        accepts_input: true,
-                    },
-                    ConveyorBelt,
-                ));
+                commands
+                    .entity(entity)
+                    .insert((Conveyor::new_belt(*direction), ConveyorBelt));
             }
             HoveredTile::Source => {
                 commands.entity(entity).insert(Generator::default());

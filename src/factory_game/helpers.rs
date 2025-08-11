@@ -72,6 +72,17 @@ impl ConveyorDirections {
     pub fn iter(&self) -> impl Iterator<Item = ConveyorDirection> {
         CONVEYOR_DIRECTIONS.into_iter().filter(|d| self.is_set(*d))
     }
+
+    pub fn iter_from(
+        &self,
+        direction: ConveyorDirection,
+    ) -> impl Iterator<Item = ConveyorDirection> {
+        let direction = direction.index();
+        (0..CONVEYOR_DIRECTIONS.len())
+            .map(move |i| (direction + i) % CONVEYOR_DIRECTIONS.len())
+            .map(|i| CONVEYOR_DIRECTIONS[i])
+            .filter(|d| self.is_set(*d))
+    }
 }
 
 impl From<ConveyorDirection> for u8 {
@@ -91,6 +102,28 @@ pub const CONVEYOR_DIRECTIONS: [ConveyorDirection; 4] = [
     ConveyorDirection::South,
     ConveyorDirection::West,
 ];
+
+impl ConveyorDirection {
+    pub fn index(&self) -> usize {
+        use ConveyorDirection::*;
+        match self {
+            North => 0,
+            East => 1,
+            South => 2,
+            West => 3,
+        }
+    }
+
+    pub fn next(&self) -> ConveyorDirection {
+        use ConveyorDirection::*;
+        match self {
+            North => East,
+            East => South,
+            South => West,
+            West => North,
+        }
+    }
+}
 
 impl From<ConveyorDirection> for SquareDirection {
     fn from(value: ConveyorDirection) -> Self {

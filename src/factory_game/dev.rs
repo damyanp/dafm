@@ -9,7 +9,7 @@ use crate::{
     GameState,
     factory_game::{
         BaseLayer, ConveyorDirection, conveyor::Conveyor, conveyor_belts::ConveyorBelt,
-        helpers::ConveyorDirections, interaction::InteractionLayer,
+        interaction::InteractionLayer,
     },
 };
 
@@ -46,10 +46,7 @@ fn on_test_data(
                 .spawn((
                     StateScoped(GameState::FactoryGame),
                     Name::new("Test Data Tile"),
-                    Conveyor {
-                        outputs: ConveyorDirections::new(direction),
-                        accepts_input: true,
-                    },
+                    Conveyor::new_belt(direction),
                     ConveyorBelt,
                     BaseLayer,
                     pos,

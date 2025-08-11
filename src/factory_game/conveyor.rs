@@ -1,7 +1,7 @@
 use std::collections::HashSet;
 
 use bevy::prelude::*;
-use bevy_ecs_tilemap::prelude::*;
+use bevy_ecs_tilemap::{helpers::square_grid::neighbors::SquareDirection, prelude::*};
 
 use crate::factory_game::{
     BaseLayer, ConveyorSystems,
@@ -16,11 +16,10 @@ impl Plugin for PayloadPlugin {
             .register_type::<Payloads>()
             .register_type::<PayloadTransport>()
             .add_event::<OfferPayloadEvent>()
-            .add_event::<TookPayloadEvent>()
             .add_systems(
                 Update,
                 (
-                    (take_payloads, transport_conveyor_payloads)
+                    (take_payloads, update_is_full, transport_conveyor_payloads)
                         .chain()
                         .in_set(ConveyorSystems::TransportLogic),
                     update_conveyor_payloads.in_set(ConveyorSystems::PayloadTransforms),
@@ -29,10 +28,23 @@ impl Plugin for PayloadPlugin {
     }
 }
 
-#[derive(Component, Clone, Debug, Reflect, Default)]
+#[derive(Component, Clone, Debug, Reflect)]
 pub struct Conveyor {
     pub outputs: ConveyorDirections,
-    pub accepts_input: bool
+    pub accepts_input: bool,
+    pub next_output: ConveyorDirection,
+    pub is_full: bool,
+}
+
+impl Conveyor {
+    pub fn new_belt(direction: ConveyorDirection) -> Self {
+        Conveyor {
+            outputs: ConveyorDirections::new(direction),
+            accepts_input: true,
+            next_output: direction,
+            is_full: false,
+        }
+    }
 }
 
 #[derive(Component, Reflect, Debug)]
@@ -57,16 +69,10 @@ pub struct OfferPayloadEvent {
     pub target: Entity,
 }
 
-#[derive(Event)]
-pub struct TookPayloadEvent {
-    pub payload: Entity,
-}
-
 fn take_payloads(
     mut commands: Commands,
     mut offer_events: EventReader<OfferPayloadEvent>,
-    mut took_events: EventWriter<TookPayloadEvent>,
-    conveyors: Query<(&Conveyor, Option<&Payloads>)>,
+    mut conveyors: Query<(&mut Conveyor, Option<&Payloads>)>,
 ) {
     // Only accept one offer per-conveyer per-update (since we can't easily
     // requery between events)
@@ -74,7 +80,7 @@ fn take_payloads(
 
     for offer in offer_events.read() {
         if !conveyors_accepted.contains(&offer.target)
-            && let Ok((conveyor, payloads)) = conveyors.get(offer.target)
+            && let Ok((conveyor, payloads)) = conveyors.get_mut(offer.target)
         {
             let payload_count = payloads.map_or(0, |p| p.len());
             if payload_count == 0 {
@@ -83,14 +89,20 @@ fn take_payloads(
                     PayloadTransport {
                         mu: 0.0,
                         source: Some(offer.source_direction),
-                        destination: Some(conveyor.outputs.single()),
+                        destination: None,
                     },
                 ));
-                took_events.write(TookPayloadEvent {
-                    payload: offer.payload,
-                });
                 conveyors_accepted.insert(offer.target);
             }
+        }
+    }
+}
+
+fn update_is_full(conveyors: Query<(&mut Conveyor, Option<&Payloads>)>) {
+    for (mut conveyor, payloads) in conveyors {
+        if conveyor.accepts_input {
+            let payload_count = payloads.map_or(0, |p| p.len());
+            conveyor.is_full = payload_count > 0;
         }
     }
 }
@@ -98,7 +110,8 @@ fn take_payloads(
 fn transport_conveyor_payloads(
     time: Res<Time>,
     mut payload_transports: Query<&mut PayloadTransport>,
-    conveyors: Query<(&TilePos, &Payloads), With<Conveyor>>,
+    conveyors: Query<(Entity, &TilePos, &Payloads), With<Conveyor>>,
+    mut mutable_conveyors: Query<&mut Conveyor>,
     base: Single<(&TileStorage, &TilemapSize), With<BaseLayer>>,
     mut offer_payload_event: EventWriter<OfferPayloadEvent>,
 ) {
@@ -106,29 +119,76 @@ fn transport_conveyor_payloads(
 
     let (tile_storage, map_size) = base.into_inner();
 
-    for (conveyor_pos, payloads) in conveyors {
+    for (conveyor_entity, conveyor_pos, payloads) in conveyors {
         for payload_entity in payloads.iter() {
-            if let Ok(mut transport) = payload_transports.get_mut(payload_entity)
-                && let Some(destination) = transport.destination
-            {
-                let destination = destination.into();
-                let destination_pos = conveyor_pos.square_offset(&destination, map_size);
-                let destination_entity = destination_pos.and_then(|pos| tile_storage.get(&pos));
-
+            if let Ok(mut transport) = payload_transports.get_mut(payload_entity) {
                 transport.mu += mu_speed;
-                if transport.mu > 1.0 {
-                    transport.mu = 1.0;
-                    if let Some(destination_entity) = destination_entity {
-                        offer_payload_event.write(OfferPayloadEvent {
-                            source_direction: opposite(destination).into(),
-                            payload: payload_entity,
-                            target: destination_entity,
-                        });
+
+                if transport.mu > 0.5 {
+                    if let Some(destination) = transport.destination {
+                        let destination = destination.into();
+                        let destination_pos = conveyor_pos.square_offset(&destination, map_size);
+                        let destination_entity =
+                            destination_pos.and_then(|pos| tile_storage.get(&pos));
+
+                        if transport.mu > 1.0 {
+                            transport.mu = 1.0;
+                            if let Some(destination_entity) = destination_entity {
+                                offer_payload_event.write(OfferPayloadEvent {
+                                    source_direction: opposite(destination).into(),
+                                    payload: payload_entity,
+                                    target: destination_entity,
+                                });
+                            }
+                        }
+                    } else {
+                        // no destination - pick one!
+                        transport.destination = pick_next_destination(
+                            tile_storage,
+                            map_size,
+                            conveyor_pos,
+                            conveyor_entity,
+                            mutable_conveyors.as_readonly(),
+                        );
+
+                        if let Some(destination) = transport.destination {
+                            mutable_conveyors
+                                .get_mut(conveyor_entity)
+                                .unwrap()
+                                .next_output = destination.next();
+                        } else {
+                            transport.mu = 0.5;
+                        }
                     }
                 }
             }
         }
     }
+}
+
+fn pick_next_destination(
+    tile_storage: &TileStorage,
+    map_size: &TilemapSize,
+    conveyor_pos: &TilePos,
+    conveyor_entity: Entity,
+    conveyors: Query<&Conveyor>,
+) -> Option<ConveyorDirection> {
+    let conveyor = conveyors.get(conveyor_entity);
+
+    conveyor.ok().and_then(|conveyor| {
+        conveyor
+            .outputs
+            .iter_from(conveyor.next_output)
+            .find(|direction| {
+                let direction: SquareDirection = (*direction).into();
+
+                let neighbor_pos = conveyor_pos.square_offset(&direction, map_size);
+                let neighbor_entity = neighbor_pos.and_then(|p| tile_storage.get(&p));
+                let neighbor_conveyor = neighbor_entity
+                    .and_then(|e| conveyors.get(e).map(|c| c.accepts_input && !c.is_full).ok());
+                neighbor_conveyor.unwrap_or(false)
+            })
+    })
 }
 
 #[allow(clippy::type_complexity)]
