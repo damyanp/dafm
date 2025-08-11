@@ -295,7 +295,12 @@ fn update_conveyor_payloads(
             let pos = if let Some(transport) = transport {
                 let start = tile_center + get_direction_offset(tile_size, &transport.source);
                 let end = tile_center + get_direction_offset(tile_size, &transport.destination);
-                start.lerp(end, transport.mu)
+
+                if transport.mu < 0.5 {
+                    start.lerp(tile_center, transport.mu / 0.5)
+                } else {
+                    tile_center.lerp(end, (transport.mu - 0.5) / 0.5)
+                }
             } else {
                 tile_center
             };
