@@ -213,8 +213,14 @@ fn take_payloads(
     mut took_events: EventWriter<TookPayloadEvent>,
     conveyors: Query<(&Conveyor, Option<&Payloads>)>,
 ) {
+    // Only accept one offer per-conveyer per-update (since we can't easily
+    // requery between events)
+    let mut conveyors_accepted = HashSet::new();
+
     for offer in offer_events.read() {
-        if let Ok((conveyor, payloads)) = conveyors.get(offer.target) {
+        if !conveyors_accepted.contains(&offer.target)
+            && let Ok((conveyor, payloads)) = conveyors.get(offer.target)
+        {
             let payload_count = payloads.map_or(0, |p| p.len());
             if payload_count == 0 {
                 commands.entity(offer.payload).insert((
@@ -228,6 +234,7 @@ fn take_payloads(
                 took_events.write(TookPayloadEvent {
                     payload: offer.payload,
                 });
+                conveyors_accepted.insert(offer.target);
             }
         }
     }
