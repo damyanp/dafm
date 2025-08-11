@@ -107,7 +107,7 @@ fn on_click(
                 *tile_pos,
             ))
             .id();
-        storage.set(tile_pos, entity.clone());
+        storage.set(tile_pos, entity);
 
         match hovered_tile {
             HoveredTile::Conveyor(direction) => {

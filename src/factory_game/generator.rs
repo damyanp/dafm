@@ -118,7 +118,7 @@ fn update_generator_payload_transports(
     time: Res<Time>,
     generated_payloads: Query<(Entity, &mut GeneratedPayloadTransport, &PayloadOf)>,
     generators: Query<&TilePos, With<Generator>>,
-    conveyors: Query<&Conveyor>,
+    conveyors: Query<(), With<Conveyor>>,
     base: Single<(&TileStorage, &TilemapSize), With<BaseLayer>>,
     mut offer_payload_event: EventWriter<OfferPayloadEvent>,
 ) {
@@ -135,7 +135,7 @@ fn update_generator_payload_transports(
             let destination_conveyor =
                 destination_entity.and_then(|entity| conveyors.get(entity).ok());
 
-            if let Some(destination_conveyor) = destination_conveyor {
+            if destination_conveyor.is_some() {
                 generated_payload.mu += mu_speed;
                 if generated_payload.mu > 1.0 {
                     generated_payload.mu = 1.0;

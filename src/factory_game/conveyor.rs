@@ -31,13 +31,11 @@ impl Plugin for ConveyorPlugin {
 #[derive(Component, Clone, Debug, Reflect, Default)]
 pub struct Conveyor(pub ConveyorDirection);
 
-#[allow(clippy::type_complexity)]
 fn update_conveyor_tiles(
     mut commands: Commands,
     new_conveyors: Query<&TilePos, (With<Conveyor>, Without<TileTextureIndex>)>,
     mut removed_entities: EventReader<BaseLayerEntityDespawned>,
     conveyors: Query<(&Conveyor, Option<&TileTextureIndex>, Option<&TileFlip>)>,
-    tiles: Query<&TilePos>,
     base: Single<(Entity, &TileStorage, &TilemapSize), With<BaseLayer>>,
 ) {
     let (tilemap_entity, tile_storage, map_size) = base.into_inner();
@@ -241,10 +239,9 @@ fn take_payloads(
 }
 
 fn transport_conveyor_payloads(
-    mut commands: Commands,
     time: Res<Time>,
     mut payload_transports: Query<&mut PayloadTransport>,
-    conveyors: Query<(&Conveyor, &TilePos, &Payloads)>,
+    conveyors: Query<(&TilePos, &Payloads), With<Conveyor>>,
     base: Single<(&TileStorage, &TilemapSize), With<BaseLayer>>,
     mut offer_payload_event: EventWriter<OfferPayloadEvent>,
 ) {
@@ -252,7 +249,7 @@ fn transport_conveyor_payloads(
 
     let (tile_storage, map_size) = base.into_inner();
 
-    for (conveyor, conveyor_pos, payloads) in conveyors {
+    for (conveyor_pos, payloads) in conveyors {
         for payload_entity in payloads.iter() {
             if let Ok(mut transport) = payload_transports.get_mut(payload_entity) {
                 let destination_pos =
@@ -277,11 +274,10 @@ fn transport_conveyor_payloads(
 
 #[allow(clippy::type_complexity)]
 fn update_conveyor_payloads(
-    conveyors: Query<(Entity, &TilePos, &Payloads), With<Conveyor>>,
-    mut payloads: Query<(&PayloadOf, Option<&PayloadTransport>, &mut Transform)>,
+    conveyors: Query<(&TilePos, &Payloads), With<Conveyor>>,
+    mut payloads: Query<(Option<&PayloadTransport>, &mut Transform), With<PayloadOf>>,
     base: Single<
         (
-            &TileStorage,
             &TilemapSize,
             &TilemapGridSize,
             &TilemapTileSize,
@@ -291,14 +287,14 @@ fn update_conveyor_payloads(
         With<BaseLayer>,
     >,
 ) {
-    let (storage, map_size, grid_size, tile_size, map_type, anchor) = base.into_inner();
+    let (map_size, grid_size, tile_size, map_type, anchor) = base.into_inner();
 
-    for (conveyor, tile_pos, generator_payloads) in conveyors {
+    for (tile_pos, generator_payloads) in conveyors {
         let tile_center =
             tile_pos.center_in_world(map_size, grid_size, tile_size, map_type, anchor);
 
         for payload_entity in generator_payloads.iter() {
-            let (payload, transport, mut transform) = payloads.get_mut(payload_entity).unwrap();
+            let (transport, mut transform) = payloads.get_mut(payload_entity).unwrap();
 
             let pos = if let Some(transport) = transport {
                 let start = tile_center + get_direction_offset(tile_size, &transport.source);
