@@ -72,7 +72,7 @@ pub struct OfferPayloadEvent {
 fn take_payloads(
     mut commands: Commands,
     mut offer_events: EventReader<OfferPayloadEvent>,
-    conveyors: Query<Option<&Payloads>, With<Conveyor>>,
+    conveyors: Query<&Conveyor>,
 ) {
     // Only accept one offer per-conveyer per-update (since we can't easily
     // requery between events)
@@ -80,10 +80,9 @@ fn take_payloads(
 
     for offer in offer_events.read() {
         if !conveyors_accepted.contains(&offer.target)
-            && let Ok(payloads) = conveyors.get(offer.target)
+            && let Ok(conveyor) = conveyors.get(offer.target)
         {
-            let payload_count = payloads.map_or(0, |p| p.len());
-            if payload_count == 0 {
+            if conveyor.accepts_input && !conveyor.is_full {
                 commands.entity(offer.payload).insert((
                     PayloadOf(offer.target),
                     PayloadTransport {
