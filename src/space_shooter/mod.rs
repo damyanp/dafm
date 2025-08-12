@@ -18,7 +18,7 @@ impl Plugin for Game {
             .add_input_context::<player::Player>()
             .add_systems(
                 OnEnter(GameState::SpaceShooter),
-                (player::create_player, setup_game_borders),
+                (setup_camera, player::create_player, setup_game_borders),
             )
             .add_systems(
                 FixedUpdate,
@@ -29,6 +29,10 @@ impl Plugin for Game {
                 (update_game_borders).run_if(in_state(GameState::SpaceShooter)),
             );
     }
+}
+
+fn setup_camera(mut commands: Commands) {
+    commands.spawn((StateScoped(GameState::SpaceShooter), Camera2d));
 }
 
 #[derive(Resource)]

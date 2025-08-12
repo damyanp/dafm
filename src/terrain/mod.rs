@@ -20,7 +20,7 @@ impl Plugin for TerrainPlugin {
     }
 }
 
-fn set_camera_limits(
+pub fn set_camera_limits(
     mut pan_cam: Single<&mut PanCam>,
     tilemaps: Query<(
         &TilemapSize,

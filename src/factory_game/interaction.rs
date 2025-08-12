@@ -1,4 +1,4 @@
-use bevy::{input::common_conditions::input_just_pressed, prelude::*, winit::cursor::CursorIcon};
+use bevy::{input::common_conditions::input_just_pressed, prelude::*};
 use bevy_ecs_tilemap::prelude::*;
 use bevy_egui::input::{egui_wants_any_keyboard_input, egui_wants_any_pointer_input};
 

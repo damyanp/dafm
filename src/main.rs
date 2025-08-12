@@ -4,6 +4,7 @@ use bevy_ecs_tilemap::prelude::*;
 use bevy_egui::EguiPlugin;
 use bevy_enhanced_input::EnhancedInputPlugin;
 use bevy_inspector_egui::quick::WorldInspectorPlugin;
+use bevy_pancam::PanCamPlugin;
 use bevy_rand::plugin::EntropyPlugin;
 use bevy_rand::prelude::*;
 
@@ -43,14 +44,14 @@ fn main() {
         .add_plugins(WorldInspectorPlugin::new().run_if(resource_exists::<ShowWorldInspector>))
         .add_systems(Update, toggle_world_inspector)
         // .add_plugins(ResourceInspectorPlugin::<PlayerMoveConfig>::default())
-        // .add_plugins(PanCamPlugin::default())
+        .add_plugins(PanCamPlugin)
         .add_plugins(TilemapPlugin)
         // .add_plugins(terrain::TerrainPlugin)
         .add_plugins(EntropyPlugin::<WyRand>::default())
         .add_plugins(main_menu::MainMenu)
         .add_plugins(space_shooter::Game)
         .add_plugins(factory_game::FactoryGamePlugin)
-        .add_systems(Startup, startup)
+        .add_systems(OnEnter(GameState::MainMenu), setup_camera)
         .run();
 }
 
@@ -71,6 +72,6 @@ fn toggle_world_inspector(
     }
 }
 
-fn startup(mut commands: Commands) {
-    commands.spawn(Camera2d);
+fn setup_camera(mut commands: Commands) {
+    commands.spawn((StateScoped(GameState::MainMenu), Camera2d));
 }
