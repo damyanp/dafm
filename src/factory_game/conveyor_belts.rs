@@ -28,7 +28,7 @@ pub struct ConveyorBelt;
 #[allow(clippy::type_complexity)]
 fn update_conveyor_belt_tiles(
     mut commands: Commands,
-    new_conveyor_belts: Query<&TilePos, With<Conveyor>>,
+    new_conveyor_belts: Query<&TilePos, Added<Conveyor>>,
     mut removed_entities: EventReader<BaseLayerEntityDespawned>,
     conveyors: Query<&Conveyor>,
     conveyor_belts: Query<

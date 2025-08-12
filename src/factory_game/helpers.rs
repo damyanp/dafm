@@ -55,9 +55,18 @@ impl ConveyorDirections {
         Self(n | e | s | w)
     }
 
+    pub fn add(&mut self, direction: ConveyorDirection) {
+        let direction: u8 = direction.into();
+        self.0 |= direction;
+    }
+
     pub fn is_set(&self, direction: ConveyorDirection) -> bool {
         let direction: u8 = direction.into();
         (self.0 & direction) != 0u8
+    }
+
+    pub fn is_none(&self) -> bool {
+        self.0 == 0
     }
 
     pub fn single(&self) -> ConveyorDirection {
