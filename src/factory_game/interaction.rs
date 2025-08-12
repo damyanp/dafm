@@ -1,4 +1,4 @@
-use bevy::{input::common_conditions::input_just_pressed, prelude::*};
+use bevy::{input::common_conditions::input_just_pressed, prelude::*, winit::cursor::CursorIcon};
 use bevy_ecs_tilemap::prelude::*;
 use bevy_egui::input::{egui_wants_any_keyboard_input, egui_wants_any_pointer_input};
 
@@ -15,7 +15,8 @@ pub struct ConveyorInteractionPlugin;
 impl Plugin for ConveyorInteractionPlugin {
     fn build(&self, app: &mut App) {
         app.register_type::<HoveredTile>()
-            .add_systems(OnEnter(GameState::FactoryGame), startup)
+            .add_systems(OnEnter(GameState::FactoryGame), (startup, set_cursor))
+            .add_systems(OnExit(GameState::FactoryGame), unset_cursor)
             .add_systems(
                 Update,
                 (
@@ -53,6 +54,18 @@ fn startup(mut commands: Commands, asset_server: Res<AssetServer>, config: Res<M
             ..default()
         },
     ));
+}
+
+fn set_cursor(windows: Query<&mut Window>) {
+    for mut window in windows {
+        window.cursor_options.visible = false;
+    }
+}
+
+fn unset_cursor(windows: Query<&mut Window>) {
+    for mut window in windows {
+        window.cursor_options.visible = true;
+    }
 }
 
 #[allow(clippy::type_complexity)]
