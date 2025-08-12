@@ -23,8 +23,25 @@ pub enum ConveyorDirection {
     West,
 }
 
+impl From<ConveyorDirection> for u8 {
+    fn from(value: ConveyorDirection) -> Self {
+        match value {
+            ConveyorDirection::North => 1,
+            ConveyorDirection::East => 2,
+            ConveyorDirection::South => 4,
+            ConveyorDirection::West => 8,
+        }
+    }
+}
+
+pub const CONVEYOR_DIRECTIONS: [ConveyorDirection; 4] = [
+    ConveyorDirection::North,
+    ConveyorDirection::East,
+    ConveyorDirection::South,
+    ConveyorDirection::West,
+];
+
 impl ConveyorDirection {
-    #[allow(dead_code)]
     pub fn opposite(&self) -> Self {
         use ConveyorDirection::*;
         match self {
@@ -32,6 +49,49 @@ impl ConveyorDirection {
             North => South,
             West => East,
             South => North,
+        }
+    }
+
+    pub fn index(&self) -> usize {
+        use ConveyorDirection::*;
+        match self {
+            North => 0,
+            East => 1,
+            South => 2,
+            West => 3,
+        }
+    }
+
+    pub fn next(&self) -> ConveyorDirection {
+        use ConveyorDirection::*;
+        match self {
+            North => East,
+            East => South,
+            South => West,
+            West => North,
+        }
+    }
+}
+
+impl From<ConveyorDirection> for SquareDirection {
+    fn from(value: ConveyorDirection) -> Self {
+        match value {
+            ConveyorDirection::North => SquareDirection::North,
+            ConveyorDirection::South => SquareDirection::South,
+            ConveyorDirection::East => SquareDirection::East,
+            ConveyorDirection::West => SquareDirection::West,
+        }
+    }
+}
+
+impl From<SquareDirection> for ConveyorDirection {
+    fn from(value: SquareDirection) -> Self {
+        match value {
+            SquareDirection::East => ConveyorDirection::East,
+            SquareDirection::North => ConveyorDirection::North,
+            SquareDirection::West => ConveyorDirection::West,
+            SquareDirection::South => ConveyorDirection::South,
+            _ => panic!(),
         }
     }
 }
@@ -91,69 +151,6 @@ impl ConveyorDirections {
             .map(move |i| (direction + i) % CONVEYOR_DIRECTIONS.len())
             .map(|i| CONVEYOR_DIRECTIONS[i])
             .filter(|d| self.is_set(*d))
-    }
-}
-
-impl From<ConveyorDirection> for u8 {
-    fn from(value: ConveyorDirection) -> Self {
-        match value {
-            ConveyorDirection::North => 1,
-            ConveyorDirection::East => 2,
-            ConveyorDirection::South => 4,
-            ConveyorDirection::West => 8,
-        }
-    }
-}
-
-pub const CONVEYOR_DIRECTIONS: [ConveyorDirection; 4] = [
-    ConveyorDirection::North,
-    ConveyorDirection::East,
-    ConveyorDirection::South,
-    ConveyorDirection::West,
-];
-
-impl ConveyorDirection {
-    pub fn index(&self) -> usize {
-        use ConveyorDirection::*;
-        match self {
-            North => 0,
-            East => 1,
-            South => 2,
-            West => 3,
-        }
-    }
-
-    pub fn next(&self) -> ConveyorDirection {
-        use ConveyorDirection::*;
-        match self {
-            North => East,
-            East => South,
-            South => West,
-            West => North,
-        }
-    }
-}
-
-impl From<ConveyorDirection> for SquareDirection {
-    fn from(value: ConveyorDirection) -> Self {
-        match value {
-            ConveyorDirection::North => SquareDirection::North,
-            ConveyorDirection::South => SquareDirection::South,
-            ConveyorDirection::East => SquareDirection::East,
-            ConveyorDirection::West => SquareDirection::West,
-        }
-    }
-}
-
-impl From<SquareDirection> for ConveyorDirection {
-    fn from(value: SquareDirection) -> Self {
-        match value {
-            SquareDirection::East => ConveyorDirection::East,
-            SquareDirection::North => ConveyorDirection::North,
-            SquareDirection::West => ConveyorDirection::West,
-            SquareDirection::South => ConveyorDirection::South,
-            _ => panic!(),
-        }
     }
 }
 
