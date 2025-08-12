@@ -2,7 +2,7 @@ use bevy::prelude::*;
 use bevy_ecs_tilemap::prelude::*;
 use bevy_pancam::PanCam;
 
-use crate::{terrain::set_camera_limits, GameState};
+use crate::{GameState, helpers::set_camera_limits_from_tilemaps};
 
 mod conveyor;
 mod conveyor_belts;
@@ -39,13 +39,15 @@ impl Plugin for FactoryGamePlugin {
                     .chain()
                     .run_if(in_state(GameState::FactoryGame)),
             )
-            .add_systems(OnEnter(GameState::FactoryGame), (make_base_layer, setup_camera, set_camera_limits).chain());
+            .add_systems(
+                OnEnter(GameState::FactoryGame),
+                (make_base_layer, setup_camera, set_camera_limits_from_tilemaps).chain(),
+            );
     }
 }
 
 fn setup_camera(mut commands: Commands) {
-
-    let pan_cam = PanCam{
+    let pan_cam = PanCam {
         grab_buttons: vec![MouseButton::Middle],
         ..default()
     };

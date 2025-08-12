@@ -9,6 +9,7 @@ use bevy_rand::plugin::EntropyPlugin;
 use bevy_rand::prelude::*;
 
 mod factory_game;
+mod helpers;
 mod main_menu;
 mod space_shooter;
 mod terrain;
