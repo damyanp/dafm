@@ -1,7 +1,7 @@
 use avian2d::prelude::*;
 use bevy::{prelude::*, window::PresentMode};
 use bevy_ecs_tilemap::prelude::*;
-use bevy_egui::EguiPlugin;
+use bevy_egui::{EguiPlugin, PrimaryEguiContext};
 use bevy_enhanced_input::EnhancedInputPlugin;
 use bevy_inspector_egui::quick::WorldInspectorPlugin;
 use bevy_pancam::PanCamPlugin;
@@ -74,5 +74,5 @@ fn toggle_world_inspector(
 }
 
 fn setup_camera(mut commands: Commands) {
-    commands.spawn((StateScoped(GameState::MainMenu), Camera2d));
+    commands.spawn((StateScoped(GameState::MainMenu), Camera2d, PrimaryEguiContext));
 }

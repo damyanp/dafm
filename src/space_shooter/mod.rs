@@ -1,6 +1,7 @@
 use crate::GameState;
 use avian2d::prelude::*;
 use bevy::{prelude::*, window::WindowResized};
+use bevy_egui::PrimaryEguiContext;
 use bevy_enhanced_input::prelude::*;
 
 mod bullets;
@@ -32,7 +33,7 @@ impl Plugin for Game {
 }
 
 fn setup_camera(mut commands: Commands) {
-    commands.spawn((StateScoped(GameState::SpaceShooter), Camera2d));
+    commands.spawn((StateScoped(GameState::SpaceShooter), Camera2d, PrimaryEguiContext));
 }
 
 #[derive(Resource)]

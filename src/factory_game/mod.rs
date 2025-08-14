@@ -1,5 +1,6 @@
 use bevy::prelude::*;
 use bevy_ecs_tilemap::prelude::*;
+use bevy_egui::PrimaryEguiContext;
 use bevy_pancam::PanCam;
 
 use crate::{GameState, helpers::set_camera_limits_from_tilemaps};
@@ -52,7 +53,7 @@ fn setup_camera(mut commands: Commands) {
         ..default()
     };
 
-    commands.spawn((StateScoped(GameState::FactoryGame), Camera2d, pan_cam));
+    commands.spawn((StateScoped(GameState::FactoryGame), Camera2d, PrimaryEguiContext, pan_cam));
 }
 
 #[derive(SystemSet, Debug, Clone, PartialEq, Eq, Hash)]
