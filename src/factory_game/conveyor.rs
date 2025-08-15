@@ -62,30 +62,37 @@ pub struct SimpleConveyor;
 
 #[derive(Component, Reflect)]
 #[relationship_target(relationship = PayloadOf, linked_spawn)]
+#[component(storage = "SparseSet")]
 pub struct Payloads(Vec<Entity>);
 
 #[derive(Component, Reflect)]
 #[relationship_target(relationship = PayloadAwaitingTransferTo)]
+#[component(storage = "SparseSet")]
 pub struct PayloadsAwaitingTransfer(Vec<Entity>);
 
 #[derive(Component, Reflect, Debug)]
 #[relationship(relationship_target = Payloads)]
 #[require(PayloadTransport)]
+#[component(storage = "SparseSet")]
 pub struct PayloadOf(pub Entity);
 
 #[derive(Component, Reflect, Debug, Default)]
+#[component(storage = "SparseSet")]
 pub struct PayloadTransport {
     pub mu: f32,
 }
 
 #[derive(Component, Reflect)]
+#[component(storage = "SparseSet")]
 pub struct PayloadSource(pub ConveyorDirection);
 
 #[derive(Component, Reflect)]
+#[component(storage = "SparseSet")]
 pub struct PayloadDestination(pub ConveyorDirection);
 
 #[derive(Component, Reflect, Debug)]
 #[relationship(relationship_target = PayloadsAwaitingTransfer)]
+#[component(storage = "SparseSet")]
 pub struct PayloadAwaitingTransferTo(Entity);
 
 fn update_accepts_input(
