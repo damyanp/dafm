@@ -191,7 +191,21 @@ fn update_conveyor_belt_tile(
             west: Some(_),
             ..
         } => (NORTH_AND_SOUTH_AND_WEST_TO_EAST, false),
-        _ => (WEST_TO_EAST, false),
+        Neighbors {
+            north: Some(_),
+            east: Some(_),
+            south: None,
+            west: None,
+            ..
+        } => (SOUTH_TO_EAST, true),
+        Neighbors {
+            north: None,
+            east: _,
+            south: None,
+            west: None,
+            ..
+        } => (WEST_TO_EAST, false),
+        _ => panic!("No match for {neighbor_conveyors:?}"),
     };
 
     // y_flip indicates if we should flip y for the "east is always out"
