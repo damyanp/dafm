@@ -126,12 +126,7 @@ fn on_click(
 
     if *hovered_tile != HoveredTile::None {
         let entity = commands
-            .spawn((
-                StateScoped(GameState::FactoryGame),
-                Name::new("Placed Tile"),
-                BaseLayer,
-                *tile_pos,
-            ))
+            .spawn((StateScoped(GameState::FactoryGame), BaseLayer, *tile_pos))
             .id();
         storage.set(tile_pos, entity);
 
@@ -139,19 +134,32 @@ fn on_click(
             HoveredTile::Conveyor(direction) => {
                 commands
                     .entity(entity)
-                    .insert(ConveyorBeltBundle::new(*direction));
+                    .insert(ConveyorBeltBundle::new(*direction))
+                    .insert(Name::new("Conveyor Belt"));
             }
             HoveredTile::Source => {
-                commands.entity(entity).insert(GeneratorBundle::new());
+                commands
+                    .entity(entity)
+                    .insert(GeneratorBundle::new())
+                    .insert(Name::new("Generator"));
             }
             HoveredTile::Sink => {
-                commands.entity(entity).insert(SinkBundle::new());
+                commands
+                    .entity(entity)
+                    .insert(SinkBundle::new())
+                    .insert(Name::new("Sink"));
             }
             HoveredTile::Distributor => {
-                commands.entity(entity).insert(DistributorBundle::new());
+                commands
+                    .entity(entity)
+                    .insert(DistributorBundle::new())
+                    .insert(Name::new("Distributor"));
             }
             HoveredTile::Bridge => {
-                commands.entity(entity).insert(BridgeBundle::new());
+                commands
+                    .entity(entity)
+                    .insert(BridgeBundle::new())
+                    .insert(Name::new("Bridge"));
             }
             HoveredTile::None => panic!(),
         }
