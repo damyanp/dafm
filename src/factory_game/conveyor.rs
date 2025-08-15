@@ -1,9 +1,12 @@
 use bevy::prelude::*;
 use bevy_ecs_tilemap::prelude::*;
 
-use crate::factory_game::{
-    BaseLayer, ConveyorSystems,
-    helpers::{ConveyorDirection, ConveyorDirections, get_neighbors_from_query},
+use crate::{
+    GameState,
+    factory_game::{
+        BaseLayer, ConveyorSystems,
+        helpers::{ConveyorDirection, ConveyorDirections, get_neighbors_from_query},
+    },
 };
 
 pub struct PayloadPlugin;
@@ -39,6 +42,7 @@ impl Plugin for PayloadPlugin {
 }
 
 #[derive(Component, Clone, Debug, Reflect, Default)]
+#[require(StateScoped::<GameState>(GameState::FactoryGame))]
 pub struct Conveyor {
     pub outputs: ConveyorDirections,
     pub accepts_input: bool,
@@ -61,7 +65,7 @@ pub struct SimpleConveyor;
 pub struct Payloads(Vec<Entity>);
 
 #[derive(Component, Reflect)]
-#[relationship_target(relationship = PayloadAwaitingTransferTo, linked_spawn)]
+#[relationship_target(relationship = PayloadAwaitingTransferTo)]
 pub struct PayloadsAwaitingTransfer(Vec<Entity>);
 
 #[derive(Component, Reflect, Debug)]
