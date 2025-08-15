@@ -211,7 +211,9 @@ fn update_distributor_conveyor_destinations(
                 .find(|direction| {
                     let neighbor = neighbors.get((*direction).into());
                     neighbor
-                        .map(|conveyor| conveyor.accepts_input)
+                        .map(|conveyor| {
+                            conveyor.accepts_input && !conveyor.outputs.is_set(direction.opposite())
+                        })
                         .unwrap_or(false)
                 });
             if let Some(direction) = direction {

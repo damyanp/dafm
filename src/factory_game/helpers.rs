@@ -99,6 +99,7 @@ impl From<SquareDirection> for ConveyorDirection {
 #[derive(PartialEq, Eq, Reflect, Clone, Copy, Debug, Default)]
 pub struct ConveyorDirections(u8);
 
+#[allow(dead_code)]
 impl ConveyorDirections {
     pub fn new(direction: ConveyorDirection) -> Self {
         Self(direction.into())
