@@ -5,6 +5,7 @@ use bevy_pancam::PanCam;
 
 use crate::{GameState, helpers::set_camera_limits_from_tilemaps};
 
+mod bridge;
 mod conveyor;
 mod conveyor_belts;
 mod dev;
@@ -20,6 +21,7 @@ pub struct FactoryGamePlugin;
 impl Plugin for FactoryGamePlugin {
     fn build(&self, app: &mut App) {
         app //
+            .add_plugins(bridge::BridgePlugin)
             .add_plugins(conveyor_belts::ConveyorBeltsPlugin)
             .add_plugins(conveyor::PayloadPlugin)
             .add_plugins(dev::DevPlugin)

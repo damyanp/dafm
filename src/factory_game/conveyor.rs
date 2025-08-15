@@ -75,10 +75,10 @@ pub struct PayloadTransport {
 }
 
 #[derive(Component, Reflect)]
-pub struct PayloadSource(ConveyorDirection);
+pub struct PayloadSource(pub ConveyorDirection);
 
 #[derive(Component, Reflect)]
-pub struct PayloadDestination(ConveyorDirection);
+pub struct PayloadDestination(pub ConveyorDirection);
 
 #[derive(Component, Reflect, Debug)]
 #[relationship(relationship_target = PayloadsAwaitingTransfer)]

@@ -3,12 +3,9 @@ use bevy_ecs_tilemap::prelude::*;
 use bevy_egui::input::{egui_wants_any_keyboard_input, egui_wants_any_pointer_input};
 
 use crate::{
-    GameState,
     factory_game::{
-        BaseLayer, BaseLayerEntityDespawned, ConveyorSystems, MapConfig,
-        conveyor_belts::ConveyorBeltBundle, distributor::DistributorBundle,
-        generator::GeneratorBundle, helpers::*, sink::SinkBundle,
-    },
+        bridge::BridgeBundle, conveyor_belts::ConveyorBeltBundle, distributor::DistributorBundle, generator::GeneratorBundle, helpers::*, sink::SinkBundle, BaseLayer, BaseLayerEntityDespawned, ConveyorSystems, MapConfig
+    }, GameState
 };
 
 pub struct ConveyorInteractionPlugin;
@@ -138,6 +135,9 @@ fn on_click(
             HoveredTile::Distributor => {
                 commands.entity(entity).insert(DistributorBundle::new());
             }
+            HoveredTile::Bridge => {
+                commands.entity(entity).insert(BridgeBundle::new());
+            }
             HoveredTile::None => panic!(),
         }
     }
@@ -159,6 +159,7 @@ enum HoveredTile {
     Source,
     Sink,
     Distributor,
+    Bridge,
 }
 
 impl HoveredTile {
@@ -174,7 +175,8 @@ impl HoveredTile {
             Conveyor(North) => Source,
             Source => Sink,
             Sink => Distributor,
-            Distributor => None,
+            Distributor => Bridge,
+            Bridge => None,
         };
     }
 }
@@ -208,6 +210,7 @@ fn get_hovered_tile_texture(hovered_tile: &HoveredTile) -> (TileTextureIndex, Ti
         Source => (TileTextureIndex(30), TileFlip::default()),
         Sink => (TileTextureIndex(31), TileFlip::default()),
         Distributor => (TileTextureIndex(32), TileFlip::default()),
+        Bridge => (TileTextureIndex(33), TileFlip::default()),
         None => (TileTextureIndex(20), TileFlip::default()),
     }
 }
