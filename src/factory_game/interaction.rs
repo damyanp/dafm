@@ -1,19 +1,25 @@
 use bevy::{input::common_conditions::input_just_pressed, prelude::*};
 use bevy_ecs_tilemap::prelude::*;
-use bevy_egui::input::{egui_wants_any_keyboard_input, egui_wants_any_pointer_input};
+use bevy_egui::input::{
+    EguiWantsInput, egui_wants_any_keyboard_input, egui_wants_any_pointer_input,
+};
+use bevy_pancam::PanCam;
 
 use crate::{
+    GameState,
     factory_game::{
-        bridge::BridgeBundle, conveyor_belts::ConveyorBeltBundle, distributor::DistributorBundle, generator::GeneratorBundle, helpers::*, sink::SinkBundle, BaseLayer, BaseLayerEntityDespawned, ConveyorSystems, MapConfig
-    }, GameState
+        BaseLayer, BaseLayerEntityDespawned, ConveyorSystems, MapConfig, bridge::BridgeBundle,
+        conveyor_belts::ConveyorBeltBundle, distributor::DistributorBundle,
+        generator::GeneratorBundle, helpers::*, sink::SinkBundle,
+    },
 };
 
 pub struct ConveyorInteractionPlugin;
 impl Plugin for ConveyorInteractionPlugin {
     fn build(&self, app: &mut App) {
         app.register_type::<HoveredTile>()
-            .add_systems(OnEnter(GameState::FactoryGame), (startup, set_cursor))
-            .add_systems(OnExit(GameState::FactoryGame), unset_cursor)
+            .add_systems(OnEnter(GameState::FactoryGame), (startup,))
+            .add_systems(OnExit(GameState::FactoryGame), reset_cursor)
             .add_systems(
                 Update,
                 (
@@ -30,6 +36,7 @@ impl Plugin for ConveyorInteractionPlugin {
                     )
                         .in_set(ConveyorSystems::TileGenerator),
                     update_hovered_tile.in_set(ConveyorSystems::TileUpdater),
+                    give_control_to_egui.run_if(in_state(GameState::FactoryGame)),
                 ),
             );
     }
@@ -53,16 +60,24 @@ fn startup(mut commands: Commands, asset_server: Res<AssetServer>, config: Res<M
     ));
 }
 
-fn set_cursor(windows: Query<&mut Window>) {
-    for mut window in windows {
-        window.cursor_options.visible = false;
-    }
-}
-
-fn unset_cursor(windows: Query<&mut Window>) {
+fn reset_cursor(windows: Query<&mut Window>) {
     for mut window in windows {
         window.cursor_options.visible = true;
     }
+}
+
+fn give_control_to_egui(
+    windows: Query<&mut Window>,
+    egui_wants_input: Res<EguiWantsInput>,
+    mut hovered_tile_visible: Single<&mut TileVisible, With<HoveredTile>>,
+    mut pancam: Single<&mut PanCam>,
+) {
+    for mut window in windows {
+        window.cursor_options.visible = egui_wants_input.wants_any_input();
+    }
+
+    hovered_tile_visible.0 = !egui_wants_input.wants_any_input();
+    pancam.enabled = !egui_wants_input.wants_any_input();
 }
 
 #[allow(clippy::type_complexity)]

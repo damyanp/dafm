@@ -60,13 +60,16 @@ fn update_bridge_tiles(
     }
 }
 
+#[expect(clippy::type_complexity)]
 fn update_bridge_conveyor_destinations(
     mut commands: Commands,
     bridge_conveyors: Query<&Payloads, With<BridgeConveyor>>,
-    payloads: Query<(Entity, &PayloadSource), (With<PayloadTransport>, Without<PayloadDestination>)>,
+    payloads: Query<
+        (Entity, &PayloadSource),
+        (With<PayloadTransport>, Without<PayloadDestination>),
+    >,
 ) {
     for bridge_payloads in bridge_conveyors {
-
         for (payload, source) in payloads.iter_many(bridge_payloads.iter()) {
             commands
                 .entity(payload)
