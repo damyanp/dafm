@@ -151,21 +151,21 @@ fn update_conveyor_belt_tile(
         } => (WEST_TO_EAST, false),
         Neighbors {
             north: None,
-            east: None,
+            east: _,
             south: Some(_),
             west: Some(_),
             ..
         } => (SOUTH_AND_WEST_TO_EAST, false),
         Neighbors {
             north: Some(_),
-            east: None,
+            east: _,
             south: None,
             west: Some(_),
             ..
         } => (SOUTH_AND_WEST_TO_EAST, true),
         Neighbors {
             north: None,
-            east: None,
+            east: _,
             south: Some(_),
             west: None,
             ..
@@ -202,7 +202,7 @@ fn update_conveyor_belt_tile(
             north: None,
             east: _,
             south: None,
-            west: None,
+            west: _,
             ..
         } => (WEST_TO_EAST, false),
         _ => panic!("No match for {neighbor_conveyors:?}"),
