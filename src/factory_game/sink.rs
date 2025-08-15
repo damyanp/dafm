@@ -3,8 +3,8 @@ use bevy_ecs_tilemap::prelude::*;
 
 use crate::factory_game::{
     BaseLayer, ConveyorSystems,
-    conveyor::{Conveyor, Payloads},
-    helpers::{ConveyorDirection, ConveyorDirections},
+    conveyor::{AcceptsPayloadConveyor, Conveyor, Payloads},
+    helpers::ConveyorDirections,
 };
 
 pub struct SinkPlugin;
@@ -21,15 +21,25 @@ impl Plugin for SinkPlugin {
 }
 
 #[derive(Component)]
-#[require(Conveyor = new_sink_conveyor())]
-pub struct Sink;
+struct Sink;
 
-fn new_sink_conveyor() -> Conveyor {
-    Conveyor {
-        outputs: ConveyorDirections::default(),
-        accepts_input: true,
-        next_output: ConveyorDirection::default(),
-        is_full: false,
+#[derive(Bundle)]
+pub struct SinkBundle {
+    sink: Sink,
+    conveyor: Conveyor,
+    accepts_payload: AcceptsPayloadConveyor,
+}
+
+impl SinkBundle {
+    pub fn new() -> Self {
+        SinkBundle {
+            sink: Sink,
+            conveyor: Conveyor {
+                outputs: ConveyorDirections::default(),
+                accepts_input: true,
+            },
+            accepts_payload: AcceptsPayloadConveyor,
+        }
     }
 }
 

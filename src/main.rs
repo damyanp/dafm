@@ -74,5 +74,9 @@ fn toggle_world_inspector(
 }
 
 fn setup_camera(mut commands: Commands) {
-    commands.spawn((StateScoped(GameState::MainMenu), Camera2d, PrimaryEguiContext));
+    commands.spawn((
+        StateScoped(GameState::MainMenu),
+        Camera2d,
+        PrimaryEguiContext,
+    ));
 }

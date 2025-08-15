@@ -5,8 +5,8 @@ use crate::{
     GameState,
     factory_game::{
         BaseLayer, ConveyorSystems,
-        conveyor::{Conveyor, PayloadOf, PayloadTransport, Payloads},
-        helpers::{ConveyorDirection, ConveyorDirections},
+        conveyor::{Conveyor, DistributorConveyor, PayloadOf, PayloadTransport, Payloads},
+        helpers::ConveyorDirections,
     },
 };
 
@@ -24,17 +24,27 @@ impl Plugin for GeneratorPlugin {
 }
 
 #[derive(Component, Default, Debug)]
-#[require(Conveyor = new_generator_conveyor())]
-pub struct Generator {
+struct Generator {
     next_generate_time: f32,
 }
 
-fn new_generator_conveyor() -> Conveyor {
-    Conveyor {
-        outputs: ConveyorDirections::all(),
-        accepts_input: false,
-        is_full: true,
-        next_output: ConveyorDirection::North,
+#[derive(Bundle)]
+pub struct GeneratorBundle {
+    generator: Generator,
+    conveyor: Conveyor,
+    distributor: DistributorConveyor,
+}
+
+impl GeneratorBundle {
+    pub fn new() -> Self {
+        GeneratorBundle {
+            generator: Generator::default(),
+            conveyor: Conveyor {
+                outputs: ConveyorDirections::all(),
+                accepts_input: false,
+            },
+            distributor: DistributorConveyor::default(),
+        }
     }
 }
 
@@ -65,11 +75,7 @@ fn generate_payloads(
                 PayloadOf(entity),
                 Text2d::new("X"),
                 TextColor(Color::linear_rgb(1.0, 0.4, 0.4)),
-                PayloadTransport {
-                    mu: 0.5,
-                    source: None,
-                    destination: None,
-                },
+                PayloadTransport { mu: 0.5 },
             ));
 
             generator.next_generate_time = time.elapsed_secs() + 5.0;

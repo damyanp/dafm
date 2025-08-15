@@ -42,7 +42,12 @@ impl Plugin for FactoryGamePlugin {
             )
             .add_systems(
                 OnEnter(GameState::FactoryGame),
-                (make_base_layer, setup_camera, set_camera_limits_from_tilemaps).chain(),
+                (
+                    make_base_layer,
+                    setup_camera,
+                    set_camera_limits_from_tilemaps,
+                )
+                    .chain(),
             );
     }
 }
@@ -53,7 +58,12 @@ fn setup_camera(mut commands: Commands) {
         ..default()
     };
 
-    commands.spawn((StateScoped(GameState::FactoryGame), Camera2d, PrimaryEguiContext, pan_cam));
+    commands.spawn((
+        StateScoped(GameState::FactoryGame),
+        Camera2d,
+        PrimaryEguiContext,
+        pan_cam,
+    ));
 }
 
 #[derive(SystemSet, Debug, Clone, PartialEq, Eq, Hash)]

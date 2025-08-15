@@ -5,7 +5,7 @@ use bevy_ecs_tilemap::{helpers::square_grid::neighbors::Neighbors, prelude::*};
 
 use crate::factory_game::{
     BaseLayer, BaseLayerEntityDespawned, ConveyorSystems,
-    conveyor::Conveyor,
+    conveyor::{AcceptsPayloadConveyor, Conveyor, DistributorConveyor},
     helpers::{ConveyorDirection, ConveyorDirections, get_neighbors_from_query},
 };
 
@@ -24,15 +24,27 @@ impl Plugin for DistributorPlugin {
 }
 
 #[derive(Component, PartialEq, Eq, Hash)]
-#[require(Conveyor=new_distributor_conveyor())]
-pub struct Distributor;
+struct Distributor;
 
-fn new_distributor_conveyor() -> Conveyor {
-    Conveyor {
-        outputs: ConveyorDirections::default(),
-        accepts_input: true,
-        next_output: ConveyorDirection::North,
-        is_full: true,
+#[derive(Bundle)]
+pub struct DistributorBundle {
+    conveyor: Conveyor,
+    distributor: Distributor,
+    distributor_conveyor: DistributorConveyor,
+    accepts_payload: AcceptsPayloadConveyor,
+}
+
+impl DistributorBundle {
+    pub fn new() -> Self {
+        DistributorBundle {
+            conveyor: Conveyor {
+                outputs: ConveyorDirections::all(),
+                accepts_input: true,
+            },
+            distributor: Distributor,
+            distributor_conveyor: DistributorConveyor::default(),
+            accepts_payload: AcceptsPayloadConveyor,
+        }
     }
 }
 

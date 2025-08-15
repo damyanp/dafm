@@ -33,7 +33,11 @@ impl Plugin for Game {
 }
 
 fn setup_camera(mut commands: Commands) {
-    commands.spawn((StateScoped(GameState::SpaceShooter), Camera2d, PrimaryEguiContext));
+    commands.spawn((
+        StateScoped(GameState::SpaceShooter),
+        Camera2d,
+        PrimaryEguiContext,
+    ));
 }
 
 #[derive(Resource)]

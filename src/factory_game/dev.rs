@@ -8,7 +8,9 @@ use bevy_egui::input::{egui_wants_any_keyboard_input, egui_wants_any_pointer_inp
 use crate::{
     GameState,
     factory_game::{
-        BaseLayer, ConveyorDirection, conveyor::Conveyor, conveyor_belts::ConveyorBelt,
+        BaseLayer, ConveyorDirection,
+        conveyor::Conveyor,
+        conveyor_belts::{ConveyorBelt, ConveyorBeltBundle},
         interaction::InteractionLayer,
     },
 };
@@ -46,8 +48,7 @@ fn on_test_data(
                 .spawn((
                     StateScoped(GameState::FactoryGame),
                     Name::new("Test Data Tile"),
-                    Conveyor::new_belt(direction),
-                    ConveyorBelt,
+                    ConveyorBeltBundle::new(direction),
                     BaseLayer,
                     pos,
                 ))

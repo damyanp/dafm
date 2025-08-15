@@ -8,8 +8,11 @@ use bevy_ecs_tilemap::{
 
 use crate::factory_game::{
     BaseLayer, BaseLayerEntityDespawned, ConveyorSystems,
-    conveyor::Conveyor,
-    helpers::{get_neighbors_from_query, make_east_relative, opposite},
+    conveyor::{AcceptsPayloadConveyor, Conveyor, SimpleConveyor},
+    helpers::{
+        ConveyorDirection, ConveyorDirections, get_neighbors_from_query, make_east_relative,
+        opposite,
+    },
 };
 
 pub struct ConveyorBeltsPlugin;
@@ -24,6 +27,28 @@ impl Plugin for ConveyorBeltsPlugin {
 
 #[derive(Component)]
 pub struct ConveyorBelt;
+
+#[derive(Bundle)]
+pub struct ConveyorBeltBundle {
+    conveyor: Conveyor,
+    simple_conveyor: SimpleConveyor,
+    belt: ConveyorBelt,
+    accepts_payload: AcceptsPayloadConveyor,
+}
+
+impl ConveyorBeltBundle {
+    pub fn new(output: ConveyorDirection) -> Self {
+        ConveyorBeltBundle {
+            conveyor: Conveyor {
+                outputs: ConveyorDirections::new(output),
+                accepts_input: true,
+            },
+            simple_conveyor: SimpleConveyor,
+            belt: ConveyorBelt,
+            accepts_payload: AcceptsPayloadConveyor,
+        }
+    }
+}
 
 #[allow(clippy::type_complexity)]
 fn update_conveyor_belt_tiles(
@@ -91,13 +116,13 @@ fn update_conveyor_belt_tile(
 ) {
     let (
         Conveyor {
-            outputs: out_dir, ..
+            outputs: out_dirs, ..
         },
         texture_index,
         flip,
     ) = conveyor_belt;
 
-    let out_dir: SquareDirection = (out_dir.single()).into();
+    let out_dir: SquareDirection = out_dirs.single().into();
 
     // Find the neighbors that have conveyors on them
     let neighbor_conveyors = get_neighbors_from_query(tile_storage, tile_pos, map_size, conveyors);
