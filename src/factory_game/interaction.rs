@@ -75,13 +75,26 @@ fn give_control_to_egui(
     mut pancam: Single<&mut PanCam>,
     tools: Res<Tools>,
 ) {
+    let egui = egui_wants_input.wants_any_input();
+    let tool = tools.current_tool().is_some();
+
     for mut window in windows {
-        window.cursor_options.visible =
-            egui_wants_input.wants_any_input() || tools.current_tool().is_none();
+        window.cursor_options.visible = egui || !tool;
     }
 
-    hovered_tile_visible.0 = !egui_wants_input.wants_any_input();
-    pancam.enabled = !egui_wants_input.wants_any_input();
+    hovered_tile_visible.0 = !egui && tool;
+    pancam.enabled = !egui;
+}
+
+fn update_hovered_tile(
+    q: Single<(&mut TileTextureIndex, &mut TileFlip), With<HoveredTile>>,
+    tools: Res<Tools>,
+) {
+    let (mut texture_index, mut flip) = q.into_inner();
+
+    if let Some((t, f)) = tools.get_texture_index_flip() {
+        (*texture_index, *flip) = (t, f);
+    }
 }
 
 #[allow(clippy::type_complexity)]
@@ -137,20 +150,6 @@ fn on_click(
         storage.set(tile_pos, entity);
 
         tool.configure_new_entity(commands.entity(entity));
-    }
-}
-
-fn update_hovered_tile(
-    q: Single<(&mut TileTextureIndex, &mut TileFlip, &mut TileVisible), With<HoveredTile>>,
-    tools: Res<Tools>,
-) {
-    let (mut texture_index, mut flip, mut visible) = q.into_inner();
-
-    if let Some((t, f)) = tools.get_texture_index_flip() {
-        (*texture_index, *flip) = (t, f);
-        visible.0 = true;
-    } else {
-        visible.0 = false;
     }
 }
 
