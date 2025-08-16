@@ -5,6 +5,7 @@ use crate::factory_game::{
     BaseLayer, ConveyorSystems,
     conveyor::{AcceptsPayloadConveyor, BridgeConveyor, Conveyor},
     helpers::ConveyorDirections,
+    interaction::Tool,
 };
 
 pub struct BridgePlugin;
@@ -14,6 +15,17 @@ impl Plugin for BridgePlugin {
             Update,
             update_bridge_tiles.in_set(ConveyorSystems::TileUpdater),
         );
+    }
+}
+
+pub struct BridgeTool;
+impl Tool for BridgeTool {
+    fn get_texture_index_flip(&self) -> (TileTextureIndex, TileFlip) {
+        (TileTextureIndex(33), TileFlip::default())
+    }
+
+    fn configure_new_entity(&self, mut commands: EntityCommands) {
+        commands.insert((BridgeBundle::new(), Name::new("Bridge")));
     }
 }
 

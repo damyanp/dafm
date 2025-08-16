@@ -5,6 +5,7 @@ use crate::factory_game::{
     BaseLayer, ConveyorSystems,
     conveyor::{AcceptsPayloadConveyor, Conveyor, Payloads},
     helpers::ConveyorDirections,
+    interaction::Tool,
 };
 
 pub struct SinkPlugin;
@@ -17,6 +18,18 @@ impl Plugin for SinkPlugin {
                 sink_despawns_everything_in_it.in_set(ConveyorSystems::TransportLogic),
             ),
         );
+    }
+}
+
+pub struct SinkTool;
+
+impl Tool for SinkTool {
+    fn get_texture_index_flip(&self) -> (TileTextureIndex, TileFlip) {
+        (TileTextureIndex(31), TileFlip::default())
+    }
+
+    fn configure_new_entity(&self, mut commands: EntityCommands) {
+        commands.insert((SinkBundle::new(), Name::new("Sink")));
     }
 }
 

@@ -7,6 +7,7 @@ use crate::{
         BaseLayer, ConveyorSystems,
         conveyor::{Conveyor, DistributorConveyor, PayloadOf, PayloadTransport, Payloads},
         helpers::ConveyorDirections,
+        interaction::Tool,
     },
 };
 
@@ -20,6 +21,18 @@ impl Plugin for GeneratorPlugin {
                 generate_payloads.in_set(ConveyorSystems::TransportLogic),
             ),
         );
+    }
+}
+
+pub struct GeneratorTool;
+
+impl Tool for GeneratorTool {
+    fn get_texture_index_flip(&self) -> (TileTextureIndex, TileFlip) {
+        (TileTextureIndex(30), TileFlip::default())
+    }
+
+    fn configure_new_entity(&self, mut commands: EntityCommands) {
+        commands.insert((GeneratorBundle::new(), Name::new("Generator")));
     }
 }
 

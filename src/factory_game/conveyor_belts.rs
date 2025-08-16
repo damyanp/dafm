@@ -13,6 +13,7 @@ use crate::factory_game::{
         ConveyorDirection, ConveyorDirections, get_neighbors_from_query, make_east_relative,
         opposite,
     },
+    interaction::Tool,
 };
 
 pub struct ConveyorBeltsPlugin;
@@ -22,6 +23,53 @@ impl Plugin for ConveyorBeltsPlugin {
             Update,
             (update_conveyor_belt_tiles.in_set(ConveyorSystems::TileUpdater),),
         );
+    }
+}
+
+const DIRECTION_ARROW: TileTextureIndex = TileTextureIndex(22);
+
+#[derive(Default)]
+pub struct ConveyorBeltTool(ConveyorDirection);
+
+impl Tool for ConveyorBeltTool {
+    fn get_texture_index_flip(&self) -> (TileTextureIndex, TileFlip) {
+        use ConveyorDirection::*;
+
+        (
+            DIRECTION_ARROW,
+            match self.0 {
+                East => TileFlip::default(),
+                North => TileFlip {
+                    d: true,
+                    y: true,
+                    ..default()
+                },
+                West => TileFlip {
+                    x: true,
+                    ..default()
+                },
+                South => TileFlip {
+                    d: true,
+                    ..default()
+                },
+            },
+        )
+    }
+
+    fn next_variant(&mut self) {
+        use ConveyorDirection::*;
+        self.0 = match self.0 {
+            North => East,
+            East => South,
+            South => West,
+            West => North,
+        }
+    }
+
+    fn configure_new_entity(&self, mut commands: EntityCommands) {
+        commands
+            .insert(ConveyorBeltBundle::new(self.0))
+            .insert(Name::new("Conveyor Belt"));
     }
 }
 

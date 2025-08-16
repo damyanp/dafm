@@ -1,25 +1,29 @@
-use bevy::{input::common_conditions::input_just_pressed, prelude::*};
-use bevy_ecs_tilemap::prelude::*;
-use bevy_egui::input::{
-    EguiWantsInput, egui_wants_any_keyboard_input, egui_wants_any_pointer_input,
+use bevy::{
+    input::{ButtonState, common_conditions::input_just_pressed, keyboard::KeyboardInput},
+    prelude::*,
 };
+use bevy_ecs_tilemap::prelude::*;
+use bevy_egui::input::{EguiWantsInput, egui_wants_any_input};
 use bevy_pancam::PanCam;
 
 use crate::{
     GameState,
     factory_game::{
-        BaseLayer, BaseLayerEntityDespawned, ConveyorSystems, MapConfig, bridge::BridgeBundle,
-        conveyor_belts::ConveyorBeltBundle, distributor::DistributorBundle,
-        generator::GeneratorBundle, helpers::*, sink::SinkBundle,
+        BaseLayer, BaseLayerEntityDespawned, ConveyorSystems, MapConfig, bridge::BridgeTool,
+        conveyor_belts::ConveyorBeltTool, distributor::DistributorTool, generator::GeneratorTool,
+        sink::SinkTool,
     },
 };
 
 pub struct ConveyorInteractionPlugin;
 impl Plugin for ConveyorInteractionPlugin {
     fn build(&self, app: &mut App) {
-        app.register_type::<HoveredTile>()
-            .add_systems(OnEnter(GameState::FactoryGame), (startup,))
-            .add_systems(OnExit(GameState::FactoryGame), reset_cursor)
+        app.register_type::<Tools>()
+            .add_systems(OnEnter(GameState::FactoryGame), (startup, setup_tools))
+            .add_systems(
+                OnExit(GameState::FactoryGame),
+                (reset_cursor, cleanup_tools),
+            )
             .add_systems(
                 Update,
                 (
@@ -28,13 +32,11 @@ impl Plugin for ConveyorInteractionPlugin {
                             track_mouse,
                             on_click.run_if(input_just_pressed(MouseButton::Left)),
                         )
-                            .chain()
-                            .run_if(not(egui_wants_any_pointer_input)),
-                        on_space
-                            .run_if(input_just_pressed(KeyCode::Space))
-                            .run_if(not(egui_wants_any_keyboard_input)),
+                            .chain(),
+                        select_tool,
                     )
-                        .in_set(ConveyorSystems::TileGenerator),
+                        .in_set(ConveyorSystems::TileGenerator)
+                        .run_if(not(egui_wants_any_input)),
                     update_hovered_tile.in_set(ConveyorSystems::TileUpdater),
                     give_control_to_egui.run_if(in_state(GameState::FactoryGame)),
                 ),
@@ -51,7 +53,7 @@ fn startup(mut commands: Commands, asset_server: Res<AssetServer>, config: Res<M
     commands.spawn((
         StateScoped(GameState::FactoryGame),
         Name::new("HoveredTile"),
-        HoveredTile::None,
+        HoveredTile,
         TileBundle {
             texture_index: TileTextureIndex(20),
             tilemap_id: TilemapId(interaction_layer),
@@ -71,9 +73,11 @@ fn give_control_to_egui(
     egui_wants_input: Res<EguiWantsInput>,
     mut hovered_tile_visible: Single<&mut TileVisible, With<HoveredTile>>,
     mut pancam: Single<&mut PanCam>,
+    tools: Res<Tools>,
 ) {
     for mut window in windows {
-        window.cursor_options.visible = egui_wants_input.wants_any_input();
+        window.cursor_options.visible =
+            egui_wants_input.wants_any_input() || tools.current_tool().is_none();
     }
 
     hovered_tile_visible.0 = !egui_wants_input.wants_any_input();
@@ -113,130 +117,158 @@ fn track_mouse(
 #[allow(clippy::type_complexity)]
 fn on_click(
     mut commands: Commands,
-    hovered_tile: Single<(&TilePos, &HoveredTile)>,
+    tile_pos: Single<&TilePos, With<HoveredTile>>,
     mut storage: Single<&mut TileStorage, With<BaseLayer>>,
     mut despawned_event: EventWriter<BaseLayerEntityDespawned>,
+    tools: Res<Tools>,
 ) {
-    let (tile_pos, hovered_tile) = *hovered_tile;
+    let tile_pos = *tile_pos;
 
     if let Some(old_entity) = storage.remove(tile_pos) {
         commands.entity(old_entity).despawn();
         despawned_event.write(BaseLayerEntityDespawned(*tile_pos));
     }
-
-    if *hovered_tile != HoveredTile::None {
+    if let Some(tool) = tools.current_tool()
+        && tool.creates_entity()
+    {
         let entity = commands
             .spawn((StateScoped(GameState::FactoryGame), BaseLayer, *tile_pos))
             .id();
         storage.set(tile_pos, entity);
 
-        match hovered_tile {
-            HoveredTile::Conveyor(direction) => {
-                commands
-                    .entity(entity)
-                    .insert(ConveyorBeltBundle::new(*direction))
-                    .insert(Name::new("Conveyor Belt"));
+        tool.configure_new_entity(commands.entity(entity));
+    }
+}
+
+fn update_hovered_tile(
+    q: Single<(&mut TileTextureIndex, &mut TileFlip, &mut TileVisible), With<HoveredTile>>,
+    tools: Res<Tools>,
+) {
+    let (mut texture_index, mut flip, mut visible) = q.into_inner();
+
+    if let Some((t, f)) = tools.get_texture_index_flip() {
+        (*texture_index, *flip) = (t, f);
+        visible.0 = true;
+    } else {
+        visible.0 = false;
+    }
+}
+
+#[derive(Resource, Default, Reflect)]
+#[reflect(Resource)]
+pub struct Tools {
+    current_tool: Option<usize>,
+    #[reflect(ignore)]
+    tools: Vec<ToolEntry>,
+}
+
+struct ToolEntry {
+    slot: u32,
+    tool: Box<dyn Tool>,
+}
+
+impl Tools {
+    pub fn add(&mut self, slot: u32, tool: Box<dyn Tool>) {
+        self.tools.push(ToolEntry { slot, tool });
+        self.tools.sort_by_key(|t| t.slot);
+    }
+
+    pub fn get_texture_index_flip(&self) -> Option<(TileTextureIndex, TileFlip)> {
+        self.current_tool
+            .map(|i| self.tools[i].tool.get_texture_index_flip())
+    }
+
+    pub fn set_no_tool(&mut self) {
+        self.current_tool = None
+    }
+
+    pub fn set_tool(&mut self, slot: u32) {
+        self.current_tool = self
+            .tools
+            .iter()
+            .enumerate()
+            .find(|(_, tool)| tool.slot == slot)
+            .map(|(index, _)| index);
+    }
+
+    pub fn next_variant(&mut self) {
+        if let Some(current_tool) = self.current_tool {
+            self.tools[current_tool].tool.next_variant();
+        }
+    }
+
+    pub fn current_tool(&self) -> Option<&dyn Tool> {
+        self.current_tool
+            .map(|index| self.tools[index].tool.as_ref())
+    }
+}
+
+pub trait Tool: Sync + Send {
+    fn get_texture_index_flip(&self) -> (TileTextureIndex, TileFlip);
+    fn next_variant(&mut self) {}
+
+    fn creates_entity(&self) -> bool {
+        true
+    }
+    fn configure_new_entity(&self, commands: EntityCommands);
+}
+
+fn select_tool(mut tools: ResMut<Tools>, mut key_events: EventReader<KeyboardInput>) {
+    for e in key_events.read() {
+        if e.state == ButtonState::Pressed {
+            match e.key_code {
+                KeyCode::Backquote => tools.set_no_tool(),
+                KeyCode::Digit1 => tools.set_tool(1),
+                KeyCode::Digit2 => tools.set_tool(2),
+                KeyCode::Digit3 => tools.set_tool(3),
+                KeyCode::Digit4 => tools.set_tool(4),
+                KeyCode::Digit5 => tools.set_tool(5),
+                KeyCode::Digit6 => tools.set_tool(6),
+                KeyCode::Digit7 => tools.set_tool(7),
+                KeyCode::Digit8 => tools.set_tool(8),
+                KeyCode::Digit9 => tools.set_tool(9),
+                KeyCode::Digit0 => tools.set_tool(10),
+                KeyCode::Space => tools.next_variant(),
+                _ => (),
             }
-            HoveredTile::Source => {
-                commands
-                    .entity(entity)
-                    .insert(GeneratorBundle::new())
-                    .insert(Name::new("Generator"));
-            }
-            HoveredTile::Sink => {
-                commands
-                    .entity(entity)
-                    .insert(SinkBundle::new())
-                    .insert(Name::new("Sink"));
-            }
-            HoveredTile::Distributor => {
-                commands
-                    .entity(entity)
-                    .insert(DistributorBundle::new())
-                    .insert(Name::new("Distributor"));
-            }
-            HoveredTile::Bridge => {
-                commands
-                    .entity(entity)
-                    .insert(BridgeBundle::new())
-                    .insert(Name::new("Bridge"));
-            }
-            HoveredTile::None => panic!(),
         }
     }
 }
 
-fn on_space(mut hovered_tile: Single<&mut HoveredTile>) {
-    hovered_tile.set_to_next_option();
+fn setup_tools(mut commands: Commands) {
+    let mut tools = Tools::default();
+
+    tools.add(1, Box::new(ClearTool));
+    tools.add(2, Box::new(ConveyorBeltTool::default()));
+    tools.add(3, Box::new(GeneratorTool));
+    tools.add(4, Box::new(SinkTool));
+    tools.add(5, Box::new(DistributorTool));
+    tools.add(6, Box::new(BridgeTool));
+
+    commands.insert_resource(tools);
 }
 
-fn update_hovered_tile(q: Single<(&HoveredTile, &mut TileTextureIndex, &mut TileFlip)>) {
-    let (hovered_tile, mut texture_index, mut flip) = q.into_inner();
-    (*texture_index, *flip) = get_hovered_tile_texture(hovered_tile);
+fn cleanup_tools(mut commands: Commands) {
+    commands.remove_resource::<Tools>();
 }
 
-#[derive(Component, Reflect, PartialEq, Eq)]
-enum HoveredTile {
-    None,
-    Conveyor(ConveyorDirection),
-    Source,
-    Sink,
-    Distributor,
-    Bridge,
-}
+struct ClearTool;
+impl Tool for ClearTool {
+    fn get_texture_index_flip(&self) -> (TileTextureIndex, TileFlip) {
+        (TileTextureIndex(20), TileFlip::default())
+    }
 
-impl HoveredTile {
-    fn set_to_next_option(&mut self) {
-        use ConveyorDirection::*;
-        use HoveredTile::*;
+    fn creates_entity(&self) -> bool {
+        false
+    }
 
-        *self = match self {
-            None => Conveyor(East),
-            Conveyor(East) => Conveyor(South),
-            Conveyor(South) => Conveyor(West),
-            Conveyor(West) => Conveyor(North),
-            Conveyor(North) => Source,
-            Source => Sink,
-            Sink => Distributor,
-            Distributor => Bridge,
-            Bridge => None,
-        };
+    fn configure_new_entity(&self, _: EntityCommands) {
+        panic!();
     }
 }
 
-const DIRECTION_ARROW: TileTextureIndex = TileTextureIndex(22);
-
-fn get_hovered_tile_texture(hovered_tile: &HoveredTile) -> (TileTextureIndex, TileFlip) {
-    use ConveyorDirection::*;
-    use HoveredTile::*;
-
-    match hovered_tile {
-        Conveyor(direction) => (
-            DIRECTION_ARROW,
-            match direction {
-                East => TileFlip::default(),
-                North => TileFlip {
-                    d: true,
-                    y: true,
-                    ..default()
-                },
-                West => TileFlip {
-                    x: true,
-                    ..default()
-                },
-                South => TileFlip {
-                    d: true,
-                    ..default()
-                },
-            },
-        ),
-        Source => (TileTextureIndex(30), TileFlip::default()),
-        Sink => (TileTextureIndex(31), TileFlip::default()),
-        Distributor => (TileTextureIndex(32), TileFlip::default()),
-        Bridge => (TileTextureIndex(33), TileFlip::default()),
-        None => (TileTextureIndex(20), TileFlip::default()),
-    }
-}
+#[derive(Component)]
+struct HoveredTile;
 
 #[derive(Component)]
 pub struct InteractionLayer;

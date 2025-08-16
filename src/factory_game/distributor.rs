@@ -5,6 +5,7 @@ use crate::factory_game::{
     BaseLayer, ConveyorSystems,
     conveyor::{AcceptsPayloadConveyor, Conveyor, DistributorConveyor},
     helpers::ConveyorDirections,
+    interaction::Tool,
 };
 
 pub struct DistributorPlugin;
@@ -14,6 +15,17 @@ impl Plugin for DistributorPlugin {
             Update,
             (update_distributor_tiles,).in_set(ConveyorSystems::TileUpdater),
         );
+    }
+}
+
+pub struct DistributorTool;
+impl Tool for DistributorTool {
+    fn get_texture_index_flip(&self) -> (TileTextureIndex, TileFlip) {
+        (TileTextureIndex(32), TileFlip::default())
+    }
+
+    fn configure_new_entity(&self, mut commands: EntityCommands) {
+        commands.insert((DistributorBundle::new(), Name::new("Distributor")));
     }
 }
 
