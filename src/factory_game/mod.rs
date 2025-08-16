@@ -14,6 +14,7 @@ mod generator;
 mod helpers;
 mod interaction;
 mod sink;
+mod ui;
 
 use helpers::*;
 
@@ -21,14 +22,15 @@ pub struct FactoryGamePlugin;
 impl Plugin for FactoryGamePlugin {
     fn build(&self, app: &mut App) {
         app //
+            .add_plugins(interaction::ConveyorInteractionPlugin)
             .add_plugins(bridge::BridgePlugin)
             .add_plugins(conveyor_belts::ConveyorBeltsPlugin)
             .add_plugins(conveyor::PayloadPlugin)
             .add_plugins(dev::DevPlugin)
             .add_plugins(distributor::DistributorPlugin)
             .add_plugins(generator::GeneratorPlugin)
-            .add_plugins(interaction::ConveyorInteractionPlugin)
             .add_plugins(sink::SinkPlugin)
+            .add_plugins(ui::UiPlugin)
             .insert_resource(MapConfig::default())
             .add_event::<BaseLayerEntityDespawned>()
             .configure_sets(

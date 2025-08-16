@@ -168,7 +168,7 @@ pub struct Tools {
     tools: Vec<ToolEntry>,
 }
 
-struct ToolEntry {
+pub struct ToolEntry {
     slot: u32,
     tool: Box<dyn Tool>,
 }
@@ -206,6 +206,16 @@ impl Tools {
     pub fn current_tool(&self) -> Option<&dyn Tool> {
         self.current_tool
             .map(|index| self.tools[index].tool.as_ref())
+    }
+
+    pub fn tools(&self) -> &Vec<ToolEntry> {
+        &self.tools
+    }
+}
+
+impl ToolEntry {
+    pub fn slot(&self) -> u32 {
+        self.slot
     }
 }
 
