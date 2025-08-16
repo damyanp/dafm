@@ -227,7 +227,7 @@ fn update_conveyor_belt_tile(
         } => (SOUTH_TO_EAST, true),
         Neighbors {
             north: Some(_),
-            east: None,
+            east: _,
             south: Some(_),
             west: None,
             ..
