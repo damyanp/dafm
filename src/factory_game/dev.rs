@@ -8,9 +8,7 @@ use bevy_egui::input::{egui_wants_any_keyboard_input, egui_wants_any_pointer_inp
 use crate::{
     GameState,
     factory_game::{
-        BaseLayer, ConveyorDirection,
-        conveyor::Conveyor,
-        conveyor_belts::{ConveyorBelt, ConveyorBeltBundle},
+        BaseLayer, ConveyorDirection, conveyor::Conveyor, conveyor_belts::ConveyorBeltBundle,
         interaction::InteractionLayer,
     },
 };
@@ -78,13 +76,16 @@ fn on_toggle_show_conveyors(
     mut commands: Commands,
     arrows: Query<Entity, With<DirectionArrow>>,
     interaction_layer: Single<Entity, With<InteractionLayer>>,
-    conveyors: Query<(&Conveyor, &TilePos), With<ConveyorBelt>>,
+    conveyors: Query<(&Conveyor, &TilePos)>,
     mut enabled: Local<bool>,
 ) {
     *enabled = !*enabled;
 
     if *enabled {
         for (conveyor, tile_pos) in conveyors {
+            if conveyor.outputs.is_multiple() {
+                continue;
+            }
             let flip = match conveyor.outputs.single() {
                 ConveyorDirection::North => TileFlip {
                     y: true,

@@ -31,6 +31,7 @@ impl Plugin for PayloadPlugin {
                         (
                             update_simple_conveyor_destinations,
                             update_distributor_conveyor_destinations,
+                            update_bridge_conveyor_destinations,
                         ),
                     )
                         .chain()
@@ -52,6 +53,9 @@ pub struct Conveyor {
 pub struct DistributorConveyor {
     pub next_output: ConveyorDirection,
 }
+
+#[derive(Component)]
+pub struct BridgeConveyor;
 
 /// Conveyors that accept input.
 #[derive(Component)]
@@ -229,6 +233,24 @@ fn update_distributor_conveyor_destinations(
                     .insert(PayloadDestination(direction));
                 distributor_conveyor.next_output = direction.next();
             }
+        }
+    }
+}
+
+#[expect(clippy::type_complexity)]
+fn update_bridge_conveyor_destinations(
+    mut commands: Commands,
+    bridge_conveyors: Query<&Payloads, With<BridgeConveyor>>,
+    payloads: Query<
+        (Entity, &PayloadSource),
+        (With<PayloadTransport>, Without<PayloadDestination>),
+    >,
+) {
+    for bridge_payloads in bridge_conveyors {
+        for (payload, source) in payloads.iter_many(bridge_payloads.iter()) {
+            commands
+                .entity(payload)
+                .insert(PayloadDestination(source.0.opposite()));
         }
     }
 }

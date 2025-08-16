@@ -130,6 +130,10 @@ impl ConveyorDirections {
         self.0 == 0
     }
 
+    pub fn is_multiple(&self) -> bool {
+        self.0.count_ones() > 1
+    }
+
     pub fn single(&self) -> ConveyorDirection {
         let mut iter = self.iter();
         let direction = iter.next().unwrap();

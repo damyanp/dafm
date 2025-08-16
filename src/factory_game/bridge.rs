@@ -3,10 +3,7 @@ use bevy_ecs_tilemap::prelude::*;
 
 use crate::factory_game::{
     BaseLayer, ConveyorSystems,
-    conveyor::{
-        AcceptsPayloadConveyor, Conveyor, PayloadDestination, PayloadSource, PayloadTransport,
-        Payloads,
-    },
+    conveyor::{AcceptsPayloadConveyor, BridgeConveyor, Conveyor},
     helpers::ConveyorDirections,
 };
 
@@ -15,21 +12,19 @@ impl Plugin for BridgePlugin {
     fn build(&self, app: &mut App) {
         app.add_systems(
             Update,
-            (
-                update_bridge_tiles.in_set(ConveyorSystems::TileUpdater),
-                update_bridge_conveyor_destinations.in_set(ConveyorSystems::TransportLogic),
-            ),
+            update_bridge_tiles.in_set(ConveyorSystems::TileUpdater),
         );
     }
 }
 
 #[derive(Component)]
-struct BridgeConveyor;
+struct Bridge;
 
 #[derive(Bundle)]
 pub struct BridgeBundle {
     conveyor: Conveyor,
-    bridge: BridgeConveyor,
+    bridge_conveyor: BridgeConveyor,
+    bridge: Bridge,
     accepts_payload: AcceptsPayloadConveyor,
 }
 
@@ -40,7 +35,8 @@ impl BridgeBundle {
                 outputs: ConveyorDirections::all(),
                 accepts_input: true,
             },
-            bridge: BridgeConveyor,
+            bridge_conveyor: BridgeConveyor,
+            bridge: Bridge,
             accepts_payload: AcceptsPayloadConveyor,
         }
     }
@@ -48,7 +44,7 @@ impl BridgeBundle {
 
 fn update_bridge_tiles(
     mut commands: Commands,
-    new_bridges: Query<Entity, Added<BridgeConveyor>>,
+    new_bridges: Query<Entity, Added<Bridge>>,
     tilemap_entity: Single<Entity, (With<BaseLayer>, With<TilemapSize>)>,
 ) {
     for e in new_bridges {
@@ -57,23 +53,5 @@ fn update_bridge_tiles(
             texture_index: TileTextureIndex(33),
             ..default()
         });
-    }
-}
-
-#[expect(clippy::type_complexity)]
-fn update_bridge_conveyor_destinations(
-    mut commands: Commands,
-    bridge_conveyors: Query<&Payloads, With<BridgeConveyor>>,
-    payloads: Query<
-        (Entity, &PayloadSource),
-        (With<PayloadTransport>, Without<PayloadDestination>),
-    >,
-) {
-    for bridge_payloads in bridge_conveyors {
-        for (payload, source) in payloads.iter_many(bridge_payloads.iter()) {
-            commands
-                .entity(payload)
-                .insert(PayloadDestination(source.0.opposite()));
-        }
     }
 }

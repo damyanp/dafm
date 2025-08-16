@@ -26,7 +26,7 @@ impl Plugin for ConveyorBeltsPlugin {
 }
 
 #[derive(Component)]
-pub struct ConveyorBelt;
+struct ConveyorBelt;
 
 #[derive(Bundle)]
 pub struct ConveyorBeltBundle {
