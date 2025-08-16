@@ -17,7 +17,7 @@ impl Plugin for DistributorPlugin {
     }
 }
 
-#[derive(Component, PartialEq, Eq, Hash)]
+#[derive(Component)]
 struct Distributor;
 
 #[derive(Bundle)]
