@@ -1,5 +1,8 @@
 use super::bullets::{Damage, Damageable};
-use crate::GameState;
+use crate::{
+    GameState,
+    sprite_sheet::{GameSprite, SpriteSheet},
+};
 use avian2d::{math::PI, prelude::*};
 #[allow(unused_imports)]
 use bevy::{
@@ -90,18 +93,12 @@ fn update_destroyed_enemies(
     }
 }
 
-fn spawn_enemy(spawn: Trigger<SpawnEnemy>, mut commands: Commands, assets: Res<super::GameAssets>) {
+fn spawn_enemy(spawn: Trigger<SpawnEnemy>, mut commands: Commands, sprite_sheet: Res<SpriteSheet>) {
     commands
         .spawn((
             StateScoped(GameState::SpaceShooter),
             Name::new("Enemy"),
-            Sprite::from_atlas_image(
-                assets.sprite_sheet.clone(),
-                TextureAtlas {
-                    layout: assets.sprite_sheet_layout.clone(),
-                    index: 6,
-                },
-            ),
+            sprite_sheet.sprite(GameSprite::Enemy),
             RigidBody::Dynamic,
             Collider::circle(16.0),
             AngularDamping(1.0),

@@ -1,11 +1,14 @@
 use bevy::prelude::*;
 use bevy_ecs_tilemap::prelude::*;
 
-use crate::factory_game::{
-    BaseLayer, ConveyorSystems,
-    conveyor::{AcceptsPayloadConveyor, Conveyor, Payloads},
-    helpers::ConveyorDirections,
-    interaction::Tool,
+use crate::{
+    factory_game::{
+        BaseLayer, ConveyorSystems,
+        conveyor::{AcceptsPayloadConveyor, Conveyor, Payloads},
+        helpers::ConveyorDirections,
+        interaction::Tool,
+    },
+    sprite_sheet::GameSprite,
 };
 
 pub struct SinkPlugin;
@@ -24,8 +27,8 @@ impl Plugin for SinkPlugin {
 pub struct SinkTool;
 
 impl Tool for SinkTool {
-    fn get_texture_index_flip(&self) -> (TileTextureIndex, TileFlip) {
-        (TileTextureIndex(31), TileFlip::default())
+    fn get_sprite_flip(&self) -> (GameSprite, TileFlip) {
+        (GameSprite::Sink, TileFlip::default())
     }
 
     fn configure_new_entity(&self, mut commands: EntityCommands) {
@@ -64,7 +67,7 @@ fn update_sink_tiles(
     for new_sink in new_sinks {
         commands.entity(new_sink).insert_if_new(TileBundle {
             tilemap_id: TilemapId(*tilemap_entity),
-            texture_index: TileTextureIndex(31),
+            texture_index: GameSprite::Sink.tile_texture_index(),
             ..default()
         });
     }

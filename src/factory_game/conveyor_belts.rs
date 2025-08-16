@@ -6,14 +6,17 @@ use bevy_ecs_tilemap::{
     prelude::*,
 };
 
-use crate::factory_game::{
-    BaseLayer, BaseLayerEntityDespawned, ConveyorSystems,
-    conveyor::{AcceptsPayloadConveyor, Conveyor, SimpleConveyor},
-    helpers::{
-        ConveyorDirection, ConveyorDirections, get_neighbors_from_query, make_east_relative,
-        opposite,
+use crate::{
+    factory_game::{
+        BaseLayer, BaseLayerEntityDespawned, ConveyorSystems,
+        conveyor::{AcceptsPayloadConveyor, Conveyor, SimpleConveyor},
+        helpers::{
+            ConveyorDirection, ConveyorDirections, get_neighbors_from_query, make_east_relative,
+            opposite,
+        },
+        interaction::Tool,
     },
-    interaction::Tool,
+    sprite_sheet::GameSprite,
 };
 
 pub struct ConveyorBeltsPlugin;
@@ -26,17 +29,15 @@ impl Plugin for ConveyorBeltsPlugin {
     }
 }
 
-const DIRECTION_ARROW: TileTextureIndex = TileTextureIndex(22);
-
 #[derive(Default)]
 pub struct ConveyorBeltTool(ConveyorDirection);
 
 impl Tool for ConveyorBeltTool {
-    fn get_texture_index_flip(&self) -> (TileTextureIndex, TileFlip) {
+    fn get_sprite_flip(&self) -> (GameSprite, TileFlip) {
         use ConveyorDirection::*;
 
         (
-            DIRECTION_ARROW,
+            GameSprite::Arrow,
             match self.0 {
                 East => TileFlip::default(),
                 North => TileFlip {
@@ -189,70 +190,70 @@ fn update_conveyor_belt_tile(
     // Rotate all of this so that east is always the "out" direction
     let neighbor_conveyors = make_east_relative(neighbor_conveyors, out_dir);
 
-    let (new_texture_index, y_flip) = match neighbor_conveyors {
+    let (new_sprite, y_flip) = match neighbor_conveyors {
         Neighbors {
             north: None,
             east: None,
             south: None,
             west: Some(_),
             ..
-        } => (WEST_TO_EAST, false),
+        } => (GameSprite::ConveyorInWOutE, false),
         Neighbors {
             north: None,
             east: _,
             south: Some(_),
             west: Some(_),
             ..
-        } => (SOUTH_AND_WEST_TO_EAST, false),
+        } => (GameSprite::ConveyorInSWOutE, false),
         Neighbors {
             north: Some(_),
             east: _,
             south: None,
             west: Some(_),
             ..
-        } => (SOUTH_AND_WEST_TO_EAST, true),
+        } => (GameSprite::ConveyorInSWOutE, true),
         Neighbors {
             north: None,
             east: _,
             south: Some(_),
             west: None,
             ..
-        } => (SOUTH_TO_EAST, false),
+        } => (GameSprite::ConveyorInSOutE, false),
         Neighbors {
             north: Some(_),
             east: None,
             south: None,
             west: None,
             ..
-        } => (SOUTH_TO_EAST, true),
+        } => (GameSprite::ConveyorInSOutE, true),
         Neighbors {
             north: Some(_),
             east: _,
             south: Some(_),
             west: None,
             ..
-        } => (NORTH_AND_SOUTH_TO_EAST, false),
+        } => (GameSprite::ConveyorInNSOutE, false),
         Neighbors {
             north: Some(_),
             east: None,
             south: Some(_),
             west: Some(_),
             ..
-        } => (NORTH_AND_SOUTH_AND_WEST_TO_EAST, false),
+        } => (GameSprite::ConveyorInNSWOutE, false),
         Neighbors {
             north: Some(_),
             east: Some(_),
             south: None,
             west: None,
             ..
-        } => (SOUTH_TO_EAST, true),
+        } => (GameSprite::ConveyorInSOutE, true),
         Neighbors {
             north: None,
             east: _,
             south: None,
             west: _,
             ..
-        } => (WEST_TO_EAST, false),
+        } => (GameSprite::ConveyorInWOutE, false),
         _ => panic!("No match for {neighbor_conveyors:?}"),
     };
 
@@ -284,15 +285,8 @@ fn update_conveyor_belt_tile(
         _ => panic!(),
     };
 
-    if Some(&new_texture_index) != texture_index || Some(&new_flip) != flip {
-        commands
-            .entity(entity)
-            .insert((new_texture_index, new_flip));
+    let new_index = new_sprite.tile_texture_index();
+    if Some(&new_index) != texture_index || Some(&new_flip) != flip {
+        commands.entity(entity).insert((new_index, new_flip));
     }
 }
-
-const WEST_TO_EAST: TileTextureIndex = TileTextureIndex(11);
-const SOUTH_AND_WEST_TO_EAST: TileTextureIndex = TileTextureIndex(12);
-const SOUTH_TO_EAST: TileTextureIndex = TileTextureIndex(13);
-const NORTH_AND_SOUTH_TO_EAST: TileTextureIndex = TileTextureIndex(14);
-const NORTH_AND_SOUTH_AND_WEST_TO_EAST: TileTextureIndex = TileTextureIndex(15);

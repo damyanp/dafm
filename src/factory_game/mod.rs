@@ -3,7 +3,7 @@ use bevy_ecs_tilemap::prelude::*;
 use bevy_egui::PrimaryEguiContext;
 use bevy_pancam::PanCam;
 
-use crate::{GameState, helpers::set_camera_limits_from_tilemaps};
+use crate::{GameState, helpers::set_camera_limits_from_tilemaps, sprite_sheet::SpriteSheet};
 
 mod bridge;
 mod conveyor;
@@ -127,9 +127,11 @@ impl Default for MapConfig {
 #[derive(Component)]
 pub struct BaseLayer;
 
-fn make_base_layer(mut commands: Commands, asset_server: Res<AssetServer>, config: Res<MapConfig>) {
-    let texture = asset_server.load("sprites.png");
-    commands.spawn((BaseLayer, make_layer(&config, texture, 0.0, "BaseLayer")));
+fn make_base_layer(mut commands: Commands, sprite_sheet: Res<SpriteSheet>, config: Res<MapConfig>) {
+    commands.spawn((
+        BaseLayer,
+        make_layer(&config, sprite_sheet.image(), 0.0, "BaseLayer"),
+    ));
 }
 
 #[derive(Event)]

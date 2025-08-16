@@ -11,6 +11,7 @@ use crate::{
         BaseLayer, ConveyorDirection, conveyor::Conveyor, conveyor_belts::ConveyorBeltBundle,
         interaction::InteractionLayer,
     },
+    sprite_sheet::GameSprite,
 };
 
 pub struct DevPlugin;
@@ -108,7 +109,7 @@ fn on_toggle_show_conveyors(
                 Name::new("ConveyorDirection"),
                 DirectionArrow,
                 TileBundle {
-                    texture_index: TileTextureIndex(22),
+                    texture_index: GameSprite::Arrow.tile_texture_index(),
                     tilemap_id: TilemapId(*interaction_layer),
                     flip,
                     position: *tile_pos,

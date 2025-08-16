@@ -8,10 +8,13 @@ use bevy_pancam::PanCamPlugin;
 use bevy_rand::plugin::EntropyPlugin;
 use bevy_rand::prelude::*;
 
+use crate::sprite_sheet::SpriteSheet;
+
 mod factory_game;
 mod helpers;
 mod main_menu;
 mod space_shooter;
+mod sprite_sheet;
 mod terrain;
 
 #[derive(Clone, Copy, PartialEq, Eq, Hash, Debug, Default, States)]
@@ -35,6 +38,7 @@ fn main() {
                     ..default()
                 }),
         )
+        .init_resource::<SpriteSheet>()
         .add_plugins(EnhancedInputPlugin)
         .init_state::<GameState>()
         .insert_state(GameState::MainMenu)

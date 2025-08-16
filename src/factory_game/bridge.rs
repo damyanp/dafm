@@ -1,11 +1,14 @@
 use bevy::prelude::*;
 use bevy_ecs_tilemap::prelude::*;
 
-use crate::factory_game::{
-    BaseLayer, ConveyorSystems,
-    conveyor::{AcceptsPayloadConveyor, BridgeConveyor, Conveyor},
-    helpers::ConveyorDirections,
-    interaction::Tool,
+use crate::{
+    factory_game::{
+        BaseLayer, ConveyorSystems,
+        conveyor::{AcceptsPayloadConveyor, BridgeConveyor, Conveyor},
+        helpers::ConveyorDirections,
+        interaction::Tool,
+    },
+    sprite_sheet::GameSprite,
 };
 
 pub struct BridgePlugin;
@@ -20,8 +23,8 @@ impl Plugin for BridgePlugin {
 
 pub struct BridgeTool;
 impl Tool for BridgeTool {
-    fn get_texture_index_flip(&self) -> (TileTextureIndex, TileFlip) {
-        (TileTextureIndex(33), TileFlip::default())
+    fn get_sprite_flip(&self) -> (GameSprite, TileFlip) {
+        (GameSprite::Bridge, TileFlip::default())
     }
 
     fn configure_new_entity(&self, mut commands: EntityCommands) {
@@ -62,7 +65,7 @@ fn update_bridge_tiles(
     for e in new_bridges {
         commands.entity(e).insert_if_new(TileBundle {
             tilemap_id: TilemapId(*tilemap_entity),
-            texture_index: TileTextureIndex(33),
+            texture_index: GameSprite::Bridge.tile_texture_index(),
             ..default()
         });
     }

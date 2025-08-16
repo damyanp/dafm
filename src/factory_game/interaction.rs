@@ -13,6 +13,7 @@ use crate::{
         conveyor_belts::ConveyorBeltTool, distributor::DistributorTool, generator::GeneratorTool,
         sink::SinkTool,
     },
+    sprite_sheet::{GameSprite, SpriteSheet},
 };
 
 pub struct ConveyorInteractionPlugin;
@@ -51,10 +52,9 @@ impl Plugin for ConveyorInteractionPlugin {
     }
 }
 
-fn startup(mut commands: Commands, asset_server: Res<AssetServer>, config: Res<MapConfig>) {
-    let texture = asset_server.load("sprites.png");
+fn startup(mut commands: Commands, sprite_sheet: Res<SpriteSheet>, config: Res<MapConfig>) {
     let interaction_layer = commands
-        .spawn(make_interaction_layer(&config, texture.to_owned()))
+        .spawn(make_interaction_layer(&config, sprite_sheet.image()))
         .id();
 
     commands.spawn((
@@ -62,7 +62,7 @@ fn startup(mut commands: Commands, asset_server: Res<AssetServer>, config: Res<M
         Name::new("HoveredTile"),
         HoveredTile,
         TileBundle {
-            texture_index: TileTextureIndex(20),
+            texture_index: GameSprite::BlankSquare.tile_texture_index(),
             tilemap_id: TilemapId(interaction_layer),
             ..default()
         },
@@ -99,8 +99,8 @@ fn update_hovered_tile(
 ) {
     let (mut texture_index, mut flip) = q.into_inner();
 
-    if let Some((t, f)) = tools.get_texture_index_flip() {
-        (*texture_index, *flip) = (t, f);
+    if let Some((t, f)) = tools.get_sprite_flip() {
+        (*texture_index, *flip) = (t.tile_texture_index(), f);
     }
 }
 
@@ -179,9 +179,9 @@ impl Tools {
         self.tools.sort_by_key(|t| t.slot);
     }
 
-    pub fn get_texture_index_flip(&self) -> Option<(TileTextureIndex, TileFlip)> {
+    pub fn get_sprite_flip(&self) -> Option<(GameSprite, TileFlip)> {
         self.current_tool
-            .map(|i| self.tools[i].tool.get_texture_index_flip())
+            .map(|i| self.tools[i].tool.get_sprite_flip())
     }
 
     pub fn set_no_tool(&mut self) {
@@ -220,7 +220,7 @@ impl ToolEntry {
 }
 
 pub trait Tool: Sync + Send {
-    fn get_texture_index_flip(&self) -> (TileTextureIndex, TileFlip);
+    fn get_sprite_flip(&self) -> (GameSprite, TileFlip);
     fn next_variant(&mut self) {}
 
     fn creates_entity(&self) -> bool {
@@ -270,8 +270,8 @@ fn cleanup_tools(mut commands: Commands) {
 
 struct ClearTool;
 impl Tool for ClearTool {
-    fn get_texture_index_flip(&self) -> (TileTextureIndex, TileFlip) {
-        (TileTextureIndex(20), TileFlip::default())
+    fn get_sprite_flip(&self) -> (GameSprite, TileFlip) {
+        (GameSprite::Delete, TileFlip::default())
     }
 
     fn creates_entity(&self) -> bool {

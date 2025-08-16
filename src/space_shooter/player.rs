@@ -1,5 +1,6 @@
 use super::bullets;
 use crate::GameState;
+use crate::sprite_sheet::{GameSprite, SpriteSheet};
 use avian2d::prelude::*;
 use bevy::prelude::*;
 use bevy_enhanced_input::prelude::*;
@@ -19,18 +20,12 @@ pub struct Thrust;
 #[action_output(bool)]
 pub struct Fire;
 
-pub fn create_player(mut commands: Commands, assets: Res<super::GameAssets>) {
+pub fn create_player(mut commands: Commands, sprite_sheet: Res<SpriteSheet>) {
     commands.insert_resource(Gravity::ZERO);
     commands.spawn((
         StateScoped(GameState::SpaceShooter),
         Name::new("Player"),
-        Sprite::from_atlas_image(
-            assets.sprite_sheet.clone(),
-            TextureAtlas {
-                layout: assets.sprite_sheet_layout.clone(),
-                index: 0,
-            },
-        ),
+        sprite_sheet.sprite(GameSprite::Player),
         RigidBody::Dynamic,
         Collider::circle(16.0),
         ExternalTorque::default().with_persistence(false),
@@ -125,14 +120,14 @@ pub fn update_player(
         torque.apply_torque(turn * config.torque);
         force.apply_force(rotation * Vec2::Y * config.thrust * thrust);
 
-        let mut new_index = 2;
+        let mut new_sprite = GameSprite::Player;
         if thrust.abs() > 0.0 {
-            new_index = 3 + rng.next_u32() % 2;
+            new_sprite = GameSprite::player_thrust(rng.next_u32());
         }
 
         sprite
             .texture_atlas
             .iter_mut()
-            .for_each(|a| a.index = new_index as usize);
+            .for_each(|a| a.index = new_sprite.index());
     }
 }

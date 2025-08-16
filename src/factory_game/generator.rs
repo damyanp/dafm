@@ -9,6 +9,7 @@ use crate::{
         helpers::ConveyorDirections,
         interaction::Tool,
     },
+    sprite_sheet::GameSprite,
 };
 
 pub struct GeneratorPlugin;
@@ -27,8 +28,8 @@ impl Plugin for GeneratorPlugin {
 pub struct GeneratorTool;
 
 impl Tool for GeneratorTool {
-    fn get_texture_index_flip(&self) -> (TileTextureIndex, TileFlip) {
-        (TileTextureIndex(30), TileFlip::default())
+    fn get_sprite_flip(&self) -> (GameSprite, TileFlip) {
+        (GameSprite::Generator, TileFlip::default())
     }
 
     fn configure_new_entity(&self, mut commands: EntityCommands) {
@@ -69,7 +70,7 @@ fn update_generator_tiles(
     for new_generator in new_generators {
         commands.entity(new_generator).insert_if_new((TileBundle {
             tilemap_id: TilemapId(*tilemap_entity),
-            texture_index: TileTextureIndex(30),
+            texture_index: GameSprite::Generator.tile_texture_index(),
             ..default()
         },));
     }

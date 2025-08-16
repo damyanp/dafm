@@ -1,11 +1,14 @@
 use bevy::prelude::*;
 use bevy_ecs_tilemap::prelude::*;
 
-use crate::factory_game::{
-    BaseLayer, ConveyorSystems,
-    conveyor::{AcceptsPayloadConveyor, Conveyor, DistributorConveyor},
-    helpers::ConveyorDirections,
-    interaction::Tool,
+use crate::{
+    factory_game::{
+        BaseLayer, ConveyorSystems,
+        conveyor::{AcceptsPayloadConveyor, Conveyor, DistributorConveyor},
+        helpers::ConveyorDirections,
+        interaction::Tool,
+    },
+    sprite_sheet::GameSprite,
 };
 
 pub struct DistributorPlugin;
@@ -20,8 +23,8 @@ impl Plugin for DistributorPlugin {
 
 pub struct DistributorTool;
 impl Tool for DistributorTool {
-    fn get_texture_index_flip(&self) -> (TileTextureIndex, TileFlip) {
-        (TileTextureIndex(32), TileFlip::default())
+    fn get_sprite_flip(&self) -> (GameSprite, TileFlip) {
+        (GameSprite::Distributor, TileFlip::default())
     }
 
     fn configure_new_entity(&self, mut commands: EntityCommands) {
@@ -62,7 +65,7 @@ fn update_distributor_tiles(
     for e in new_distributors {
         commands.entity(e).insert_if_new(TileBundle {
             tilemap_id: TilemapId(*tilemap_entity),
-            texture_index: TileTextureIndex(32),
+            texture_index: GameSprite::Distributor.tile_texture_index(),
             ..default()
         });
     }
