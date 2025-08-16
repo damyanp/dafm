@@ -37,8 +37,15 @@ impl Plugin for ConveyorInteractionPlugin {
                     )
                         .in_set(ConveyorSystems::TileGenerator)
                         .run_if(not(egui_wants_any_input)),
-                    update_hovered_tile.in_set(ConveyorSystems::TileUpdater),
-                    give_control_to_egui.run_if(in_state(GameState::FactoryGame)),
+                    update_hovered_tile
+                        .in_set(ConveyorSystems::TileUpdater)
+                        .run_if(resource_exists_and_changed::<Tools>),
+                    give_control_to_egui
+                        .run_if(in_state(GameState::FactoryGame))
+                        .run_if(
+                            resource_exists_and_changed::<Tools>
+                                .or(resource_exists_and_changed::<EguiWantsInput>),
+                        ),
                 ),
             );
     }
