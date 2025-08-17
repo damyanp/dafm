@@ -5,6 +5,7 @@ use bevy::{
 use bevy_ecs_tilemap::prelude::*;
 use bevy_egui::input::{EguiWantsInput, egui_wants_any_input};
 use bevy_pancam::PanCam;
+use std::fmt::Debug;
 
 use crate::{
     GameState,
@@ -20,6 +21,7 @@ pub struct ConveyorInteractionPlugin;
 impl Plugin for ConveyorInteractionPlugin {
     fn build(&self, app: &mut App) {
         app.register_type::<Tools>()
+            .register_place_tile_event::<ClearTileEvent>()
             .add_systems(OnEnter(GameState::FactoryGame), (startup, setup_tools))
             .add_systems(
                 OnExit(GameState::FactoryGame),
@@ -135,28 +137,9 @@ fn track_mouse(
 }
 
 #[allow(clippy::type_complexity)]
-fn on_click(
-    mut commands: Commands,
-    tile_pos: Single<&TilePos, With<HoveredTile>>,
-    mut storage: Single<&mut TileStorage, With<BaseLayer>>,
-    mut despawned_event: EventWriter<BaseLayerEntityDespawned>,
-    tools: Res<Tools>,
-) {
-    let tile_pos = *tile_pos;
-
-    if let Some(old_entity) = storage.remove(tile_pos) {
-        commands.entity(old_entity).despawn();
-        despawned_event.write(BaseLayerEntityDespawned(*tile_pos));
-    }
-    if let Some(tool) = tools.current_tool()
-        && tool.tool.creates_entity()
-    {
-        let entity = commands
-            .spawn((StateScoped(GameState::FactoryGame), BaseLayer, *tile_pos))
-            .id();
-        storage.set(tile_pos, entity);
-
-        tool.tool.configure_new_entity(commands.entity(entity));
+fn on_click(commands: Commands, tile_pos: Single<&TilePos, With<HoveredTile>>, tools: Res<Tools>) {
+    if let Some(tool) = tools.current_tool() {
+        tool.tool.execute(commands, *tile_pos);
     }
 }
 
@@ -226,10 +209,7 @@ pub trait Tool: Sync + Send {
     fn get_sprite_flip(&self) -> (GameSprite, TileFlip);
     fn next_variant(&mut self) {}
 
-    fn creates_entity(&self) -> bool {
-        true
-    }
-    fn configure_new_entity(&self, commands: EntityCommands);
+    fn execute(&self, commands: Commands, tile_pos: &TilePos);
 }
 
 fn select_tool(mut tools: ResMut<Tools>, mut key_events: EventReader<KeyboardInput>) {
@@ -279,12 +259,73 @@ impl Tool for ClearTool {
         (GameSprite::Delete, TileFlip::default())
     }
 
-    fn creates_entity(&self) -> bool {
-        false
+    fn execute(&self, mut commands: Commands, tile_pos: &TilePos) {
+        commands.trigger(ClearTileEvent(*tile_pos));
+    }
+}
+
+pub trait PlaceTileEvent<T = ()>: Event
+where
+    T: Debug,
+{
+    fn tile_pos(&self) -> TilePos;
+
+    fn make_new_entity(&self, mut commands: Commands, storage: &mut TileStorage) -> Option<Entity> {
+        let entity = commands
+            .spawn((
+                StateScoped(GameState::FactoryGame),
+                BaseLayer,
+                self.tile_pos(),
+            ))
+            .id();
+
+        storage.set(&self.tile_pos(), entity);
+
+        Some(entity)
     }
 
-    fn configure_new_entity(&self, _: EntityCommands) {
-        panic!();
+    #[expect(unused_variables)]
+    fn configure_new_entity(&self, commands: EntityCommands) {}
+}
+
+fn handle_place_tile_event<T: PlaceTileEvent + Debug>(
+    trigger: Trigger<T>,
+    mut commands: Commands,
+    mut storage: Single<&mut TileStorage, With<BaseLayer>>,
+    mut despawned_event: EventWriter<BaseLayerEntityDespawned>,
+) {
+    let tile_pos = trigger.tile_pos();
+
+    if let Some(entity) = storage.remove(&tile_pos) {
+        commands.entity(entity).despawn();
+        despawned_event.write(BaseLayerEntityDespawned(tile_pos));
+    }
+
+    if let Some(entity) = trigger.make_new_entity(commands.reborrow(), &mut storage) {
+        trigger.configure_new_entity(commands.entity(entity));
+    }
+}
+
+pub trait RegisterPlaceTileEvent {
+    fn register_place_tile_event<T: PlaceTileEvent + Debug>(&mut self) -> &mut Self;
+}
+
+impl RegisterPlaceTileEvent for App {
+    fn register_place_tile_event<T: PlaceTileEvent + Debug>(&mut self) -> &mut Self {
+        self.add_event::<T>()
+            .add_observer(handle_place_tile_event::<T>)
+    }
+}
+
+#[derive(Event, Debug)]
+pub struct ClearTileEvent(TilePos);
+
+impl PlaceTileEvent for ClearTileEvent {
+    fn tile_pos(&self) -> TilePos {
+        self.0
+    }
+    fn make_new_entity(&self, _: Commands, _: &mut TileStorage) -> Option<Entity> {
+        None
     }
 }
 

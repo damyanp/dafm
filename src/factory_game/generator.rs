@@ -6,7 +6,7 @@ use crate::{
         BaseLayer, ConveyorSystems,
         conveyor::{Conveyor, DistributorConveyor, Payloads},
         helpers::ConveyorDirections,
-        interaction::Tool,
+        interaction::{PlaceTileEvent, RegisterPlaceTileEvent, Tool},
         operators::{Operand, OperandPayloadBundle},
     },
     sprite_sheet::GameSprite,
@@ -15,13 +15,14 @@ use crate::{
 pub struct GeneratorPlugin;
 impl Plugin for GeneratorPlugin {
     fn build(&self, app: &mut App) {
-        app.add_systems(
-            Update,
-            (
-                update_generator_tiles.in_set(ConveyorSystems::TileUpdater),
-                generate_payloads.in_set(ConveyorSystems::TransportLogic),
-            ),
-        );
+        app.register_place_tile_event::<PlaceGeneratorEvent>()
+            .add_systems(
+                Update,
+                (
+                    update_generator_tiles.in_set(ConveyorSystems::TileUpdater),
+                    generate_payloads.in_set(ConveyorSystems::TransportLogic),
+                ),
+            );
     }
 }
 
@@ -30,6 +31,19 @@ pub struct GeneratorTool;
 impl Tool for GeneratorTool {
     fn get_sprite_flip(&self) -> (GameSprite, TileFlip) {
         (GameSprite::Generator, TileFlip::default())
+    }
+
+    fn execute(&self, mut commands: Commands, tile_pos: &TilePos) {
+        commands.trigger(PlaceGeneratorEvent(*tile_pos));
+    }
+}
+
+#[derive(Event, Debug)]
+pub struct PlaceGeneratorEvent(pub TilePos);
+
+impl PlaceTileEvent for PlaceGeneratorEvent {
+    fn tile_pos(&self) -> TilePos {
+        self.0
     }
 
     fn configure_new_entity(&self, mut commands: EntityCommands) {

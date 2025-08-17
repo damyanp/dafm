@@ -11,7 +11,7 @@ use crate::{
         BaseLayer, BaseLayerEntityDespawned, ConveyorSystems,
         conveyor::{AcceptsPayloadConveyor, Conveyor, SimpleConveyor},
         helpers::{ConveyorDirection, get_neighbors_from_query, make_east_relative, opposite},
-        interaction::Tool,
+        interaction::{PlaceTileEvent, RegisterPlaceTileEvent, Tool},
     },
     sprite_sheet::GameSprite,
 };
@@ -19,10 +19,11 @@ use crate::{
 pub struct ConveyorBeltsPlugin;
 impl Plugin for ConveyorBeltsPlugin {
     fn build(&self, app: &mut App) {
-        app.add_systems(
-            Update,
-            (update_conveyor_belt_tiles.in_set(ConveyorSystems::TileUpdater),),
-        );
+        app.register_place_tile_event::<PlaceConveyorBeltEvent>()
+            .add_systems(
+                Update,
+                (update_conveyor_belt_tiles.in_set(ConveyorSystems::TileUpdater),),
+            );
     }
 }
 
@@ -44,10 +45,21 @@ impl Tool for ConveyorBeltTool {
         }
     }
 
+    fn execute(&self, mut commands: Commands, tile_pos: &TilePos) {
+        commands.trigger(PlaceConveyorBeltEvent(*tile_pos, self.0));
+    }
+}
+
+#[derive(Event, Debug)]
+pub struct PlaceConveyorBeltEvent(pub TilePos, pub ConveyorDirection);
+
+impl PlaceTileEvent for PlaceConveyorBeltEvent {
+    fn tile_pos(&self) -> TilePos {
+        self.0
+    }
+
     fn configure_new_entity(&self, mut commands: EntityCommands) {
-        commands
-            .insert(ConveyorBeltBundle::new(self.0))
-            .insert(Name::new("Conveyor Belt"));
+        commands.insert((ConveyorBeltBundle::new(self.1), Name::new("Conveyor Belt")));
     }
 }
 

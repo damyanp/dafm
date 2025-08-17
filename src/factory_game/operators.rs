@@ -10,7 +10,7 @@ use crate::{
             PayloadDestination, PayloadOf, PayloadTransport, Payloads, PayloadsAwaitingTransfer,
         },
         helpers::ConveyorDirection,
-        interaction::Tool,
+        interaction::{PlaceTileEvent, RegisterPlaceTileEvent, Tool},
     },
     sprite_sheet::GameSprite,
 };
@@ -18,7 +18,8 @@ use crate::{
 pub struct OperatorsPlugin;
 impl Plugin for OperatorsPlugin {
     fn build(&self, app: &mut App) {
-        app.register_type::<Operator>()
+        app.register_place_tile_event::<PlaceOperatorEvent>()
+            .register_type::<Operator>()
             .register_type::<OperatorTile>()
             .register_type::<Operand>()
             .add_systems(
@@ -81,15 +82,28 @@ impl Tool for OperatorsTool {
         (self.operator.sprite(), self.direction.tile_flip())
     }
 
-    fn configure_new_entity(&self, mut commands: EntityCommands) {
-        commands.insert((
-            Name::new(format!("{:?}", self.operator)),
-            OperatorBundle::new(self.operator, self.direction),
-        ));
-    }
-
     fn next_variant(&mut self) {
         self.direction = self.direction.next();
+    }
+
+    fn execute(&self, mut commands: Commands, tile_pos: &TilePos) {
+        commands.trigger(PlaceOperatorEvent(*tile_pos, self.operator, self.direction));
+    }
+}
+
+#[derive(Event, Debug)]
+pub struct PlaceOperatorEvent(TilePos, Operator, ConveyorDirection);
+
+impl PlaceTileEvent for PlaceOperatorEvent {
+    fn tile_pos(&self) -> TilePos {
+        self.0
+    }
+
+    fn configure_new_entity(&self, mut commands: EntityCommands) {
+        commands.insert((
+            Name::new(format!("{:?}", self.1)),
+            OperatorBundle::new(self.1, self.2),
+        ));
     }
 }
 

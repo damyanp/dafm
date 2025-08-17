@@ -6,7 +6,7 @@ use crate::{
         BaseLayer, ConveyorSystems,
         conveyor::{AcceptsPayloadConveyor, Conveyor, Payloads},
         helpers::ConveyorDirections,
-        interaction::Tool,
+        interaction::{PlaceTileEvent, RegisterPlaceTileEvent, Tool},
     },
     sprite_sheet::GameSprite,
 };
@@ -14,13 +14,14 @@ use crate::{
 pub struct SinkPlugin;
 impl Plugin for SinkPlugin {
     fn build(&self, app: &mut App) {
-        app.add_systems(
-            Update,
-            (
-                update_sink_tiles.in_set(ConveyorSystems::TileUpdater),
-                sink_despawns_everything_in_it.in_set(ConveyorSystems::TransportLogic),
-            ),
-        );
+        app.register_place_tile_event::<PlaceSinkEvent>()
+            .add_systems(
+                Update,
+                (
+                    update_sink_tiles.in_set(ConveyorSystems::TileUpdater),
+                    sink_despawns_everything_in_it.in_set(ConveyorSystems::TransportLogic),
+                ),
+            );
     }
 }
 
@@ -29,6 +30,19 @@ pub struct SinkTool;
 impl Tool for SinkTool {
     fn get_sprite_flip(&self) -> (GameSprite, TileFlip) {
         (GameSprite::Sink, TileFlip::default())
+    }
+
+    fn execute(&self, mut commands: Commands, tile_pos: &TilePos) {
+        commands.trigger(PlaceSinkEvent(*tile_pos));
+    }
+}
+
+#[derive(Event, Debug)]
+pub struct PlaceSinkEvent(TilePos);
+
+impl PlaceTileEvent for PlaceSinkEvent {
+    fn tile_pos(&self) -> TilePos {
+        self.0
     }
 
     fn configure_new_entity(&self, mut commands: EntityCommands) {

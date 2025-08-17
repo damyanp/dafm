@@ -6,7 +6,7 @@ use crate::{
         BaseLayer, ConveyorSystems,
         conveyor::{AcceptsPayloadConveyor, BridgeConveyor, Conveyor},
         helpers::ConveyorDirections,
-        interaction::Tool,
+        interaction::{PlaceTileEvent, RegisterPlaceTileEvent, Tool},
     },
     sprite_sheet::GameSprite,
 };
@@ -14,10 +14,11 @@ use crate::{
 pub struct BridgePlugin;
 impl Plugin for BridgePlugin {
     fn build(&self, app: &mut App) {
-        app.add_systems(
-            Update,
-            update_bridge_tiles.in_set(ConveyorSystems::TileUpdater),
-        );
+        app.register_place_tile_event::<PlaceBridgeEvent>()
+            .add_systems(
+                Update,
+                update_bridge_tiles.in_set(ConveyorSystems::TileUpdater),
+            );
     }
 }
 
@@ -25,6 +26,19 @@ pub struct BridgeTool;
 impl Tool for BridgeTool {
     fn get_sprite_flip(&self) -> (GameSprite, TileFlip) {
         (GameSprite::Bridge, TileFlip::default())
+    }
+
+    fn execute(&self, mut commands: Commands, tile_pos: &TilePos) {
+        commands.trigger(PlaceBridgeEvent(*tile_pos));
+    }
+}
+
+#[derive(Event, Debug)]
+pub struct PlaceBridgeEvent(TilePos);
+
+impl PlaceTileEvent for PlaceBridgeEvent {
+    fn tile_pos(&self) -> TilePos {
+        self.0
     }
 
     fn configure_new_entity(&self, mut commands: EntityCommands) {

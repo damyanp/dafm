@@ -6,7 +6,7 @@ use crate::{
         BaseLayer, ConveyorSystems,
         conveyor::{AcceptsPayloadConveyor, Conveyor, DistributorConveyor},
         helpers::ConveyorDirections,
-        interaction::Tool,
+        interaction::{PlaceTileEvent, RegisterPlaceTileEvent, Tool},
     },
     sprite_sheet::GameSprite,
 };
@@ -14,10 +14,11 @@ use crate::{
 pub struct DistributorPlugin;
 impl Plugin for DistributorPlugin {
     fn build(&self, app: &mut App) {
-        app.add_systems(
-            Update,
-            (update_distributor_tiles,).in_set(ConveyorSystems::TileUpdater),
-        );
+        app.register_place_tile_event::<PlaceDistributorEvent>()
+            .add_systems(
+                Update,
+                update_distributor_tiles.in_set(ConveyorSystems::TileUpdater),
+            );
     }
 }
 
@@ -25,6 +26,19 @@ pub struct DistributorTool;
 impl Tool for DistributorTool {
     fn get_sprite_flip(&self) -> (GameSprite, TileFlip) {
         (GameSprite::Distributor, TileFlip::default())
+    }
+
+    fn execute(&self, mut commands: Commands, tile_pos: &TilePos) {
+        commands.trigger(PlaceDistributorEvent(*tile_pos));
+    }
+}
+
+#[derive(Event, Debug)]
+pub struct PlaceDistributorEvent(TilePos);
+
+impl PlaceTileEvent for PlaceDistributorEvent {
+    fn tile_pos(&self) -> TilePos {
+        self.0
     }
 
     fn configure_new_entity(&self, mut commands: EntityCommands) {

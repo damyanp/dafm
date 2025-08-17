@@ -17,22 +17,21 @@ mod operators;
 mod sink;
 mod ui;
 
+#[cfg(test)]
+mod test;
+
 use helpers::*;
 
-pub struct FactoryGamePlugin;
-impl Plugin for FactoryGamePlugin {
+pub struct FactoryGameLogicPlugin;
+impl Plugin for FactoryGameLogicPlugin {
     fn build(&self, app: &mut App) {
-        app //
-            .add_plugins(interaction::ConveyorInteractionPlugin)
-            .add_plugins(bridge::BridgePlugin)
+        app.add_plugins(bridge::BridgePlugin)
             .add_plugins(conveyor_belts::ConveyorBeltsPlugin)
             .add_plugins(conveyor::PayloadPlugin)
-            .add_plugins(dev::DevPlugin)
             .add_plugins(distributor::DistributorPlugin)
             .add_plugins(generator::GeneratorPlugin)
             .add_plugins(operators::OperatorsPlugin)
             .add_plugins(sink::SinkPlugin)
-            .add_plugins(ui::UiPlugin)
             .insert_resource(MapConfig::default())
             .add_event::<BaseLayerEntityDespawned>()
             .configure_sets(
@@ -45,7 +44,18 @@ impl Plugin for FactoryGamePlugin {
                 )
                     .chain()
                     .run_if(in_state(GameState::FactoryGame)),
-            )
+            );
+    }
+}
+
+pub struct FactoryGamePlugin;
+impl Plugin for FactoryGamePlugin {
+    fn build(&self, app: &mut App) {
+        app //
+            .add_plugins(interaction::ConveyorInteractionPlugin)
+            .add_plugins(FactoryGameLogicPlugin)
+            .add_plugins(dev::DevPlugin)
+            .add_plugins(ui::UiPlugin)
             .add_systems(
                 OnEnter(GameState::FactoryGame),
                 (
