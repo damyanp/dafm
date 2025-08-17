@@ -46,10 +46,7 @@ pub struct BridgeBundle {
 impl BridgeBundle {
     pub fn new() -> Self {
         BridgeBundle {
-            conveyor: Conveyor {
-                outputs: ConveyorDirections::all(),
-                accepts_input: true,
-            },
+            conveyor: Conveyor::new(ConveyorDirections::all()),
             bridge_conveyor: BridgeConveyor,
             bridge: Bridge,
             accepts_payload: AcceptsPayloadConveyor,

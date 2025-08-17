@@ -58,6 +58,8 @@ pub enum GameSprite {
     Sink,
     Distributor,
     Bridge,
+    OperatorPlus,
+    OperatorMultiply,
 }
 
 impl GameSprite {
@@ -83,6 +85,8 @@ impl GameSprite {
             Sink => 31,
             Distributor => 32,
             Bridge => 33,
+            OperatorPlus => 34,
+            OperatorMultiply => 35
         }
     }
 

@@ -50,10 +50,7 @@ impl SinkBundle {
     pub fn new() -> Self {
         SinkBundle {
             sink: Sink,
-            conveyor: Conveyor {
-                outputs: ConveyorDirections::default(),
-                accepts_input: true,
-            },
+            conveyor: Conveyor::new(ConveyorDirections::default()),
             accepts_payload: AcceptsPayloadConveyor,
         }
     }

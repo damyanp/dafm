@@ -46,10 +46,7 @@ pub struct DistributorBundle {
 impl DistributorBundle {
     pub fn new() -> Self {
         DistributorBundle {
-            conveyor: Conveyor {
-                outputs: ConveyorDirections::all(),
-                accepts_input: true,
-            },
+            conveyor: Conveyor::new(ConveyorDirections::all()),
             distributor: Distributor,
             distributor_conveyor: DistributorConveyor::default(),
             accepts_payload: AcceptsPayloadConveyor,

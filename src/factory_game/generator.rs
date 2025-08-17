@@ -8,6 +8,7 @@ use crate::{
         conveyor::{Conveyor, DistributorConveyor, PayloadOf, PayloadTransport, Payloads},
         helpers::ConveyorDirections,
         interaction::Tool,
+        operators::{Operand, OperandPayloadBundle},
     },
     sprite_sheet::GameSprite,
 };
@@ -53,10 +54,7 @@ impl GeneratorBundle {
     pub fn new() -> Self {
         GeneratorBundle {
             generator: Generator::default(),
-            conveyor: Conveyor {
-                outputs: ConveyorDirections::all(),
-                accepts_input: false,
-            },
+            conveyor: Conveyor::new(ConveyorDirections::all()),
             distributor: DistributorConveyor::default(),
         }
     }
@@ -83,14 +81,7 @@ fn generate_payloads(
 ) {
     for (entity, mut generator, payloads) in generators {
         if time.elapsed_secs() > generator.next_generate_time && payloads.is_none() {
-            commands.spawn((
-                StateScoped(GameState::FactoryGame),
-                Name::new("Payload"),
-                PayloadOf(entity),
-                Text2d::new("X"),
-                TextColor(Color::linear_rgb(1.0, 0.4, 0.4)),
-                PayloadTransport { mu: 0.5 },
-            ));
+            commands.spawn(OperandPayloadBundle::new(entity, Operand(1)));
 
             generator.next_generate_time = time.elapsed_secs() + 5.0;
         }

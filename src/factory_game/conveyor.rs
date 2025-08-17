@@ -45,9 +45,36 @@ impl Plugin for PayloadPlugin {
 #[derive(Component, Clone, Debug, Reflect, Default)]
 #[require(StateScoped::<GameState>(GameState::FactoryGame))]
 pub struct Conveyor {
-    pub outputs: ConveyorDirections,
-    pub accepts_input: bool,
+    outputs: ConveyorDirections,
+    accepts_input: bool,
 }
+
+impl From<ConveyorDirection> for Conveyor {
+    fn from(direction: ConveyorDirection) -> Self {
+        Conveyor::new(ConveyorDirections::new(direction))
+    }
+}
+
+impl Conveyor {
+    pub fn new(outputs: ConveyorDirections) -> Self {
+        Conveyor {
+            outputs,
+            accepts_input: false,
+        }
+    }
+
+    pub fn output(&self) -> ConveyorDirection {
+        self.outputs.single()
+    }
+
+    pub fn outputs(&self) -> ConveyorDirections {
+        self.outputs
+    }
+}
+
+/// Prevents [`transfer_payloads`] from operating on this entity.
+#[derive(Component)]
+pub struct CustomConveyorTransfer;
 
 #[derive(Component, Debug, Reflect, Default)]
 pub struct DistributorConveyor {
@@ -110,12 +137,15 @@ fn update_accepts_input(
 
 fn transfer_payloads(
     mut commands: Commands,
-    receivers: Query<(
-        Entity,
-        &Conveyor,
-        &PayloadsAwaitingTransfer,
-        Option<&Payloads>,
-    )>,
+    receivers: Query<
+        (
+            Entity,
+            &Conveyor,
+            &PayloadsAwaitingTransfer,
+            Option<&Payloads>,
+        ),
+        Without<CustomConveyorTransfer>,
+    >,
     payload_destinations: Query<&PayloadDestination, With<PayloadAwaitingTransferTo>>,
 ) {
     for (receiver, conveyor, incoming, payloads) in receivers {

@@ -84,10 +84,10 @@ fn on_toggle_show_conveyors(
 
     if *enabled {
         for (conveyor, tile_pos) in conveyors {
-            if conveyor.outputs.is_multiple() {
+            if conveyor.outputs().is_multiple() {
                 continue;
             }
-            let flip = match conveyor.outputs.single() {
+            let flip = match conveyor.output() {
                 ConveyorDirection::North => TileFlip {
                     y: true,
                     d: true,

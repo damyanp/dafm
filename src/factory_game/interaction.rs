@@ -7,13 +7,9 @@ use bevy_egui::input::{EguiWantsInput, egui_wants_any_input};
 use bevy_pancam::PanCam;
 
 use crate::{
-    GameState,
     factory_game::{
-        BaseLayer, BaseLayerEntityDespawned, ConveyorSystems, MapConfig, bridge::BridgeTool,
-        conveyor_belts::ConveyorBeltTool, distributor::DistributorTool, generator::GeneratorTool,
-        sink::SinkTool,
-    },
-    sprite_sheet::{GameSprite, SpriteSheet},
+        bridge::BridgeTool, conveyor_belts::ConveyorBeltTool, distributor::DistributorTool, generator::GeneratorTool, operators::OperatorsTool, sink::SinkTool, BaseLayer, BaseLayerEntityDespawned, ConveyorSystems, MapConfig
+    }, sprite_sheet::{GameSprite, SpriteSheet}, GameState
 };
 
 pub struct ConveyorInteractionPlugin;
@@ -263,6 +259,8 @@ fn setup_tools(mut commands: Commands) {
     tools.add(4, Box::new(SinkTool));
     tools.add(5, Box::new(DistributorTool));
     tools.add(6, Box::new(BridgeTool));
+    tools.add(7, Box::new(OperatorsTool::plus()));
+    tools.add(8, Box::new(OperatorsTool::multiply()));
 
     commands.insert_resource(tools);
 }

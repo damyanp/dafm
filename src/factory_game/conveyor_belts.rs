@@ -34,27 +34,7 @@ pub struct ConveyorBeltTool(ConveyorDirection);
 
 impl Tool for ConveyorBeltTool {
     fn get_sprite_flip(&self) -> (GameSprite, TileFlip) {
-        use ConveyorDirection::*;
-
-        (
-            GameSprite::Arrow,
-            match self.0 {
-                East => TileFlip::default(),
-                North => TileFlip {
-                    d: true,
-                    y: true,
-                    ..default()
-                },
-                West => TileFlip {
-                    x: true,
-                    ..default()
-                },
-                South => TileFlip {
-                    d: true,
-                    ..default()
-                },
-            },
-        )
+        (GameSprite::Arrow, self.0.tile_flip())
     }
 
     fn next_variant(&mut self) {
@@ -88,10 +68,7 @@ pub struct ConveyorBeltBundle {
 impl ConveyorBeltBundle {
     pub fn new(output: ConveyorDirection) -> Self {
         ConveyorBeltBundle {
-            conveyor: Conveyor {
-                outputs: ConveyorDirections::new(output),
-                accepts_input: true,
-            },
+            conveyor: Conveyor::from(output),
             simple_conveyor: SimpleConveyor,
             belt: ConveyorBelt,
             accepts_payload: AcceptsPayloadConveyor,
@@ -163,15 +140,9 @@ fn update_conveyor_belt_tile(
     map_size: &TilemapSize,
     conveyors: &Query<&Conveyor>,
 ) {
-    let (
-        Conveyor {
-            outputs: out_dirs, ..
-        },
-        texture_index,
-        flip,
-    ) = conveyor_belt;
+    let (conveyor, texture_index, flip) = conveyor_belt;
 
-    let out_dir: SquareDirection = out_dirs.single().into();
+    let out_dir: SquareDirection = conveyor.output().into();
 
     // Find the neighbors that have conveyors on them
     let neighbor_conveyors = get_neighbors_from_query(tile_storage, tile_pos, map_size, conveyors);
@@ -179,7 +150,7 @@ fn update_conveyor_belt_tile(
     // And just the conveyors pointing towards this one
     let neighbor_conveyors = Neighbors::from_directional_closure(|dir| {
         neighbor_conveyors.get(dir).and_then(|c| {
-            if c.outputs.is_set(opposite(dir).into()) {
+            if c.outputs().is_set(opposite(dir).into()) {
                 Some(*c)
             } else {
                 None

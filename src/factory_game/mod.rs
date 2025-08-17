@@ -15,6 +15,7 @@ mod helpers;
 mod interaction;
 mod sink;
 mod ui;
+mod operators;
 
 use helpers::*;
 
@@ -29,6 +30,7 @@ impl Plugin for FactoryGamePlugin {
             .add_plugins(dev::DevPlugin)
             .add_plugins(distributor::DistributorPlugin)
             .add_plugins(generator::GeneratorPlugin)
+            .add_plugins(operators::OperatorsPlugin)
             .add_plugins(sink::SinkPlugin)
             .add_plugins(ui::UiPlugin)
             .insert_resource(MapConfig::default())

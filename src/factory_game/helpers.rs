@@ -52,6 +52,26 @@ impl ConveyorDirection {
         }
     }
 
+    pub fn left(&self) -> Self {
+        use ConveyorDirection::*;
+        match self {
+            North => West,
+            South => East,
+            East => North,
+            West => South,
+        }
+    }
+
+    pub fn right(&self) -> Self {
+        use ConveyorDirection::*;
+        match self {
+            North => East,
+            South => West,
+            East => South,
+            West => North,
+        }
+    }
+
     pub fn index(&self) -> usize {
         use ConveyorDirection::*;
         match self {
@@ -69,6 +89,28 @@ impl ConveyorDirection {
             East => South,
             South => West,
             West => North,
+        }
+    }
+
+    /// Assuming "East" is normal, figure out the flips to rotate in other
+    /// direction
+    pub fn tile_flip(&self) -> TileFlip {
+        use ConveyorDirection::*;
+        match self {
+            East => TileFlip::default(),
+            North => TileFlip {
+                d: true,
+                y: true,
+                ..default()
+            },
+            West => TileFlip {
+                x: true,
+                ..default()
+            },
+            South => TileFlip {
+                d: true,
+                ..default()
+            },
         }
     }
 }
