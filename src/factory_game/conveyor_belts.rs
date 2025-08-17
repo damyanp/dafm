@@ -254,7 +254,6 @@ fn update_conveyor_belt_tile(
             west: _,
             ..
         } => (GameSprite::ConveyorInWOutE, false),
-        _ => panic!("No match for {neighbor_conveyors:?}"),
     };
 
     // y_flip indicates if we should flip y for the "east is always out"
