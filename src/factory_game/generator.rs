@@ -2,10 +2,9 @@ use bevy::prelude::*;
 use bevy_ecs_tilemap::prelude::*;
 
 use crate::{
-    GameState,
     factory_game::{
         BaseLayer, ConveyorSystems,
-        conveyor::{Conveyor, DistributorConveyor, PayloadOf, PayloadTransport, Payloads},
+        conveyor::{Conveyor, DistributorConveyor, Payloads},
         helpers::ConveyorDirections,
         interaction::Tool,
         operators::{Operand, OperandPayloadBundle},

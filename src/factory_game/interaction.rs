@@ -7,9 +7,13 @@ use bevy_egui::input::{EguiWantsInput, egui_wants_any_input};
 use bevy_pancam::PanCam;
 
 use crate::{
+    GameState,
     factory_game::{
-        bridge::BridgeTool, conveyor_belts::ConveyorBeltTool, distributor::DistributorTool, generator::GeneratorTool, operators::OperatorsTool, sink::SinkTool, BaseLayer, BaseLayerEntityDespawned, ConveyorSystems, MapConfig
-    }, sprite_sheet::{GameSprite, SpriteSheet}, GameState
+        BaseLayer, BaseLayerEntityDespawned, ConveyorSystems, MapConfig, bridge::BridgeTool,
+        conveyor_belts::ConveyorBeltTool, distributor::DistributorTool, generator::GeneratorTool,
+        operators::OperatorsTool, sink::SinkTool,
+    },
+    sprite_sheet::{GameSprite, SpriteSheet},
 };
 
 pub struct ConveyorInteractionPlugin;

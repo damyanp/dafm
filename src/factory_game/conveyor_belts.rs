@@ -10,10 +10,7 @@ use crate::{
     factory_game::{
         BaseLayer, BaseLayerEntityDespawned, ConveyorSystems,
         conveyor::{AcceptsPayloadConveyor, Conveyor, SimpleConveyor},
-        helpers::{
-            ConveyorDirection, ConveyorDirections, get_neighbors_from_query, make_east_relative,
-            opposite,
-        },
+        helpers::{ConveyorDirection, get_neighbors_from_query, make_east_relative, opposite},
         interaction::Tool,
     },
     sprite_sheet::GameSprite,

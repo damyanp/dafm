@@ -9,7 +9,7 @@ use crate::{
             AcceptsPayloadConveyor, Conveyor, CustomConveyorTransfer, PayloadAwaitingTransferTo,
             PayloadDestination, PayloadOf, PayloadTransport, Payloads, PayloadsAwaitingTransfer,
         },
-        helpers::{ConveyorDirection, ConveyorDirections},
+        helpers::ConveyorDirection,
         interaction::Tool,
     },
     sprite_sheet::GameSprite,
@@ -159,15 +159,10 @@ fn update_operator_tiles(
 
 fn transfer_operator_payloads(
     mut commands: Commands,
-    receivers: Query<(
-        Entity,
-        &Conveyor,
-        &PayloadsAwaitingTransfer,
-        &mut OperatorTile,
-    )>,
+    receivers: Query<(&Conveyor, &PayloadsAwaitingTransfer, &mut OperatorTile)>,
     payloads: Query<(&PayloadDestination, &Operand), With<PayloadAwaitingTransferTo>>,
 ) {
-    for (receiver, conveyor, incoming, mut operator) in receivers {
+    for (conveyor, incoming, mut operator) in receivers {
         for payload in incoming.iter() {
             if let Ok((PayloadDestination(destination), operand)) = payloads.get(payload) {
                 let incoming_direction = destination.opposite();

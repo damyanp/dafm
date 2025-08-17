@@ -13,9 +13,9 @@ mod distributor;
 mod generator;
 mod helpers;
 mod interaction;
+mod operators;
 mod sink;
 mod ui;
-mod operators;
 
 use helpers::*;
 

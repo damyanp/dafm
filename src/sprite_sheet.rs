@@ -86,7 +86,7 @@ impl GameSprite {
             Distributor => 32,
             Bridge => 33,
             OperatorPlus => 34,
-            OperatorMultiply => 35
+            OperatorMultiply => 35,
         }
     }
 
