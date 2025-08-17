@@ -235,7 +235,7 @@ fn update_conveyor_belt_tile(
         } => (GameSprite::ConveyorInNSOutE, false),
         Neighbors {
             north: Some(_),
-            east: None,
+            east: _,
             south: Some(_),
             west: Some(_),
             ..
