@@ -149,14 +149,14 @@ fn on_click(
         despawned_event.write(BaseLayerEntityDespawned(*tile_pos));
     }
     if let Some(tool) = tools.current_tool()
-        && tool.creates_entity()
+        && tool.tool.creates_entity()
     {
         let entity = commands
             .spawn((StateScoped(GameState::FactoryGame), BaseLayer, *tile_pos))
             .id();
         storage.set(tile_pos, entity);
 
-        tool.configure_new_entity(commands.entity(entity));
+        tool.tool.configure_new_entity(commands.entity(entity));
     }
 }
 
@@ -203,9 +203,8 @@ impl Tools {
         }
     }
 
-    pub fn current_tool(&self) -> Option<&dyn Tool> {
-        self.current_tool
-            .map(|index| self.tools[index].tool.as_ref())
+    pub fn current_tool(&self) -> Option<&ToolEntry> {
+        self.current_tool.map(|index| &self.tools[index])
     }
 
     pub fn tools(&self) -> &Vec<ToolEntry> {
@@ -216,6 +215,10 @@ impl Tools {
 impl ToolEntry {
     pub fn slot(&self) -> u32 {
         self.slot
+    }
+
+    pub fn tool(&self) -> &dyn Tool {
+        self.tool.as_ref()
     }
 }
 

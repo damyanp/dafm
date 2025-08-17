@@ -27,13 +27,14 @@ impl SpriteSheet {
     }
 
     pub fn sprite(&self, game_sprite: GameSprite) -> Sprite {
-        Sprite::from_atlas_image(
-            self.image.clone(),
-            TextureAtlas {
-                layout: self.layout.clone(),
-                index: game_sprite.index(),
-            },
-        )
+        Sprite::from_atlas_image(self.image.clone(), self.texture_atlas(game_sprite))
+    }
+
+    pub fn texture_atlas(&self, game_sprite: GameSprite) -> TextureAtlas {
+        TextureAtlas {
+            layout: self.layout.clone(),
+            index: game_sprite.index(),
+        }
     }
 }
 
