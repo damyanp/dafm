@@ -105,8 +105,8 @@ impl Operand {
 #[derive(Component, Debug, Reflect)]
 struct OperatorTile {
     operator: Operator,
-    left_operand: Option<Operand>,
-    right_operand: Option<Operand>,
+    left_operand: Option<(Entity, Operand)>,
+    right_operand: Option<(Entity, Operand)>,
 }
 
 impl OperatorTile {
@@ -158,7 +158,6 @@ fn update_operator_tiles(
 }
 
 fn transfer_operator_payloads(
-    mut commands: Commands,
     receivers: Query<(&Conveyor, &PayloadsAwaitingTransfer, &mut OperatorTile)>,
     payloads: Query<(&PayloadDestination, &Operand), With<PayloadAwaitingTransferTo>>,
 ) {
@@ -167,22 +166,13 @@ fn transfer_operator_payloads(
             if let Ok((PayloadDestination(destination), operand)) = payloads.get(payload) {
                 let incoming_direction = destination.opposite();
 
-                let transferred = if incoming_direction == conveyor.output().left()
-                    && operator.left_operand.is_none()
+                if incoming_direction == conveyor.output().left() && operator.left_operand.is_none()
                 {
-                    operator.left_operand = Some(*operand);
-                    true
+                    operator.left_operand = Some((payload, *operand));
                 } else if incoming_direction == conveyor.output().right()
                     && operator.right_operand.is_none()
                 {
-                    operator.right_operand = Some(*operand);
-                    true
-                } else {
-                    false
-                };
-
-                if transferred {
-                    commands.entity(payload).despawn();
+                    operator.right_operand = Some((payload, *operand));
                 }
             }
         }
@@ -197,7 +187,11 @@ fn generate_new_payloads(
         if let Some(left) = operator.left_operand
             && let Some(right) = operator.right_operand
         {
-            let new_operand = operator.operator.generate_operand(left, right);
+            [left.0, right.0]
+                .into_iter()
+                .for_each(|e| commands.entity(e).despawn());
+
+            let new_operand = operator.operator.generate_operand(left.1, right.1);
             commands.spawn((
                 OperandPayloadBundle::new(entity, new_operand),
                 PayloadDestination(conveyor.output()),
