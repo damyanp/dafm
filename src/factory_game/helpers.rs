@@ -158,6 +158,13 @@ impl ConveyorDirections {
         Self(n | e | s | w)
     }
 
+    pub fn all_except(except: ConveyorDirections) -> Self {
+        let all = Self::all().0;
+        let except: u8 = except.0;
+
+        Self(all & !except)
+    }
+
     pub fn add(&mut self, direction: ConveyorDirection) {
         let direction: u8 = direction.into();
         self.0 |= direction;
@@ -198,6 +205,12 @@ impl ConveyorDirections {
             .map(move |i| (direction + i) % CONVEYOR_DIRECTIONS.len())
             .map(|i| CONVEYOR_DIRECTIONS[i])
             .filter(|d| self.is_set(*d))
+    }
+}
+
+impl<T: Iterator<Item = ConveyorDirection>> From<T> for ConveyorDirections {
+    fn from(value: T) -> Self {
+        Self(value.fold(0u8, |acc, direction| acc | u8::from(direction)))
     }
 }
 

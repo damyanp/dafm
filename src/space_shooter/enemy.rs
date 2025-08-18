@@ -144,15 +144,16 @@ fn update_waves(
     mut rng: GlobalEntropy<WyRand>,
     enemies: Query<Entity, With<Enemy>>,
 ) {
-    if let Some(mut waves) = waves {
-        if waves.next <= time.elapsed_secs() && enemies.is_empty() {
-            let circle = Circle::new(128.0);
+    if let Some(mut waves) = waves
+        && waves.next <= time.elapsed_secs()
+        && enemies.is_empty()
+    {
+        let circle = Circle::new(128.0);
 
-            for _ in 0..waves.wave_number {
-                commands.trigger(SpawnEnemy(circle.sample_interior(rng.as_mut()).into()));
-            }
-            waves.wave_number += 1;
-            waves.next = time.elapsed_secs() + 5.0;
+        for _ in 0..waves.wave_number {
+            commands.trigger(SpawnEnemy(circle.sample_interior(rng.as_mut()).into()));
         }
+        waves.wave_number += 1;
+        waves.next = time.elapsed_secs() + 5.0;
     }
 }

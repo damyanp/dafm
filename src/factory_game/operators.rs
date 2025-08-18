@@ -150,7 +150,9 @@ impl OperatorBundle {
         OperatorBundle {
             operator: OperatorTile::new(operator),
             conveyor: Conveyor::from(direction),
-            accepts_payload: AcceptsPayloadConveyor,
+            accepts_payload: AcceptsPayloadConveyor::from_direction_iter(
+                [direction.left(), direction.right()].into_iter(),
+            ),
             custom_transfer: CustomConveyorTransfer,
         }
     }

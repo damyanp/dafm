@@ -34,7 +34,7 @@ impl Tool for BridgeTool {
 }
 
 #[derive(Event, Debug)]
-pub struct PlaceBridgeEvent(TilePos);
+pub struct PlaceBridgeEvent(pub TilePos);
 
 impl PlaceTileEvent for PlaceBridgeEvent {
     fn tile_pos(&self) -> TilePos {
@@ -47,7 +47,7 @@ impl PlaceTileEvent for PlaceBridgeEvent {
 }
 
 #[derive(Component)]
-struct Bridge;
+pub struct Bridge;
 
 #[derive(Bundle)]
 pub struct BridgeBundle {
@@ -63,7 +63,7 @@ impl BridgeBundle {
             conveyor: Conveyor::new(ConveyorDirections::all()),
             bridge_conveyor: BridgeConveyor,
             bridge: Bridge,
-            accepts_payload: AcceptsPayloadConveyor,
+            accepts_payload: AcceptsPayloadConveyor::default(),
         }
     }
 }

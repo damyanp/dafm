@@ -65,7 +65,7 @@ impl SinkBundle {
         SinkBundle {
             sink: Sink,
             conveyor: Conveyor::new(ConveyorDirections::default()),
-            accepts_payload: AcceptsPayloadConveyor,
+            accepts_payload: AcceptsPayloadConveyor::all(),
         }
     }
 }

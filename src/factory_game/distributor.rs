@@ -63,7 +63,7 @@ impl DistributorBundle {
             conveyor: Conveyor::new(ConveyorDirections::all()),
             distributor: Distributor,
             distributor_conveyor: DistributorConveyor::default(),
-            accepts_payload: AcceptsPayloadConveyor,
+            accepts_payload: AcceptsPayloadConveyor::all(),
         }
     }
 }

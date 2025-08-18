@@ -1,5 +1,3 @@
-use std::collections::HashSet;
-
 use bevy::prelude::*;
 use bevy_ecs_tilemap::{
     helpers::square_grid::neighbors::{Neighbors, SquareDirection},
@@ -9,8 +7,11 @@ use bevy_ecs_tilemap::{
 use crate::{
     factory_game::{
         BaseLayer, BaseLayerEntityDespawned, ConveyorSystems,
-        conveyor::{AcceptsPayloadConveyor, Conveyor, SimpleConveyor},
-        helpers::{ConveyorDirection, get_neighbors_from_query, make_east_relative, opposite},
+        conveyor::{AcceptsPayloadConveyor, Conveyor, SimpleConveyor, find_tiles_to_check},
+        helpers::{
+            ConveyorDirection, ConveyorDirections, get_neighbors_from_query, make_east_relative,
+            opposite,
+        },
         interaction::{PlaceTileEvent, RegisterPlaceTileEvent, Tool},
     },
     sprite_sheet::GameSprite,
@@ -64,7 +65,7 @@ impl PlaceTileEvent for PlaceConveyorBeltEvent {
 }
 
 #[derive(Component)]
-struct ConveyorBelt;
+pub struct ConveyorBelt;
 
 #[derive(Bundle)]
 pub struct ConveyorBeltBundle {
@@ -80,7 +81,7 @@ impl ConveyorBeltBundle {
             conveyor: Conveyor::from(output),
             simple_conveyor: SimpleConveyor,
             belt: ConveyorBelt,
-            accepts_payload: AcceptsPayloadConveyor,
+            accepts_payload: AcceptsPayloadConveyor::except(ConveyorDirections::new(output)),
         }
     }
 }
@@ -89,7 +90,7 @@ impl ConveyorBeltBundle {
 fn update_conveyor_belt_tiles(
     mut commands: Commands,
     new_conveyor_belts: Query<&TilePos, Added<Conveyor>>,
-    mut removed_entities: EventReader<BaseLayerEntityDespawned>,
+    removed_entities: EventReader<BaseLayerEntityDespawned>,
     conveyors: Query<&Conveyor>,
     conveyor_belts: Query<
         (&Conveyor, Option<&TileTextureIndex>, Option<&TileFlip>),
@@ -99,43 +100,26 @@ fn update_conveyor_belt_tiles(
 ) {
     let (tilemap_entity, tile_storage, map_size) = base.into_inner();
 
-    let mut to_check = HashSet::new();
-
-    new_conveyor_belts.iter().for_each(|pos| {
-        to_check.insert(*pos);
-    });
-
-    removed_entities.read().for_each(|entity| {
-        to_check.insert(entity.0);
-    });
-
-    let sources: Vec<_> = to_check.iter().cloned().collect();
-    for pos in sources {
-        for neighbor_pos in
-            Neighbors::get_square_neighboring_positions(&pos, map_size, false).iter()
-        {
-            to_check.insert(*neighbor_pos);
-        }
-    }
+    let to_check = find_tiles_to_check(new_conveyor_belts, removed_entities, map_size);
 
     for pos in to_check {
-        if let Some(entity) = tile_storage.get(&pos) {
-            if let Ok(conveyor_belt) = conveyor_belts.get(entity) {
-                commands.entity(entity).insert_if_new(TileBundle {
-                    tilemap_id: TilemapId(tilemap_entity),
-                    ..default()
-                });
+        if let Some(entity) = tile_storage.get(&pos)
+            && let Ok(conveyor_belt) = conveyor_belts.get(entity)
+        {
+            commands.entity(entity).insert_if_new(TileBundle {
+                tilemap_id: TilemapId(tilemap_entity),
+                ..default()
+            });
 
-                update_conveyor_belt_tile(
-                    commands.reborrow(),
-                    entity,
-                    conveyor_belt,
-                    &pos,
-                    tile_storage,
-                    map_size,
-                    &conveyors,
-                );
-            }
+            update_conveyor_belt_tile(
+                commands.reborrow(),
+                entity,
+                conveyor_belt,
+                &pos,
+                tile_storage,
+                map_size,
+                &conveyors,
+            );
         }
     }
 }

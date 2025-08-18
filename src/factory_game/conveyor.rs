@@ -1,18 +1,21 @@
+use std::collections::HashSet;
+
 use bevy::prelude::*;
-use bevy_ecs_tilemap::prelude::*;
+use bevy_ecs_tilemap::{helpers::square_grid::neighbors::Neighbors, prelude::*};
 
 use crate::{
     GameState,
     factory_game::{
-        BaseLayer, ConveyorSystems,
-        helpers::{ConveyorDirection, ConveyorDirections, get_neighbors_from_query},
+        BaseLayer, BaseLayerEntityDespawned, ConveyorSystems,
+        helpers::{ConveyorDirection, ConveyorDirections, get_neighbors_from_query, opposite},
     },
 };
 
 pub struct PayloadPlugin;
 impl Plugin for PayloadPlugin {
     fn build(&self, app: &mut App) {
-        app.register_type::<Conveyor>()
+        app.register_type::<AcceptsPayloadConveyor>()
+            .register_type::<Conveyor>()
             .register_type::<PayloadOf>()
             .register_type::<Payloads>()
             .register_type::<PayloadTransport>()
@@ -24,8 +27,9 @@ impl Plugin for PayloadPlugin {
             .add_systems(
                 Update,
                 (
+                    update_bridge_conveyor_accepts_payload.in_set(ConveyorSystems::TileUpdater),
                     (
-                        update_accepts_input,
+                        update_conveyor_inputs,
                         transfer_payloads,
                         update_payload_mus,
                         (
@@ -46,7 +50,7 @@ impl Plugin for PayloadPlugin {
 #[require(StateScoped::<GameState>(GameState::FactoryGame))]
 pub struct Conveyor {
     outputs: ConveyorDirections,
-    accepts_input: bool,
+    inputs: ConveyorDirections,
 }
 
 impl From<ConveyorDirection> for Conveyor {
@@ -59,7 +63,7 @@ impl Conveyor {
     pub fn new(outputs: ConveyorDirections) -> Self {
         Conveyor {
             outputs,
-            accepts_input: false,
+            inputs: ConveyorDirections::default(),
         }
     }
 
@@ -85,13 +89,27 @@ pub struct DistributorConveyor {
 pub struct BridgeConveyor;
 
 /// Conveyors that accept input.
-#[derive(Component)]
-pub struct AcceptsPayloadConveyor;
+#[derive(Component, Default, Reflect, Debug)]
+pub struct AcceptsPayloadConveyor(ConveyorDirections);
+
+impl AcceptsPayloadConveyor {
+    pub fn all() -> Self {
+        AcceptsPayloadConveyor(ConveyorDirections::all())
+    }
+
+    pub fn except(directions: ConveyorDirections) -> Self {
+        AcceptsPayloadConveyor(ConveyorDirections::all_except(directions))
+    }
+
+    pub fn from_direction_iter(iter: impl Iterator<Item = ConveyorDirection>) -> Self {
+        AcceptsPayloadConveyor(ConveyorDirections::from(iter))
+    }
+}
 
 #[derive(Component, Debug, Reflect)]
 pub struct SimpleConveyor;
 
-#[derive(Component, Reflect)]
+#[derive(Component, Debug, Reflect)]
 #[relationship_target(relationship = PayloadOf, linked_spawn)]
 #[component(storage = "SparseSet")]
 pub struct Payloads(Vec<Entity>);
@@ -126,12 +144,79 @@ pub struct PayloadDestination(pub ConveyorDirection);
 #[component(storage = "SparseSet")]
 pub struct PayloadAwaitingTransferTo(Entity);
 
-fn update_accepts_input(
-    conveyors: Query<(&mut Conveyor, Option<&Payloads>), With<AcceptsPayloadConveyor>>,
+/// Bridge conveyors need to look at which neighbors are set to output to this
+/// one to figure out where their inputs are.
+fn update_bridge_conveyor_accepts_payload(
+    new_conveyors: Query<&TilePos, Added<Conveyor>>,
+    removed_entities: EventReader<BaseLayerEntityDespawned>,
+    mut accepts_payloads: Query<&mut AcceptsPayloadConveyor, With<BridgeConveyor>>,
+    conveyors: Query<&Conveyor>,
+    base: Single<(&TileStorage, &TilemapSize), With<BaseLayer>>,
 ) {
-    for (mut conveyor, payloads) in conveyors {
+    let (tile_storage, map_size) = base.into_inner();
+
+    let to_check = find_tiles_to_check(new_conveyors, removed_entities, map_size);
+
+    for pos in to_check {
+        if let Some(entity) = tile_storage.get(&pos)
+            && let Ok(mut accepts) = accepts_payloads.get_mut(entity)
+        {
+            let neighbor_conveyors =
+                get_neighbors_from_query(tile_storage, &pos, map_size, &conveyors);
+
+            let inputs =
+                neighbor_conveyors
+                    .iter_with_direction()
+                    .filter_map(|(direction, conveyor)| {
+                        if conveyor.outputs().is_set(opposite(direction).into()) {
+                            Some(ConveyorDirection::from(direction))
+                        } else {
+                            None
+                        }
+                    });
+
+            *accepts = AcceptsPayloadConveyor(ConveyorDirections::from(inputs));
+        }
+    }
+}
+
+pub fn find_tiles_to_check(
+    new: Query<&TilePos, Added<Conveyor>>,
+    mut removed: EventReader<BaseLayerEntityDespawned>,
+    map_size: &TilemapSize,
+) -> HashSet<TilePos> {
+    let mut to_check = HashSet::new();
+
+    new.iter().for_each(|pos| {
+        to_check.insert(*pos);
+    });
+
+    removed.read().for_each(|entity| {
+        to_check.insert(entity.0);
+    });
+
+    let sources: Vec<_> = to_check.iter().cloned().collect();
+    for pos in sources {
+        for neighbor_pos in
+            Neighbors::get_square_neighboring_positions(&pos, map_size, false).iter()
+        {
+            to_check.insert(*neighbor_pos);
+        }
+    }
+
+    to_check
+}
+
+fn update_conveyor_inputs(
+    conveyors: Query<(&mut Conveyor, &AcceptsPayloadConveyor, Option<&Payloads>)>,
+) {
+    for (mut conveyor, accepts_payload, payloads) in conveyors {
         let payload_count = payloads.map_or(0, |p| p.len());
-        conveyor.accepts_input = payload_count == 0;
+        if payload_count == 0 {
+            conveyor.inputs = accepts_payload.0;
+        } else {
+            conveyor.inputs = ConveyorDirections::default();
+        }
     }
 }
 
@@ -149,7 +234,7 @@ fn transfer_payloads(
     payload_destinations: Query<&PayloadDestination, With<PayloadAwaitingTransferTo>>,
 ) {
     for (receiver, conveyor, incoming, payloads) in receivers {
-        if !conveyor.accepts_input {
+        if conveyor.inputs.is_none() {
             continue;
         }
         const MAX_PAYLOADS: usize = 1;
@@ -201,16 +286,15 @@ fn update_payload_mus(
         } else if payload.mu > 1.0 {
             payload.mu = 1.0;
 
-            if let Some(PayloadDestination(direction)) = destination {
-                if let Ok((_, conveyor_pos)) = conveyors.get(payload_of.0) {
-                    let destination_pos =
-                        conveyor_pos.square_offset(&(*direction).into(), map_size);
-                    let destination_entity = destination_pos.and_then(|pos| tile_storage.get(&pos));
-                    if let Some(destination_entity) = destination_entity {
-                        commands
-                            .entity(entity)
-                            .insert(PayloadAwaitingTransferTo(destination_entity));
-                    }
+            if let Some(PayloadDestination(direction)) = destination
+                && let Ok((_, conveyor_pos)) = conveyors.get(payload_of.0)
+            {
+                let destination_pos = conveyor_pos.square_offset(&(*direction).into(), map_size);
+                let destination_entity = destination_pos.and_then(|pos| tile_storage.get(&pos));
+                if let Some(destination_entity) = destination_entity {
+                    commands
+                        .entity(entity)
+                        .insert(PayloadAwaitingTransferTo(destination_entity));
                 }
             }
         }
@@ -252,9 +336,7 @@ fn update_distributor_conveyor_destinations(
                 .find(|direction| {
                     let neighbor = neighbors.get((*direction).into());
                     neighbor
-                        .map(|conveyor| {
-                            conveyor.accepts_input && !conveyor.outputs.is_set(direction.opposite())
-                        })
+                        .map(|conveyor| conveyor.inputs.is_set(direction.opposite()))
                         .unwrap_or(false)
                 });
             if let Some(direction) = direction {
