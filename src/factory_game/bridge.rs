@@ -8,7 +8,7 @@ use crate::{
         helpers::ConveyorDirections,
         interaction::{PlaceTileEvent, RegisterPlaceTileEvent, Tool},
     },
-    sprite_sheet::GameSprite,
+    sprite_sheet::{GameSprite, SpriteSheet},
 };
 
 pub struct BridgePlugin;
@@ -25,7 +25,7 @@ impl Plugin for BridgePlugin {
 pub struct BridgeTool;
 impl Tool for BridgeTool {
     fn get_sprite_flip(&self) -> (GameSprite, TileFlip) {
-        (GameSprite::Bridge, TileFlip::default())
+        (GameSprite::BridgeBoth, TileFlip::default())
     }
 
     fn execute(&self, mut commands: Commands, tile_pos: &TilePos) {
@@ -46,8 +46,14 @@ impl PlaceTileEvent for PlaceBridgeEvent {
     }
 }
 
+#[derive(Component, Default)]
+#[relationship_target(relationship = BridgeTop, linked_spawn)]
+pub struct Bridge(Vec<Entity>);
+
+/// Mark BridgeTops so they can be despawned when the Bridge is despawned
 #[derive(Component)]
-pub struct Bridge;
+#[relationship(relationship_target = Bridge)]
+pub struct BridgeTop(Entity);
 
 #[derive(Bundle)]
 pub struct BridgeBundle {
@@ -61,22 +67,46 @@ impl BridgeBundle {
     pub fn new() -> Self {
         BridgeBundle {
             conveyor: Conveyor::new(ConveyorDirections::all()),
-            bridge_conveyor: BridgeConveyor,
-            bridge: Bridge,
+            bridge_conveyor: BridgeConveyor::default(),
+            bridge: Bridge::default(),
             accepts_payload: AcceptsPayloadConveyor::default(),
         }
     }
 }
 
+#[expect(clippy::type_complexity)]
 fn update_bridge_tiles(
     mut commands: Commands,
-    new_bridges: Query<Entity, Added<Bridge>>,
-    tilemap_entity: Single<Entity, (With<BaseLayer>, With<TilemapSize>)>,
+    new_bridges: Query<(Entity, &TilePos), Added<Bridge>>,
+    base: Single<
+        (
+            Entity,
+            &TilemapSize,
+            &TilemapGridSize,
+            &TilemapTileSize,
+            &TilemapType,
+            &TilemapAnchor,
+        ),
+        With<BaseLayer>,
+    >,
+    sprite_sheet: Res<SpriteSheet>,
 ) {
-    for e in new_bridges {
+    let (tilemap_entity, map_size, grid_size, tile_size, map_type, anchor) = base.into_inner();
+
+    for (e, tile_pos) in new_bridges {
+        let tile_center =
+            tile_pos.center_in_world(map_size, grid_size, tile_size, map_type, anchor);
+
+        commands.spawn((
+            Name::new("Bridge Top"),
+            sprite_sheet.sprite(GameSprite::BridgeTop),
+            Transform::from_translation(tile_center.extend(2.0)),
+            BridgeTop(e),
+        ));
+
         commands.entity(e).insert_if_new(TileBundle {
-            tilemap_id: TilemapId(*tilemap_entity),
-            texture_index: GameSprite::Bridge.tile_texture_index(),
+            tilemap_id: TilemapId(tilemap_entity),
+            texture_index: GameSprite::BridgeBottom.tile_texture_index(),
             ..default()
         });
     }

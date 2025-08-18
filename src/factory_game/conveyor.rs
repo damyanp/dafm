@@ -15,6 +15,7 @@ pub struct PayloadPlugin;
 impl Plugin for PayloadPlugin {
     fn build(&self, app: &mut App) {
         app.register_type::<AcceptsPayloadConveyor>()
+            .register_type::<BridgeConveyor>()
             .register_type::<Conveyor>()
             .register_type::<PayloadOf>()
             .register_type::<Payloads>()
@@ -30,7 +31,9 @@ impl Plugin for PayloadPlugin {
                     update_bridge_conveyor_accepts_payload.in_set(ConveyorSystems::TileUpdater),
                     (
                         update_conveyor_inputs,
+                        update_bridge_payloads,
                         transfer_payloads,
+                        transfer_bridge_payloads,
                         update_payload_mus,
                         (
                             update_simple_conveyor_destinations,
@@ -77,7 +80,7 @@ impl Conveyor {
 }
 
 /// Prevents [`transfer_payloads`] from operating on this entity.
-#[derive(Component)]
+#[derive(Component, Default)]
 pub struct CustomConveyorTransfer;
 
 #[derive(Component, Debug, Reflect, Default)]
@@ -85,8 +88,12 @@ pub struct DistributorConveyor {
     pub next_output: ConveyorDirection,
 }
 
-#[derive(Component)]
-pub struct BridgeConveyor;
+#[derive(Component, Default, Reflect)]
+#[require(CustomConveyorTransfer)]
+pub struct BridgeConveyor {
+    top: Vec<Entity>,
+    bottom: Vec<Entity>,
+}
 
 /// Conveyors that accept input.
 #[derive(Component, Default, Reflect, Debug)]
@@ -245,20 +252,95 @@ fn transfer_payloads(
             .iter()
             .take(MAX_PAYLOADS.max(current_payload_count))
         {
-            if let Ok(direction) = payload_destinations.get(payload) {
-                commands
-                    .entity(payload)
-                    .remove::<(
-                        PayloadOf,
-                        PayloadAwaitingTransferTo,
-                        PayloadTransport,
-                        PayloadDestination,
-                    )>()
-                    .insert((PayloadOf(receiver), PayloadSource(direction.0.opposite())));
-            } else {
-                println!("* {payload:?} doesn't have a destination set");
+            take_payload(
+                commands.reborrow(),
+                payload,
+                receiver,
+                &payload_destinations,
+            );
+        }
+    }
+}
+
+fn update_bridge_payloads(
+    bridges: Query<(Entity, &mut BridgeConveyor)>,
+    payloads: Query<&PayloadOf>,
+) {
+    for (bridge_entity, mut bridge) in bridges {
+        // TODO: This polls every bridge....which isn't great...but probably not
+        // really a problem right now.
+
+        let is_on_bridge = |entity: &Entity| {
+            payloads
+                .get(*entity)
+                .map(|payload_of| payload_of.0 == bridge_entity)
+                .unwrap_or(false)
+        };
+
+        bridge.top.retain(is_on_bridge);
+        bridge.bottom.retain(is_on_bridge);
+    }
+}
+
+fn transfer_bridge_payloads(
+    mut commands: Commands,
+    receivers: Query<(Entity, &PayloadsAwaitingTransfer, &mut BridgeConveyor)>,
+    payload_destinations: Query<&PayloadDestination, With<PayloadAwaitingTransferTo>>,
+) {
+    for (receiver, incoming, mut bridge) in receivers {
+        for payload in incoming.iter() {
+            if let Ok(PayloadDestination(destination)) = payload_destinations.get(payload) {
+                use ConveyorDirection::*;
+                let take = match destination {
+                    North | South => {
+                        if bridge.bottom.is_empty() {
+                            bridge.bottom.push(payload);
+                            true
+                        } else {
+                            false
+                        }
+                    }
+                    East | West => {
+                        if bridge.top.is_empty() {
+                            bridge.top.push(payload);
+                            true
+                        } else {
+                            false
+                        }
+                    }
+                };
+
+                if take {
+                    take_payload(
+                        commands.reborrow(),
+                        payload,
+                        receiver,
+                        &payload_destinations,
+                    );
+                }
             }
         }
+    }
+}
+
+fn take_payload(
+    mut commands: Commands,
+    payload: Entity,
+    receiver: Entity,
+    payload_destinations: &Query<&PayloadDestination, With<PayloadAwaitingTransferTo>>,
+) {
+    if let Ok(direction) = payload_destinations.get(payload) {
+        commands
+            .entity(payload)
+            .remove::<(
+                PayloadOf,
+                PayloadAwaitingTransferTo,
+                PayloadTransport,
+                PayloadDestination,
+            )>()
+            .insert((PayloadOf(receiver), PayloadSource(direction.0.opposite())));
+    } else {
+        println!("* {payload:?} doesn't have a destination set");
     }
 }
 
@@ -406,7 +488,15 @@ fn update_payload_transforms(
                 tile_center.lerp(end, (payload_transport.mu - 0.5) / 0.5)
             };
 
-            *transform = Transform::from_translation(pos.extend(2.0));
+            let z = destination.map(|d| {
+                if d.0 == ConveyorDirection::North || d.0 == ConveyorDirection::South {
+                    1.0
+                } else {
+                    3.0
+                }
+            });
+
+            *transform = Transform::from_translation(pos.extend(z.unwrap_or(3.0)));
         }
     }
 }

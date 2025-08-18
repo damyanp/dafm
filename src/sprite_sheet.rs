@@ -57,7 +57,9 @@ pub enum GameSprite {
     Generator,
     Sink,
     Distributor,
-    Bridge,
+    BridgeBottom,
+    BridgeTop,
+    BridgeBoth,
     OperatorPlus,
     OperatorMultiply,
 }
@@ -84,9 +86,11 @@ impl GameSprite {
             Generator => 30,
             Sink => 31,
             Distributor => 32,
-            Bridge => 33,
-            OperatorPlus => 34,
-            OperatorMultiply => 35,
+            BridgeBottom => 33,
+            BridgeTop => 34,
+            BridgeBoth => 35,
+            OperatorPlus => 36,
+            OperatorMultiply => 37,
         }
     }
 
