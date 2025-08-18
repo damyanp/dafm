@@ -50,8 +50,8 @@ impl Operator {
 
     fn generate_operand(&self, left: Operand, right: Operand) -> Operand {
         match self {
-            Operator::Plus => Operand(left.0 + right.0),
-            Operator::Multiply => Operand(left.0 * right.0),
+            Operator::Plus => Operand(left.0.checked_add(right.0).unwrap_or(1)),
+            Operator::Multiply => Operand(left.0.checked_mul(right.0).unwrap_or(1)),
         }
     }
 }

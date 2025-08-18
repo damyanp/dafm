@@ -96,7 +96,7 @@ fn generate_payloads(
         if time.elapsed_secs() > generator.next_generate_time && payloads.is_none() {
             commands.spawn(OperandPayloadBundle::new(entity, Operand(1)));
 
-            generator.next_generate_time = time.elapsed_secs() + 5.0;
+            generator.next_generate_time = time.elapsed_secs() + 0.2;
         }
     }
 }

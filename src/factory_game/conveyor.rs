@@ -362,7 +362,7 @@ fn update_payload_mus(
     let (tile_storage, map_size) = base.into_inner();
 
     for (entity, mut payload, payload_of, destination) in payloads {
-        payload.mu += time.delta_secs();
+        payload.mu += time.delta_secs() * 5.0;
         if payload.mu > 0.5 && destination.is_none() {
             payload.mu = 0.5;
         } else if payload.mu > 1.0 {
