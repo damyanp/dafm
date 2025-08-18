@@ -15,7 +15,7 @@ mod helpers;
 mod main_menu;
 mod space_shooter;
 mod sprite_sheet;
-mod terrain;
+// mod terrain;
 
 #[derive(Clone, Copy, PartialEq, Eq, Hash, Debug, Default, States)]
 enum GameState {
