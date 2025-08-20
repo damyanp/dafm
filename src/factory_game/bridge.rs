@@ -3,9 +3,13 @@ use bevy_ecs_tilemap::prelude::*;
 
 use crate::{
     factory_game::{
-        BaseLayer, ConveyorSystems,
-        conveyor::{AcceptsPayloadConveyor, BridgeConveyor, Conveyor},
-        helpers::ConveyorDirections,
+        BaseLayer, BaseLayerEntityDespawned, ConveyorSystems,
+        conveyor::{
+            AcceptsPayloadConveyor, Conveyor, PayloadDestination, PayloadOf, PayloadSource,
+            PayloadTransport, Payloads, RequestPayloadTransferEvent, find_tiles_to_check,
+            take_payload,
+        },
+        helpers::{ConveyorDirection, ConveyorDirections, get_neighbors_from_query, opposite},
         interaction::{PlaceTileEvent, RegisterPlaceTileEvent, Tool},
     },
     sprite_sheet::{GameSprite, SpriteSheet},
@@ -15,9 +19,20 @@ pub struct BridgePlugin;
 impl Plugin for BridgePlugin {
     fn build(&self, app: &mut App) {
         app.register_place_tile_event::<PlaceBridgeEvent>()
+            .register_type::<BridgeConveyor>()
             .add_systems(
                 Update,
-                update_bridge_tiles.in_set(ConveyorSystems::TileUpdater),
+                (
+                    (update_bridge_conveyor_accepts_payload, update_bridge_tiles)
+                        .in_set(ConveyorSystems::TileUpdater),
+                    (
+                        update_bridge_payloads,
+                        transfer_bridge_payloads,
+                        update_bridge_conveyor_destinations,
+                    )
+                        .chain()
+                        .in_set(ConveyorSystems::TransportLogic),
+                ),
             );
     }
 }
@@ -46,6 +61,12 @@ impl PlaceTileEvent for PlaceBridgeEvent {
     }
 }
 
+#[derive(Component, Default, Reflect, Debug)]
+pub struct BridgeConveyor {
+    top: Vec<Entity>,
+    bottom: Vec<Entity>,
+}
+
 #[derive(Component, Default)]
 #[relationship_target(relationship = BridgeTop, linked_spawn)]
 pub struct Bridge(Vec<Entity>);
@@ -70,6 +91,126 @@ impl BridgeBundle {
             bridge_conveyor: BridgeConveyor::default(),
             bridge: Bridge::default(),
             accepts_payload: AcceptsPayloadConveyor::default(),
+        }
+    }
+}
+
+/// Bridge conveyors need to look at which neighbors are set to output to this
+/// one to figure out where their inputs are.
+fn update_bridge_conveyor_accepts_payload(
+    new_conveyors: Query<&TilePos, Added<Conveyor>>,
+    removed_entities: EventReader<BaseLayerEntityDespawned>,
+    mut accepts_payloads: Query<&mut AcceptsPayloadConveyor, With<BridgeConveyor>>,
+    conveyors: Query<&Conveyor>,
+    base: Single<(&TileStorage, &TilemapSize), With<BaseLayer>>,
+) {
+    let (tile_storage, map_size) = base.into_inner();
+
+    let to_check = find_tiles_to_check(new_conveyors, removed_entities, map_size);
+
+    for pos in to_check {
+        if let Some(entity) = tile_storage.get(&pos)
+            && let Ok(mut accepts) = accepts_payloads.get_mut(entity)
+        {
+            let neighbor_conveyors =
+                get_neighbors_from_query(tile_storage, &pos, map_size, &conveyors);
+
+            let inputs =
+                neighbor_conveyors
+                    .iter_with_direction()
+                    .filter_map(|(direction, conveyor)| {
+                        if conveyor.outputs().is_set(opposite(direction).into()) {
+                            Some(ConveyorDirection::from(direction))
+                        } else {
+                            None
+                        }
+                    });
+
+            *accepts = AcceptsPayloadConveyor::new(ConveyorDirections::from(inputs));
+        }
+    }
+}
+
+fn update_bridge_payloads(
+    bridges: Query<(Entity, &mut BridgeConveyor)>,
+    payloads: Query<&PayloadOf>,
+) {
+    for (bridge_entity, mut bridge) in bridges {
+        // TODO: This polls every bridge....which isn't great...but probably not
+        // really a problem right now.
+
+        let is_on_bridge = |entity: &Entity| {
+            payloads
+                .get(*entity)
+                .map(|payload_of| payload_of.0 == bridge_entity)
+                .unwrap_or(false)
+        };
+
+        bridge.top.retain(is_on_bridge);
+        bridge.bottom.retain(is_on_bridge);
+    }
+}
+
+fn transfer_bridge_payloads(
+    mut commands: Commands,
+    mut transfers: EventReader<RequestPayloadTransferEvent>,
+    mut bridges: Query<&mut BridgeConveyor>,
+    payload_destinations: Query<&PayloadDestination>,
+) {
+    for RequestPayloadTransferEvent {
+        payload,
+        destination,
+    } in transfers.read()
+    {
+        if let Ok(mut bridge) = bridges.get_mut(*destination)
+            && let Ok(PayloadDestination(direction)) = payload_destinations.get(*payload)
+        {
+            use ConveyorDirection::*;
+            let take = match direction {
+                North | South => {
+                    if bridge.bottom.is_empty() {
+                        bridge.bottom.push(*payload);
+                        true
+                    } else {
+                        false
+                    }
+                }
+                East | West => {
+                    if bridge.top.is_empty() {
+                        bridge.top.push(*payload);
+                        true
+                    } else {
+                        false
+                    }
+                }
+            };
+
+            if take {
+                take_payload(
+                    commands.reborrow(),
+                    *payload,
+                    *destination,
+                    payload_destinations.get(*payload).ok(),
+                );
+            }
+        }
+    }
+}
+
+#[expect(clippy::type_complexity)]
+fn update_bridge_conveyor_destinations(
+    mut commands: Commands,
+    bridge_conveyors: Query<&Payloads, With<BridgeConveyor>>,
+    payloads: Query<
+        (Entity, &PayloadSource),
+        (With<PayloadTransport>, Without<PayloadDestination>),
+    >,
+) {
+    for bridge_payloads in bridge_conveyors {
+        for (payload, source) in payloads.iter_many(bridge_payloads.iter()) {
+            commands
+                .entity(payload)
+                .insert(PayloadDestination(source.0.opposite()));
         }
     }
 }
