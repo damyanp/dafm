@@ -6,8 +6,8 @@ use crate::{
     factory_game::{
         BaseLayer, ConveyorSystems,
         conveyor::{
-            AcceptsPayloadConveyor, Conveyor, CustomConveyorTransfer, PayloadAwaitingTransferTo,
-            PayloadDestination, PayloadOf, PayloadTransport, Payloads, PayloadsAwaitingTransfer,
+            AcceptsPayloadConveyor, Conveyor, PayloadDestination, PayloadOf, PayloadTransport,
+            Payloads, RequestPayloadTransferEvent,
         },
         helpers::ConveyorDirection,
         interaction::{PlaceTileEvent, RegisterPlaceTileEvent, Tool},
@@ -141,7 +141,6 @@ impl OperatorTile {
 struct OperatorBundle {
     operator: OperatorTile,
     conveyor: Conveyor,
-    custom_transfer: CustomConveyorTransfer,
     accepts_payload: AcceptsPayloadConveyor,
 }
 
@@ -153,7 +152,6 @@ impl OperatorBundle {
             accepts_payload: AcceptsPayloadConveyor::from_direction_iter(
                 [direction.left(), direction.right()].into_iter(),
             ),
-            custom_transfer: CustomConveyorTransfer,
         }
     }
 }
@@ -174,22 +172,26 @@ fn update_operator_tiles(
 }
 
 fn transfer_operator_payloads(
-    receivers: Query<(&Conveyor, &PayloadsAwaitingTransfer, &mut OperatorTile)>,
-    payloads: Query<(&PayloadDestination, &Operand), With<PayloadAwaitingTransferTo>>,
+    mut transfers: EventReader<RequestPayloadTransferEvent>,
+    mut operators: Query<(&Conveyor, &mut OperatorTile)>,
+    payload_destinations: Query<(&PayloadDestination, &mut Operand)>,
 ) {
-    for (conveyor, incoming, mut operator) in receivers {
-        for payload in incoming.iter() {
-            if let Ok((PayloadDestination(destination), operand)) = payloads.get(payload) {
-                let incoming_direction = destination.opposite();
+    for RequestPayloadTransferEvent {
+        payload,
+        destination,
+    } in transfers.read()
+    {
+        if let Ok((conveyor, mut operator)) = operators.get_mut(*destination)
+            && let Ok((PayloadDestination(direction), operand)) = payload_destinations.get(*payload)
+        {
+            let incoming_direction = direction.opposite();
 
-                if incoming_direction == conveyor.output().left() && operator.left_operand.is_none()
-                {
-                    operator.left_operand = Some((payload, *operand));
-                } else if incoming_direction == conveyor.output().right()
-                    && operator.right_operand.is_none()
-                {
-                    operator.right_operand = Some((payload, *operand));
-                }
+            if incoming_direction == conveyor.output().left() && operator.left_operand.is_none() {
+                operator.left_operand = Some((*payload, *operand));
+            } else if incoming_direction == conveyor.output().right()
+                && operator.right_operand.is_none()
+            {
+                operator.right_operand = Some((*payload, *operand));
             }
         }
     }

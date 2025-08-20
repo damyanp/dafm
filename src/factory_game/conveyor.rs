@@ -23,8 +23,7 @@ impl Plugin for PayloadPlugin {
             .register_type::<PayloadDestination>()
             .register_type::<PayloadSource>()
             .register_type::<DistributorConveyor>()
-            .register_type::<PayloadsAwaitingTransfer>()
-            .register_type::<PayloadAwaitingTransferTo>()
+            .add_event::<RequestPayloadTransferEvent>()
             .add_systems(
                 Update,
                 (
@@ -79,9 +78,8 @@ impl Conveyor {
     }
 }
 
-/// Prevents [`transfer_payloads`] from operating on this entity.
 #[derive(Component, Default)]
-pub struct CustomConveyorTransfer;
+pub struct SimpleConveyorTransferPolicy;
 
 #[derive(Component, Debug, Reflect, Default)]
 pub struct DistributorConveyor {
@@ -89,7 +87,6 @@ pub struct DistributorConveyor {
 }
 
 #[derive(Component, Default, Reflect)]
-#[require(CustomConveyorTransfer)]
 pub struct BridgeConveyor {
     top: Vec<Entity>,
     bottom: Vec<Entity>,
@@ -121,11 +118,6 @@ pub struct SimpleConveyor;
 #[component(storage = "SparseSet")]
 pub struct Payloads(Vec<Entity>);
 
-#[derive(Component, Reflect)]
-#[relationship_target(relationship = PayloadAwaitingTransferTo)]
-#[component(storage = "SparseSet")]
-pub struct PayloadsAwaitingTransfer(Vec<Entity>);
-
 #[derive(Component, Reflect, Debug)]
 #[relationship(relationship_target = Payloads)]
 #[require(PayloadTransport)]
@@ -146,10 +138,11 @@ pub struct PayloadSource(pub ConveyorDirection);
 #[component(storage = "SparseSet")]
 pub struct PayloadDestination(pub ConveyorDirection);
 
-#[derive(Component, Reflect, Debug)]
-#[relationship(relationship_target = PayloadsAwaitingTransfer)]
-#[component(storage = "SparseSet")]
-pub struct PayloadAwaitingTransferTo(Entity);
+#[derive(Event, Debug)]
+pub struct RequestPayloadTransferEvent {
+    pub payload: Entity,
+    pub destination: Entity,
+}
 
 /// Bridge conveyors need to look at which neighbors are set to output to this
 /// one to figure out where their inputs are.
@@ -229,35 +222,31 @@ fn update_conveyor_inputs(
 
 fn transfer_payloads(
     mut commands: Commands,
-    receivers: Query<
-        (
-            Entity,
-            &Conveyor,
-            &PayloadsAwaitingTransfer,
-            Option<&Payloads>,
-        ),
-        Without<CustomConveyorTransfer>,
-    >,
-    payload_destinations: Query<&PayloadDestination, With<PayloadAwaitingTransferTo>>,
+    mut transfers: EventReader<RequestPayloadTransferEvent>,
+    receivers: Query<(&Conveyor, Option<&Payloads>), With<SimpleConveyorTransferPolicy>>,
+    payload_destinations: Query<&PayloadDestination>,
 ) {
-    for (receiver, conveyor, incoming, payloads) in receivers {
-        if conveyor.inputs.is_none() {
-            continue;
-        }
-        const MAX_PAYLOADS: usize = 1;
+    for RequestPayloadTransferEvent {
+        payload,
+        destination,
+    } in transfers.read()
+    {
+        if let Ok((conveyor, payloads)) = receivers.get(*destination) {
+            if conveyor.inputs.is_none() {
+                continue;
+            }
+            const MAX_PAYLOADS: usize = 1;
 
-        let current_payload_count = payloads.map(|p| p.0.len()).unwrap_or(0);
+            let current_payload_count = payloads.map(|p| p.0.len()).unwrap_or(0);
 
-        for payload in incoming
-            .iter()
-            .take(MAX_PAYLOADS.max(current_payload_count))
-        {
-            take_payload(
-                commands.reborrow(),
-                payload,
-                receiver,
-                &payload_destinations,
-            );
+            if current_payload_count < MAX_PAYLOADS {
+                take_payload(
+                    commands.reborrow(),
+                    *payload,
+                    *destination,
+                    payload_destinations.get(*payload).ok(),
+                );
+            }
         }
     }
 }
@@ -284,40 +273,45 @@ fn update_bridge_payloads(
 
 fn transfer_bridge_payloads(
     mut commands: Commands,
-    receivers: Query<(Entity, &PayloadsAwaitingTransfer, &mut BridgeConveyor)>,
-    payload_destinations: Query<&PayloadDestination, With<PayloadAwaitingTransferTo>>,
+    mut transfers: EventReader<RequestPayloadTransferEvent>,
+    mut bridges: Query<&mut BridgeConveyor>,
+    payload_destinations: Query<&PayloadDestination>,
 ) {
-    for (receiver, incoming, mut bridge) in receivers {
-        for payload in incoming.iter() {
-            if let Ok(PayloadDestination(destination)) = payload_destinations.get(payload) {
-                use ConveyorDirection::*;
-                let take = match destination {
-                    North | South => {
-                        if bridge.bottom.is_empty() {
-                            bridge.bottom.push(payload);
-                            true
-                        } else {
-                            false
-                        }
+    for RequestPayloadTransferEvent {
+        payload,
+        destination,
+    } in transfers.read()
+    {
+        if let Ok(mut bridge) = bridges.get_mut(*destination)
+            && let Ok(PayloadDestination(direction)) = payload_destinations.get(*payload)
+        {
+            use ConveyorDirection::*;
+            let take = match direction {
+                North | South => {
+                    if bridge.bottom.is_empty() {
+                        bridge.bottom.push(*payload);
+                        true
+                    } else {
+                        false
                     }
-                    East | West => {
-                        if bridge.top.is_empty() {
-                            bridge.top.push(payload);
-                            true
-                        } else {
-                            false
-                        }
-                    }
-                };
-
-                if take {
-                    take_payload(
-                        commands.reborrow(),
-                        payload,
-                        receiver,
-                        &payload_destinations,
-                    );
                 }
+                East | West => {
+                    if bridge.top.is_empty() {
+                        bridge.top.push(*payload);
+                        true
+                    } else {
+                        false
+                    }
+                }
+            };
+
+            if take {
+                take_payload(
+                    commands.reborrow(),
+                    *payload,
+                    *destination,
+                    payload_destinations.get(*payload).ok(),
+                );
             }
         }
     }
@@ -327,37 +321,29 @@ fn take_payload(
     mut commands: Commands,
     payload: Entity,
     receiver: Entity,
-    payload_destinations: &Query<&PayloadDestination, With<PayloadAwaitingTransferTo>>,
+    destination: Option<&PayloadDestination>,
 ) {
-    if let Ok(direction) = payload_destinations.get(payload) {
+    if let Some(PayloadDestination(direction)) = destination {
         commands
             .entity(payload)
-            .remove::<(
-                PayloadOf,
-                PayloadAwaitingTransferTo,
-                PayloadTransport,
-                PayloadDestination,
-            )>()
-            .insert((PayloadOf(receiver), PayloadSource(direction.0.opposite())));
+            .remove::<(PayloadOf, PayloadTransport, PayloadDestination)>()
+            .insert((PayloadOf(receiver), PayloadSource(direction.opposite())));
     } else {
         println!("* {payload:?} doesn't have a destination set");
     }
 }
 
 fn update_payload_mus(
-    mut commands: Commands,
     time: Res<Time>,
-    payloads: Query<
-        (
-            Entity,
-            &mut PayloadTransport,
-            &PayloadOf,
-            Option<&PayloadDestination>,
-        ),
-        Without<PayloadAwaitingTransferTo>,
-    >,
+    payloads: Query<(
+        Entity,
+        &mut PayloadTransport,
+        &PayloadOf,
+        Option<&PayloadDestination>,
+    )>,
     conveyors: Query<(Entity, &TilePos)>,
     base: Single<(&TileStorage, &TilemapSize), With<BaseLayer>>,
+    mut send_payloads: EventWriter<RequestPayloadTransferEvent>,
 ) {
     let (tile_storage, map_size) = base.into_inner();
 
@@ -374,9 +360,10 @@ fn update_payload_mus(
                 let destination_pos = conveyor_pos.square_offset(&(*direction).into(), map_size);
                 let destination_entity = destination_pos.and_then(|pos| tile_storage.get(&pos));
                 if let Some(destination_entity) = destination_entity {
-                    commands
-                        .entity(entity)
-                        .insert(PayloadAwaitingTransferTo(destination_entity));
+                    send_payloads.write(RequestPayloadTransferEvent {
+                        payload: entity,
+                        destination: destination_entity,
+                    });
                 }
             }
         }

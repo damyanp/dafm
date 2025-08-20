@@ -4,7 +4,9 @@ use bevy_ecs_tilemap::prelude::*;
 use crate::{
     factory_game::{
         BaseLayer, ConveyorSystems,
-        conveyor::{AcceptsPayloadConveyor, Conveyor, DistributorConveyor},
+        conveyor::{
+            AcceptsPayloadConveyor, Conveyor, DistributorConveyor, SimpleConveyorTransferPolicy,
+        },
         helpers::ConveyorDirections,
         interaction::{PlaceTileEvent, RegisterPlaceTileEvent, Tool},
     },
@@ -47,6 +49,7 @@ impl PlaceTileEvent for PlaceDistributorEvent {
 }
 
 #[derive(Component)]
+#[require(SimpleConveyorTransferPolicy)]
 struct Distributor;
 
 #[derive(Bundle)]
