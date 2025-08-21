@@ -38,6 +38,7 @@ fn main() {
                     ..default()
                 }),
         )
+        .add_plugins(bevy_mod_debugdump::CommandLineArgs)
         .init_resource::<SpriteSheet>()
         .add_plugins(EnhancedInputPlugin)
         .init_state::<GameState>()

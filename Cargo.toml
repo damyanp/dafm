@@ -32,6 +32,7 @@ bevy-inspector-egui = { version = "0.32.0", default-features = false, features =
 bevy_ecs_tilemap = "0.16.0"
 bevy_egui = "0.35.1"
 bevy_enhanced_input = "0.15.1"
+bevy_mod_debugdump = "0.13.0"
 bevy_pancam = { version = "0.18.0", features = ["bevy_egui"] }
 bevy_rand = { version = "0.11.1", features = ["wyrand"] }
 pathfinding = "4.14.0"
