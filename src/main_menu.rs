@@ -3,21 +3,17 @@ use bevy_egui::input::egui_wants_any_keyboard_input;
 
 use crate::{GameState, toggle_world_inspector};
 
-pub struct MainMenu;
-
-impl Plugin for MainMenu {
-    fn build(&self, app: &mut App) {
-        app.add_systems(OnEnter(GameState::MainMenu), on_enter)
-            .add_systems(
-                Update,
-                (
-                    check_main_menu_keys.run_if(in_state(GameState::MainMenu)),
-                    check_for_exit.run_if(not(in_state(GameState::MainMenu))),
-                )
-                    .run_if(not(egui_wants_any_keyboard_input))
-                    .after(toggle_world_inspector),
-            );
-    }
+pub fn main_menu_plugin(app: &mut App) {
+    app.add_systems(OnEnter(GameState::MainMenu), on_enter)
+        .add_systems(
+            Update,
+            (
+                check_main_menu_keys.run_if(in_state(GameState::MainMenu)),
+                check_for_exit.run_if(not(in_state(GameState::MainMenu))),
+            )
+                .run_if(not(egui_wants_any_keyboard_input))
+                .after(toggle_world_inspector),
+        );
 }
 
 fn on_enter(mut commands: Commands) {

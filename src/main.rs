@@ -54,9 +54,9 @@ fn main() {
         .add_plugins(TilemapPlugin)
         // .add_plugins(terrain::TerrainPlugin)
         .add_plugins(EntropyPlugin::<WyRand>::default())
-        .add_plugins(main_menu::MainMenu)
-        .add_plugins(space_shooter::Game)
-        .add_plugins(factory_game::FactoryGamePlugin)
+        .add_plugins(main_menu::main_menu_plugin)
+        .add_plugins(space_shooter::space_shooter_plugin)
+        .add_plugins(factory_game::factory_game_plugin)
         .add_systems(OnEnter(GameState::MainMenu), setup_camera)
         .run();
 }

@@ -2,15 +2,12 @@ use bevy::prelude::*;
 
 use crate::{GameState, factory_game::interaction::Tools, sprite_sheet::SpriteSheet};
 
-pub struct UiPlugin;
-impl Plugin for UiPlugin {
-    fn build(&self, app: &mut App) {
-        app.add_systems(OnEnter(GameState::FactoryGame), create_ui)
-            .add_systems(
-                Update,
-                update_tools.run_if(resource_exists_and_changed::<Tools>),
-            );
-    }
+pub fn ui_plugin(app: &mut App) {
+    app.add_systems(OnEnter(GameState::FactoryGame), create_ui)
+        .add_systems(
+            Update,
+            update_tools.run_if(resource_exists_and_changed::<Tools>),
+        );
 }
 
 fn create_ui(mut commands: Commands) {

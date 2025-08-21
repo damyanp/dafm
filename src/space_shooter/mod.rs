@@ -8,28 +8,24 @@ mod bullets;
 mod enemy;
 mod player;
 
-pub struct Game;
-
-impl Plugin for Game {
-    fn build(&self, app: &mut App) {
-        app.add_plugins(bullets::Bullets)
-            .add_plugins(enemy::Enemy)
-            .add_systems(Startup, load_assets)
-            .register_type::<player::PlayerMoveConfig>()
-            .add_input_context::<player::Player>()
-            .add_systems(
-                OnEnter(GameState::SpaceShooter),
-                (setup_camera, player::create_player, setup_game_borders),
-            )
-            .add_systems(
-                FixedUpdate,
-                (player::update_player).run_if(in_state(GameState::SpaceShooter)),
-            )
-            .add_systems(
-                Update,
-                (update_game_borders).run_if(in_state(GameState::SpaceShooter)),
-            );
-    }
+pub fn space_shooter_plugin(app: &mut App) {
+    app.add_plugins(bullets::bullets_plugin)
+        .add_plugins(enemy::enemy_plugin)
+        .add_systems(Startup, load_assets)
+        .register_type::<player::PlayerMoveConfig>()
+        .add_input_context::<player::Player>()
+        .add_systems(
+            OnEnter(GameState::SpaceShooter),
+            (setup_camera, player::create_player, setup_game_borders),
+        )
+        .add_systems(
+            FixedUpdate,
+            (player::update_player).run_if(in_state(GameState::SpaceShooter)),
+        )
+        .add_systems(
+            Update,
+            (update_game_borders).run_if(in_state(GameState::SpaceShooter)),
+        );
 }
 
 fn setup_camera(mut commands: Commands) {

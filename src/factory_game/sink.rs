@@ -11,18 +11,15 @@ use crate::{
     sprite_sheet::GameSprite,
 };
 
-pub struct SinkPlugin;
-impl Plugin for SinkPlugin {
-    fn build(&self, app: &mut App) {
-        app.register_place_tile_event::<PlaceSinkEvent>()
-            .add_systems(
-                Update,
-                (
-                    update_sink_tiles.in_set(ConveyorSystems::TileUpdater),
-                    sink_despawns_everything_in_it.in_set(ConveyorSystems::TransportLogic),
-                ),
-            );
-    }
+pub fn sink_plugin(app: &mut App) {
+    app.register_place_tile_event::<PlaceSinkEvent>()
+        .add_systems(
+            Update,
+            (
+                update_sink_tiles.in_set(ConveyorSystems::TileUpdater),
+                sink_despawns_everything_in_it.in_set(ConveyorSystems::TransportLogic),
+            ),
+        );
 }
 
 pub struct SinkTool;

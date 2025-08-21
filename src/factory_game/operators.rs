@@ -15,23 +15,20 @@ use crate::{
     sprite_sheet::GameSprite,
 };
 
-pub struct OperatorsPlugin;
-impl Plugin for OperatorsPlugin {
-    fn build(&self, app: &mut App) {
-        app.register_place_tile_event::<PlaceOperatorEvent>()
-            .register_type::<Operator>()
-            .register_type::<OperatorTile>()
-            .register_type::<Operand>()
-            .add_systems(
-                Update,
-                (
-                    update_operator_tiles.in_set(ConveyorSystems::TileUpdater),
-                    (transfer_operator_payloads, generate_new_payloads)
-                        .chain()
-                        .in_set(ConveyorSystems::TransportLogic),
-                ),
-            );
-    }
+pub fn operators_plugin(app: &mut App) {
+    app.register_place_tile_event::<PlaceOperatorEvent>()
+        .register_type::<Operator>()
+        .register_type::<OperatorTile>()
+        .register_type::<Operand>()
+        .add_systems(
+            Update,
+            (
+                update_operator_tiles.in_set(ConveyorSystems::TileUpdater),
+                (transfer_operator_payloads, generate_new_payloads)
+                    .chain()
+                    .in_set(ConveyorSystems::TransportLogic),
+            ),
+        );
 }
 
 #[derive(Debug, Clone, Copy, Reflect)]

@@ -13,15 +13,12 @@ use crate::{
     sprite_sheet::GameSprite,
 };
 
-pub struct DistributorPlugin;
-impl Plugin for DistributorPlugin {
-    fn build(&self, app: &mut App) {
-        app.register_place_tile_event::<PlaceDistributorEvent>()
-            .add_systems(
-                Update,
-                update_distributor_tiles.in_set(ConveyorSystems::TileUpdater),
-            );
-    }
+pub fn distributor_plugin(app: &mut App) {
+    app.register_place_tile_event::<PlaceDistributorEvent>()
+        .add_systems(
+            Update,
+            update_distributor_tiles.in_set(ConveyorSystems::TileUpdater),
+        );
 }
 
 pub struct DistributorTool;

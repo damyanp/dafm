@@ -17,41 +17,38 @@ use crate::{
     sprite_sheet::{GameSprite, SpriteSheet},
 };
 
-pub struct ConveyorInteractionPlugin;
-impl Plugin for ConveyorInteractionPlugin {
-    fn build(&self, app: &mut App) {
-        app.register_type::<Tools>()
-            .register_place_tile_event::<ClearTileEvent>()
-            .add_systems(OnEnter(GameState::FactoryGame), (startup, setup_tools))
-            .add_systems(
-                OnExit(GameState::FactoryGame),
-                (reset_cursor, cleanup_tools),
-            )
-            .add_systems(
-                Update,
+pub fn interaction_plugin(app: &mut App) {
+    app.register_type::<Tools>()
+        .register_place_tile_event::<ClearTileEvent>()
+        .add_systems(OnEnter(GameState::FactoryGame), (startup, setup_tools))
+        .add_systems(
+            OnExit(GameState::FactoryGame),
+            (reset_cursor, cleanup_tools),
+        )
+        .add_systems(
+            Update,
+            (
                 (
                     (
-                        (
-                            track_mouse,
-                            on_click.run_if(input_just_pressed(MouseButton::Left)),
-                        )
-                            .chain(),
-                        select_tool,
+                        track_mouse,
+                        on_click.run_if(input_just_pressed(MouseButton::Left)),
                     )
-                        .in_set(ConveyorSystems::TileGenerator)
-                        .run_if(not(egui_wants_any_input)),
-                    update_hovered_tile
-                        .in_set(ConveyorSystems::TileUpdater)
-                        .run_if(resource_exists_and_changed::<Tools>),
-                    give_control_to_egui
-                        .run_if(in_state(GameState::FactoryGame))
-                        .run_if(
-                            resource_exists_and_changed::<Tools>
-                                .or(resource_exists_and_changed::<EguiWantsInput>),
-                        ),
-                ),
-            );
-    }
+                        .chain(),
+                    select_tool,
+                )
+                    .in_set(ConveyorSystems::TileGenerator)
+                    .run_if(not(egui_wants_any_input)),
+                update_hovered_tile
+                    .in_set(ConveyorSystems::TileUpdater)
+                    .run_if(resource_exists_and_changed::<Tools>),
+                give_control_to_egui
+                    .run_if(in_state(GameState::FactoryGame))
+                    .run_if(
+                        resource_exists_and_changed::<Tools>
+                            .or(resource_exists_and_changed::<EguiWantsInput>),
+                    ),
+            ),
+        );
 }
 
 fn startup(mut commands: Commands, sprite_sheet: Res<SpriteSheet>, config: Res<MapConfig>) {

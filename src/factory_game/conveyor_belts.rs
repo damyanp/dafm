@@ -20,15 +20,12 @@ use crate::{
     sprite_sheet::GameSprite,
 };
 
-pub struct ConveyorBeltsPlugin;
-impl Plugin for ConveyorBeltsPlugin {
-    fn build(&self, app: &mut App) {
-        app.register_place_tile_event::<PlaceConveyorBeltEvent>()
-            .add_systems(
-                Update,
-                (update_conveyor_belt_tiles.in_set(ConveyorSystems::TileUpdater),),
-            );
-    }
+pub fn conveyor_belts_plugin(app: &mut App) {
+    app.register_place_tile_event::<PlaceConveyorBeltEvent>()
+        .add_systems(
+            Update,
+            (update_conveyor_belt_tiles.in_set(ConveyorSystems::TileUpdater),),
+        );
 }
 
 #[derive(Default)]

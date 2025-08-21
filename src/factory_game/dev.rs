@@ -14,21 +14,18 @@ use crate::{
     sprite_sheet::GameSprite,
 };
 
-pub struct DevPlugin;
-impl Plugin for DevPlugin {
-    fn build(&self, app: &mut App) {
-        app.add_systems(
-            Update,
-            ((
-                on_toggle_show_conveyors.run_if(input_just_pressed(KeyCode::Tab)),
-                on_test_data.run_if(input_just_pressed(KeyCode::KeyT)),
-            )
-                .run_if(not(egui_wants_any_keyboard_input))
-                .run_if(not(egui_wants_any_pointer_input)),)
-                .chain()
-                .run_if(in_state(GameState::FactoryGame)),
-        );
-    }
+pub fn dev_plugin(app: &mut App) {
+    app.add_systems(
+        Update,
+        ((
+            on_toggle_show_conveyors.run_if(input_just_pressed(KeyCode::Tab)),
+            on_test_data.run_if(input_just_pressed(KeyCode::KeyT)),
+        )
+            .run_if(not(egui_wants_any_keyboard_input))
+            .run_if(not(egui_wants_any_pointer_input)),)
+            .chain()
+            .run_if(in_state(GameState::FactoryGame)),
+    );
 }
 
 fn on_test_data(

@@ -17,18 +17,16 @@ pub struct Enemy;
 #[derive(Component)]
 struct DestroyedEnemy(u32);
 
-impl Plugin for Enemy {
-    fn build(&self, app: &mut App) {
-        app.add_event::<SpawnEnemy>()
-            .add_observer(spawn_enemy)
-            .add_systems(OnEnter(GameState::SpaceShooter), start_waves)
-            .add_systems(OnExit(GameState::SpaceShooter), end_waves)
-            .add_systems(
-                Update,
-                (update_waves, update_enemies, update_destroyed_enemies)
-                    .run_if(in_state(GameState::SpaceShooter)),
-            );
-    }
+pub fn enemy_plugin(app: &mut App) {
+    app.add_event::<SpawnEnemy>()
+        .add_observer(spawn_enemy)
+        .add_systems(OnEnter(GameState::SpaceShooter), start_waves)
+        .add_systems(OnExit(GameState::SpaceShooter), end_waves)
+        .add_systems(
+            Update,
+            (update_waves, update_enemies, update_destroyed_enemies)
+                .run_if(in_state(GameState::SpaceShooter)),
+        );
 }
 
 #[derive(Event)]

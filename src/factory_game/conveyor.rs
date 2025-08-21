@@ -21,36 +21,33 @@ pub use payloads::{
     Payloads, take_payload,
 };
 
-pub struct PayloadPlugin;
-impl Plugin for PayloadPlugin {
-    fn build(&self, app: &mut App) {
-        app.register_type::<AcceptsPayloadConveyor>()
-            .register_type::<Conveyor>()
-            .register_type::<PayloadOf>()
-            .register_type::<Payloads>()
-            .register_type::<PayloadTransport>()
-            .register_type::<PayloadDestination>()
-            .register_type::<PayloadSource>()
-            .register_type::<DistributorConveyor>()
-            .add_event::<RequestPayloadTransferEvent>()
-            .add_systems(
-                Update,
+pub fn conveyor_plugin(app: &mut App) {
+    app.register_type::<AcceptsPayloadConveyor>()
+        .register_type::<Conveyor>()
+        .register_type::<PayloadOf>()
+        .register_type::<Payloads>()
+        .register_type::<PayloadTransport>()
+        .register_type::<PayloadDestination>()
+        .register_type::<PayloadSource>()
+        .register_type::<DistributorConveyor>()
+        .add_event::<RequestPayloadTransferEvent>()
+        .add_systems(
+            Update,
+            (
                 (
+                    update_conveyor_inputs,
+                    transfer_payloads_standard,
+                    update_payload_mus,
                     (
-                        update_conveyor_inputs,
-                        transfer_payloads_standard,
-                        update_payload_mus,
-                        (
-                            update_simple_conveyor_destinations,
-                            update_distributor_conveyor_destinations,
-                        ),
-                    )
-                        .chain()
-                        .in_set(ConveyorSystems::TransportLogic),
-                    update_payload_transforms.in_set(ConveyorSystems::PayloadTransforms),
-                ),
-            );
-    }
+                        update_simple_conveyor_destinations,
+                        update_distributor_conveyor_destinations,
+                    ),
+                )
+                    .chain()
+                    .in_set(ConveyorSystems::TransportLogic),
+                update_payload_transforms.in_set(ConveyorSystems::PayloadTransforms),
+            ),
+        );
 }
 
 #[derive(Component, Clone, Debug, Reflect, Default)]

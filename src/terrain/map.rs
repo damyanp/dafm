@@ -4,10 +4,8 @@ use bevy_ecs_tilemap::prelude::*;
 
 pub struct MapPlugin;
 
-impl Plugin for MapPlugin {
-    fn build(&self, app: &mut App) {
-        app.add_systems(Startup, startup);
-    }
+pub fn mapgen_viz_pluigin(app: &mut App) {
+    app.add_systems(Startup, startup);
 }
 
 fn startup(mut commands: Commands, asset_server: Res<AssetServer>) {

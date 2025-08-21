@@ -18,13 +18,11 @@ struct MapGenerator {
     auto_step: bool,
 }
 
-impl Plugin for MapGenPlugin {
-    fn build(&self, app: &mut App) {
-        app.add_systems(Startup, startup)
-            .add_event::<MapGenControlEvent>()
-            .add_systems(Update, (manage_generator, update).chain())
-            .add_systems(Update, mapgen_controls);
-    }
+pub fn mapgen_plugin(app: &mut App) {
+    app.add_systems(Startup, startup)
+        .add_event::<MapGenControlEvent>()
+        .add_systems(Update, (manage_generator, update).chain())
+        .add_systems(Update, mapgen_controls);
 }
 
 fn startup(mut commands: Commands, asset_server: Res<AssetServer>) {

@@ -4,14 +4,11 @@ use avian2d::prelude::*;
 use bevy::prelude::*;
 use bevy_enhanced_input::prelude::*;
 
-pub struct Bullets;
-impl Plugin for Bullets {
-    fn build(&self, app: &mut App) {
-        app.add_event::<Damage>().add_systems(
-            FixedUpdate,
-            (update_standard_gun).run_if(in_state(GameState::SpaceShooter)),
-        );
-    }
+pub fn bullets_plugin(app: &mut App) {
+    app.add_event::<Damage>().add_systems(
+        FixedUpdate,
+        (update_standard_gun).run_if(in_state(GameState::SpaceShooter)),
+    );
 }
 
 #[derive(Component, Default)]

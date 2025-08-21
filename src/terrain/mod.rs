@@ -12,11 +12,9 @@ use crate::helpers::set_camera_limits_from_tilemaps;
 
 pub struct TerrainPlugin;
 
-impl Plugin for TerrainPlugin {
-    fn build(&self, app: &mut App) {
-        assert!(app.is_plugin_added::<TilemapPlugin>());
-        app.add_plugins(MapGenPlugin)
-            // .add_plugins(map::MapPlugin)
-            .add_systems(PostStartup, set_camera_limits_from_tilemaps);
-    }
+pub fn terrain_plugin(app: &mut App) {
+    assert!(app.is_plugin_added::<TilemapPlugin>());
+    app.add_plugins(MapGenPlugin)
+        // .add_plugins(map::MapPlugin)
+        .add_systems(PostStartup, set_camera_limits_from_tilemaps);
 }

@@ -12,18 +12,15 @@ use crate::{
     sprite_sheet::GameSprite,
 };
 
-pub struct GeneratorPlugin;
-impl Plugin for GeneratorPlugin {
-    fn build(&self, app: &mut App) {
-        app.register_place_tile_event::<PlaceGeneratorEvent>()
-            .add_systems(
-                Update,
-                (
-                    update_generator_tiles.in_set(ConveyorSystems::TileUpdater),
-                    generate_payloads.in_set(ConveyorSystems::TransportLogic),
-                ),
-            );
-    }
+pub fn generator_plugin(app: &mut App) {
+    app.register_place_tile_event::<PlaceGeneratorEvent>()
+        .add_systems(
+            Update,
+            (
+                update_generator_tiles.in_set(ConveyorSystems::TileUpdater),
+                generate_payloads.in_set(ConveyorSystems::TransportLogic),
+            ),
+        );
 }
 
 pub struct GeneratorTool;

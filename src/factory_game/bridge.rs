@@ -15,26 +15,23 @@ use crate::{
     sprite_sheet::{GameSprite, SpriteSheet},
 };
 
-pub struct BridgePlugin;
-impl Plugin for BridgePlugin {
-    fn build(&self, app: &mut App) {
-        app.register_place_tile_event::<PlaceBridgeEvent>()
-            .register_type::<BridgeConveyor>()
-            .add_systems(
-                Update,
+pub fn bridge_plugin(app: &mut App) {
+    app.register_place_tile_event::<PlaceBridgeEvent>()
+        .register_type::<BridgeConveyor>()
+        .add_systems(
+            Update,
+            (
+                (update_bridge_conveyor_accepts_payload, update_bridge_tiles)
+                    .in_set(ConveyorSystems::TileUpdater),
                 (
-                    (update_bridge_conveyor_accepts_payload, update_bridge_tiles)
-                        .in_set(ConveyorSystems::TileUpdater),
-                    (
-                        update_bridge_payloads,
-                        transfer_bridge_payloads,
-                        update_bridge_conveyor_destinations,
-                    )
-                        .chain()
-                        .in_set(ConveyorSystems::TransportLogic),
-                ),
-            );
-    }
+                    update_bridge_payloads,
+                    transfer_bridge_payloads,
+                    update_bridge_conveyor_destinations,
+                )
+                    .chain()
+                    .in_set(ConveyorSystems::TransportLogic),
+            ),
+        );
 }
 
 pub struct BridgeTool;

@@ -9,7 +9,7 @@ use bevy_ecs_tilemap::{
 use crate::{
     GameState,
     factory_game::{
-        BaseLayer, FactoryGameLogicPlugin, MapConfig,
+        BaseLayer, MapConfig,
         bridge::{Bridge, PlaceBridgeEvent},
         conveyor::Payloads,
         conveyor_belts::{ConveyorBelt, PlaceConveyorBeltEvent},
@@ -23,7 +23,11 @@ use super::helpers::ConveyorDirection;
 fn setup() -> App {
     let mut app = App::new();
 
-    app.add_plugins((MinimalPlugins, StatesPlugin, FactoryGameLogicPlugin));
+    app.add_plugins((
+        MinimalPlugins,
+        StatesPlugin,
+        crate::factory_game::factory_game_logic_plugin,
+    ));
     app.init_state::<GameState>()
         .insert_state(GameState::FactoryGame)
         .insert_resource(Time::<Virtual>::from_max_delta(Duration::from_secs(10)))
