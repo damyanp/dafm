@@ -7,7 +7,7 @@ use crate::{
     GameState,
     factory_game::{
         BaseLayer, BaseLayerEntityDespawned, ConveyorSystems,
-        helpers::{ConveyorDirection, ConveyorDirections, get_neighbors_from_query},
+        helpers::{ConveyorDirection, ConveyorDirections},
     },
 };
 
@@ -16,20 +16,14 @@ pub use transfers::*;
 
 mod payloads;
 use payloads::*;
-pub use payloads::{
-    AcceptsPayloadConveyor, PayloadDestination, PayloadOf, PayloadSource, PayloadTransport,
-    Payloads, take_payload,
-};
+pub use payloads::{AcceptsPayloadConveyor, Payload, PayloadTransport, Payloads};
 
 pub fn conveyor_plugin(app: &mut App) {
     app.register_type::<AcceptsPayloadConveyor>()
         .register_type::<Conveyor>()
-        .register_type::<PayloadOf>()
+        .register_type::<Payload>()
         .register_type::<Payloads>()
         .register_type::<PayloadTransport>()
-        .register_type::<PayloadDestination>()
-        .register_type::<PayloadSource>()
-        .register_type::<DistributorConveyor>()
         .add_event::<RequestPayloadTransferEvent>()
         .add_systems(
             Update,
@@ -38,10 +32,6 @@ pub fn conveyor_plugin(app: &mut App) {
                     update_conveyor_inputs,
                     transfer_payloads_standard,
                     update_payload_mus,
-                    (
-                        update_simple_conveyor_destinations,
-                        update_distributor_conveyor_destinations,
-                    ),
                 )
                     .chain()
                     .in_set(ConveyorSystems::TransportLogic),
@@ -78,11 +68,18 @@ impl Conveyor {
     pub fn outputs(&self) -> ConveyorDirections {
         self.outputs
     }
-}
 
-#[derive(Component, Debug, Reflect, Default)]
-pub struct DistributorConveyor {
-    pub next_output: ConveyorDirection,
+    pub fn single_or_no_output(&self) -> Option<ConveyorDirection> {
+        if self.outputs.is_none() {
+            None
+        } else {
+            Some(self.outputs.single())
+        }
+    }
+
+    pub fn inputs(&self) -> ConveyorDirections {
+        self.inputs
+    }
 }
 
 #[derive(Component, Debug, Reflect)]

@@ -4,6 +4,7 @@ use super::*;
 pub struct RequestPayloadTransferEvent {
     pub payload: Entity,
     pub destination: Entity,
+    pub direction: ConveyorDirection,
 }
 
 #[derive(Component, Default)]
@@ -13,11 +14,11 @@ pub fn transfer_payloads_standard(
     mut commands: Commands,
     mut transfers: EventReader<RequestPayloadTransferEvent>,
     receivers: Query<(&Conveyor, Option<&Payloads>), With<SimpleConveyorTransferPolicy>>,
-    payload_destinations: Query<&PayloadDestination>,
 ) {
     for RequestPayloadTransferEvent {
         payload,
         destination,
+        direction,
     } in transfers.read()
     {
         if let Ok((conveyor, payloads)) = receivers.get(*destination) {
@@ -29,12 +30,14 @@ pub fn transfer_payloads_standard(
             let current_payload_count = payloads.map(|p| p.len()).unwrap_or(0);
 
             if current_payload_count < MAX_PAYLOADS {
-                take_payload(
-                    commands.reborrow(),
-                    *payload,
-                    *destination,
-                    payload_destinations.get(*payload).ok(),
-                );
+                commands.entity(*payload).insert((
+                    Payload(*destination),
+                    PayloadTransport {
+                        source: Some(direction.opposite()),
+                        destination: conveyor.single_or_no_output(),
+                        ..default()
+                    },
+                ));
             }
         }
     }

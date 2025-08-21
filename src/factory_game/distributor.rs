@@ -1,13 +1,14 @@
-use bevy::prelude::*;
+use bevy::{ecs::event::EventCursor, prelude::*};
 use bevy_ecs_tilemap::prelude::*;
 
 use crate::{
     factory_game::{
         BaseLayer, ConveyorSystems,
         conveyor::{
-            AcceptsPayloadConveyor, Conveyor, DistributorConveyor, SimpleConveyorTransferPolicy,
+            AcceptsPayloadConveyor, Conveyor, Payload, PayloadTransport, Payloads,
+            RequestPayloadTransferEvent,
         },
-        helpers::ConveyorDirections,
+        helpers::{ConveyorDirection, ConveyorDirections, get_neighbors_from_query},
         interaction::{PlaceTileEvent, RegisterPlaceTileEvent, Tool},
     },
     sprite_sheet::GameSprite,
@@ -15,9 +16,15 @@ use crate::{
 
 pub fn distributor_plugin(app: &mut App) {
     app.register_place_tile_event::<PlaceDistributorEvent>()
+        .add_event::<DistributePayloadEvent>()
+        .register_type::<DistributorConveyor>()
         .add_systems(
             Update,
-            update_distributor_tiles.in_set(ConveyorSystems::TileUpdater),
+            (
+                transfer_payloads_to_distributors.in_set(ConveyorSystems::TransferPayloads),
+                distribute_payloads.in_set(ConveyorSystems::TransportLogic),
+                update_distributor_tiles.in_set(ConveyorSystems::TileUpdater),
+            ),
         );
 }
 
@@ -46,8 +53,12 @@ impl PlaceTileEvent for PlaceDistributorEvent {
 }
 
 #[derive(Component)]
-#[require(SimpleConveyorTransferPolicy)]
 struct Distributor;
+
+#[derive(Component, Debug, Reflect, Default)]
+pub struct DistributorConveyor {
+    pub next_output: ConveyorDirection,
+}
 
 #[derive(Bundle)]
 pub struct DistributorBundle {
@@ -66,6 +77,97 @@ impl DistributorBundle {
             accepts_payload: AcceptsPayloadConveyor::all(),
         }
     }
+}
+
+fn transfer_payloads_to_distributors(
+    mut commands: Commands,
+    mut transfers: EventReader<RequestPayloadTransferEvent>,
+    mut receivers: Query<Option<&Payloads>, With<DistributorConveyor>>,
+    mut events: EventWriter<DistributePayloadEvent>,
+) {
+    for RequestPayloadTransferEvent {
+        payload,
+        destination,
+        direction,
+    } in transfers.read()
+    {
+        if let Ok(payloads) = receivers.get_mut(*destination) {
+            const MAX_PAYLOADS: usize = 1;
+
+            let current_payload_count = payloads.map(|p| p.len()).unwrap_or(0);
+
+            if current_payload_count < MAX_PAYLOADS {
+                commands.entity(*payload).insert((
+                    Payload(*destination),
+                    PayloadTransport {
+                        source: Some(direction.opposite()),
+                        ..default()
+                    },
+                ));
+                events.write(DistributePayloadEvent {
+                    transporter: *destination,
+                    payload: *payload,
+                });
+            }
+        }
+    }
+}
+
+#[derive(Event)]
+pub struct DistributePayloadEvent {
+    pub transporter: Entity,
+    pub payload: Entity,
+}
+
+fn distribute_payloads(
+    mut events: ResMut<Events<DistributePayloadEvent>>,
+    mut reader: Local<EventCursor<DistributePayloadEvent>>,
+    mut distributors: Query<(&Conveyor, &TilePos, &mut DistributorConveyor)>,
+    mut payloads: Query<&mut PayloadTransport>,
+    base: Single<(&TileStorage, &TilemapSize), With<BaseLayer>>,
+    conveyors: Query<&Conveyor>,
+) {
+    let (tile_storage, map_size) = base.into_inner();
+
+    let mut retry_events = Vec::new();
+
+    for DistributePayloadEvent {
+        transporter,
+        payload,
+    } in reader.read(&events)
+    {
+        if let Ok((conveyor, tile_pos, mut distributor)) = distributors.get_mut(*transporter)
+            && let Ok(mut payload_transport) = payloads.get_mut(*payload)
+        {
+            // Figure out where this payload will be going
+            let neighbors = get_neighbors_from_query(tile_storage, tile_pos, map_size, &conveyors);
+            let destination_direction =
+                conveyor
+                    .outputs()
+                    .iter_from(distributor.next_output)
+                    .find(|direction| {
+                        let neighbor = neighbors.get((*direction).into());
+                        neighbor
+                            .map(|conveyor| conveyor.inputs().is_set(direction.opposite()))
+                            .unwrap_or(false)
+                    });
+
+            if let Some(destination_direction) = destination_direction {
+                assert!(payload_transport.destination.is_none());
+                payload_transport.destination = Some(destination_direction);
+                distributor.next_output = destination_direction.next();
+            } else {
+                retry_events.push(DistributePayloadEvent {
+                    transporter: *transporter,
+                    payload: *payload,
+                });
+            }
+        }
+    }
+
+    retry_events.into_iter().for_each(|event| {
+        events.send(event);
+    });
 }
 
 fn update_distributor_tiles(

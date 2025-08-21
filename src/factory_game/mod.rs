@@ -80,6 +80,7 @@ fn setup_camera(mut commands: Commands) {
 enum ConveyorSystems {
     TileGenerator,
     TileUpdater,
+    TransferPayloads,
     TransportLogic,
     PayloadTransforms,
 }

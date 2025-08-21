@@ -6,8 +6,8 @@ use crate::{
     factory_game::{
         BaseLayer, ConveyorSystems,
         conveyor::{
-            AcceptsPayloadConveyor, Conveyor, PayloadDestination, PayloadOf, PayloadTransport,
-            Payloads, RequestPayloadTransferEvent,
+            AcceptsPayloadConveyor, Conveyor, Payload, PayloadTransport, Payloads,
+            RequestPayloadTransferEvent,
         },
         helpers::ConveyorDirection,
         interaction::{PlaceTileEvent, RegisterPlaceTileEvent, Tool},
@@ -24,7 +24,7 @@ pub fn operators_plugin(app: &mut App) {
             Update,
             (
                 update_operator_tiles.in_set(ConveyorSystems::TileUpdater),
-                (transfer_operator_payloads, generate_new_payloads)
+                (transfer_payloads_to_operators, generate_new_payloads)
                     .chain()
                     .in_set(ConveyorSystems::TransportLogic),
             ),
@@ -168,18 +168,19 @@ fn update_operator_tiles(
     }
 }
 
-fn transfer_operator_payloads(
+fn transfer_payloads_to_operators(
     mut transfers: EventReader<RequestPayloadTransferEvent>,
     mut operators: Query<(&Conveyor, &mut OperatorTile)>,
-    payload_destinations: Query<(&PayloadDestination, &mut Operand)>,
+    operands: Query<&Operand>,
 ) {
     for RequestPayloadTransferEvent {
         payload,
         destination,
+        direction,
     } in transfers.read()
     {
         if let Ok((conveyor, mut operator)) = operators.get_mut(*destination)
-            && let Ok((PayloadDestination(direction), operand)) = payload_destinations.get(*payload)
+            && let Ok(operand) = operands.get(*payload)
         {
             let incoming_direction = direction.opposite();
 
@@ -190,6 +191,9 @@ fn transfer_operator_payloads(
             {
                 operator.right_operand = Some((*payload, *operand));
             }
+
+            // NOTE: the transfer only actually happens in
+            // generate_new_payloads. This isn't ideal and should be changed.
         }
     }
 }
@@ -208,8 +212,13 @@ fn generate_new_payloads(
 
             let new_operand = operator.operator.generate_operand(left.1, right.1);
             commands.spawn((
-                OperandPayloadBundle::new(entity, new_operand),
-                PayloadDestination(conveyor.output()),
+                OperandPayloadBundle::new(new_operand),
+                Payload(entity),
+                PayloadTransport {
+                    destination: Some(conveyor.output()),
+                    mu: 0.5,
+                    ..default()
+                },
             ));
             operator.left_operand = None;
             operator.right_operand = None;
@@ -221,23 +230,19 @@ fn generate_new_payloads(
 pub struct OperandPayloadBundle {
     scope: StateScoped<GameState>,
     name: Name,
-    payload_of: PayloadOf,
     operand: Operand,
     text: Text2d,
     color: TextColor,
-    transport: PayloadTransport,
 }
 
 impl OperandPayloadBundle {
-    pub fn new(payload_of: Entity, operand: Operand) -> Self {
+    pub fn new(operand: Operand) -> Self {
         Self {
             scope: StateScoped(GameState::FactoryGame),
             name: Name::new(format!("Payload {}", operand.payload_text())),
-            payload_of: PayloadOf(payload_of),
             operand,
             text: Text2d::new(operand.payload_text()),
             color: TextColor(Color::srgb(1.0, 0.4, 0.4)),
-            transport: PayloadTransport { mu: 0.5 },
         }
     }
 }

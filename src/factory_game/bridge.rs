@@ -5,9 +5,8 @@ use crate::{
     factory_game::{
         BaseLayer, BaseLayerEntityDespawned, ConveyorSystems,
         conveyor::{
-            AcceptsPayloadConveyor, Conveyor, PayloadDestination, PayloadOf, PayloadSource,
-            PayloadTransport, Payloads, RequestPayloadTransferEvent, find_tiles_to_check,
-            take_payload,
+            AcceptsPayloadConveyor, Conveyor, Payload, PayloadTransport,
+            RequestPayloadTransferEvent, find_tiles_to_check,
         },
         helpers::{ConveyorDirection, ConveyorDirections, get_neighbors_from_query, opposite},
         interaction::{PlaceTileEvent, RegisterPlaceTileEvent, Tool},
@@ -23,13 +22,8 @@ pub fn bridge_plugin(app: &mut App) {
             (
                 (update_bridge_conveyor_accepts_payload, update_bridge_tiles)
                     .in_set(ConveyorSystems::TileUpdater),
-                (
-                    update_bridge_payloads,
-                    transfer_bridge_payloads,
-                    update_bridge_conveyor_destinations,
-                )
-                    .chain()
-                    .in_set(ConveyorSystems::TransportLogic),
+                transfer_bridge_payloads.in_set(ConveyorSystems::TransferPayloads),
+                update_bridge_payloads.in_set(ConveyorSystems::TransportLogic),
             ),
         );
 }
@@ -130,7 +124,7 @@ fn update_bridge_conveyor_accepts_payload(
 
 fn update_bridge_payloads(
     bridges: Query<(Entity, &mut BridgeConveyor)>,
-    payloads: Query<&PayloadOf>,
+    payloads: Query<&Payload>,
 ) {
     for (bridge_entity, mut bridge) in bridges {
         // TODO: This polls every bridge....which isn't great...but probably not
@@ -152,16 +146,14 @@ fn transfer_bridge_payloads(
     mut commands: Commands,
     mut transfers: EventReader<RequestPayloadTransferEvent>,
     mut bridges: Query<&mut BridgeConveyor>,
-    payload_destinations: Query<&PayloadDestination>,
 ) {
     for RequestPayloadTransferEvent {
         payload,
         destination,
+        direction,
     } in transfers.read()
     {
-        if let Ok(mut bridge) = bridges.get_mut(*destination)
-            && let Ok(PayloadDestination(direction)) = payload_destinations.get(*payload)
-        {
+        if let Ok(mut bridge) = bridges.get_mut(*destination) {
             use ConveyorDirection::*;
             let take = match direction {
                 North | South => {
@@ -183,31 +175,15 @@ fn transfer_bridge_payloads(
             };
 
             if take {
-                take_payload(
-                    commands.reborrow(),
-                    *payload,
-                    *destination,
-                    payload_destinations.get(*payload).ok(),
-                );
+                commands.entity(*payload).insert((
+                    Payload(*destination),
+                    PayloadTransport {
+                        source: Some(direction.opposite()),
+                        destination: Some(*direction),
+                        ..default()
+                    },
+                ));
             }
-        }
-    }
-}
-
-#[expect(clippy::type_complexity)]
-fn update_bridge_conveyor_destinations(
-    mut commands: Commands,
-    bridge_conveyors: Query<&Payloads, With<BridgeConveyor>>,
-    payloads: Query<
-        (Entity, &PayloadSource),
-        (With<PayloadTransport>, Without<PayloadDestination>),
-    >,
-) {
-    for bridge_payloads in bridge_conveyors {
-        for (payload, source) in payloads.iter_many(bridge_payloads.iter()) {
-            commands
-                .entity(payload)
-                .insert(PayloadDestination(source.0.opposite()));
         }
     }
 }

@@ -4,7 +4,8 @@ use bevy_ecs_tilemap::prelude::*;
 use crate::{
     factory_game::{
         BaseLayer, ConveyorSystems,
-        conveyor::{Conveyor, DistributorConveyor, Payloads},
+        conveyor::{Conveyor, Payload, PayloadTransport, Payloads},
+        distributor::{DistributePayloadEvent, DistributorConveyor},
         helpers::ConveyorDirections,
         interaction::{PlaceTileEvent, RegisterPlaceTileEvent, Tool},
         operators::{Operand, OperandPayloadBundle},
@@ -18,7 +19,7 @@ pub fn generator_plugin(app: &mut App) {
             Update,
             (
                 update_generator_tiles.in_set(ConveyorSystems::TileUpdater),
-                generate_payloads.in_set(ConveyorSystems::TransportLogic),
+                generate_payloads.in_set(ConveyorSystems::TransferPayloads),
             ),
         );
 }
@@ -88,11 +89,24 @@ fn generate_payloads(
     mut commands: Commands,
     time: Res<Time>,
     generators: Query<(Entity, &mut Generator, Option<&Payloads>)>,
+    mut events: EventWriter<DistributePayloadEvent>,
 ) {
     for (entity, mut generator, payloads) in generators {
         if time.elapsed_secs() > generator.next_generate_time && payloads.is_none() {
-            commands.spawn(OperandPayloadBundle::new(entity, Operand(1)));
-
+            let payload = commands
+                .spawn((
+                    OperandPayloadBundle::new(Operand(1)),
+                    Payload(entity),
+                    PayloadTransport {
+                        mu: 0.5,
+                        ..default()
+                    },
+                ))
+                .id();
+            events.write(DistributePayloadEvent {
+                transporter: entity,
+                payload,
+            });
             generator.next_generate_time = time.elapsed_secs() + 0.2;
         }
     }
