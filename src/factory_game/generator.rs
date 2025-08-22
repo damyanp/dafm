@@ -8,7 +8,7 @@ use crate::{
         distributor::{DistributePayloadEvent, DistributorConveyor},
         helpers::ConveyorDirections,
         interaction::{PlaceTileEvent, RegisterPlaceTileEvent, Tool},
-        operators::{Operand, OperandPayloadBundle},
+        operators::{Operand, operand_bundle},
         payloads::{Payload, PayloadTransport, Payloads},
     },
     sprite_sheet::GameSprite,
@@ -47,11 +47,15 @@ impl PlaceTileEvent for PlaceGeneratorEvent {
     }
 
     fn configure_new_entity(&self, mut commands: EntityCommands) {
-        commands.insert((GeneratorBundle::new(), Name::new("Generator")));
+        commands.insert((Generator::default(), Name::new("Generator")));
     }
 }
 
 #[derive(Component, Debug, Reflect)]
+#[require(
+    Conveyor::new(ConveyorDirections::all()),
+    DistributorConveyor::default()
+)]
 struct Generator {
     next_generate_time: f32,
     time_between_generations: f32,
@@ -62,23 +66,6 @@ impl Default for Generator {
         Generator {
             next_generate_time: 0.0,
             time_between_generations: 1.0,
-        }
-    }
-}
-
-#[derive(Bundle)]
-pub struct GeneratorBundle {
-    generator: Generator,
-    conveyor: Conveyor,
-    distributor: DistributorConveyor,
-}
-
-impl GeneratorBundle {
-    pub fn new() -> Self {
-        GeneratorBundle {
-            generator: Generator::default(),
-            conveyor: Conveyor::new(ConveyorDirections::all()),
-            distributor: DistributorConveyor::default(),
         }
     }
 }
@@ -107,7 +94,7 @@ fn generate_payloads(
         if time.elapsed_secs() > generator.next_generate_time && payloads.is_none() {
             let payload = commands
                 .spawn((
-                    OperandPayloadBundle::new(Operand(1)),
+                    operand_bundle(Operand(1)),
                     Payload(entity),
                     PayloadTransport {
                         mu: 0.5,

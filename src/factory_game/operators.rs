@@ -97,7 +97,7 @@ impl PlaceTileEvent for PlaceOperatorEvent {
     fn configure_new_entity(&self, mut commands: EntityCommands) {
         commands.insert((
             Name::new(format!("{:?}", self.1)),
-            OperatorBundle::new(self.1, self.2),
+            operator_bundle(self.1, self.2),
         ));
     }
 }
@@ -132,23 +132,14 @@ impl OperatorTile {
     }
 }
 
-#[derive(Bundle)]
-struct OperatorBundle {
-    operator: OperatorTile,
-    conveyor: Conveyor,
-    accepts_payload: AcceptsPayloadConveyor,
-}
-
-impl OperatorBundle {
-    pub fn new(operator: Operator, direction: ConveyorDirection) -> Self {
-        OperatorBundle {
-            operator: OperatorTile::new(operator),
-            conveyor: Conveyor::from(direction),
-            accepts_payload: AcceptsPayloadConveyor::from_direction_iter(
-                [direction.left(), direction.right()].into_iter(),
-            ),
-        }
-    }
+fn operator_bundle(operator: Operator, direction: ConveyorDirection) -> impl Bundle {
+    (
+        OperatorTile::new(operator),
+        Conveyor::from(direction),
+        AcceptsPayloadConveyor::from_direction_iter(
+            [direction.left(), direction.right()].into_iter(),
+        ),
+    )
 }
 
 fn update_operator_tiles(
@@ -210,7 +201,7 @@ fn generate_new_payloads(
 
             let new_operand = operator.operator.generate_operand(left.1, right.1);
             commands.spawn((
-                OperandPayloadBundle::new(new_operand),
+                operand_bundle(new_operand),
                 Payload(entity),
                 PayloadTransport {
                     destination: Some(conveyor.output()),
@@ -224,23 +215,12 @@ fn generate_new_payloads(
     }
 }
 
-#[derive(Bundle)]
-pub struct OperandPayloadBundle {
-    scope: StateScoped<GameState>,
-    name: Name,
-    operand: Operand,
-    text: Text2d,
-    color: TextColor,
-}
-
-impl OperandPayloadBundle {
-    pub fn new(operand: Operand) -> Self {
-        Self {
-            scope: StateScoped(GameState::FactoryGame),
-            name: Name::new(format!("Payload {}", operand.payload_text())),
-            operand,
-            text: Text2d::new(operand.payload_text()),
-            color: TextColor(Color::srgb(1.0, 0.4, 0.4)),
-        }
-    }
+pub fn operand_bundle(operand: Operand) -> impl Bundle {
+    (        
+        StateScoped(GameState::FactoryGame),
+        Name::new(format!("Payload {}", operand.payload_text())),
+        operand,
+        Text2d::new(operand.payload_text()),
+        TextColor(Color::srgb(1.0, 0.4, 0.4)),
+    )
 }

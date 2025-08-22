@@ -46,35 +46,21 @@ impl PlaceTileEvent for PlaceDistributorEvent {
     }
 
     fn configure_new_entity(&self, mut commands: EntityCommands) {
-        commands.insert((DistributorBundle::new(), Name::new("Distributor")));
+        commands.insert((Distributor, Name::new("Distributor")));
     }
 }
 
 #[derive(Component)]
+#[require(
+    Conveyor::new(ConveyorDirections::all()),
+    DistributorConveyor::default(),
+    AcceptsPayloadConveyor::all()
+)]
 struct Distributor;
 
 #[derive(Component, Debug, Reflect, Default)]
 pub struct DistributorConveyor {
     pub next_output: ConveyorDirection,
-}
-
-#[derive(Bundle)]
-pub struct DistributorBundle {
-    conveyor: Conveyor,
-    distributor: Distributor,
-    distributor_conveyor: DistributorConveyor,
-    accepts_payload: AcceptsPayloadConveyor,
-}
-
-impl DistributorBundle {
-    pub fn new() -> Self {
-        DistributorBundle {
-            conveyor: Conveyor::new(ConveyorDirections::all()),
-            distributor: Distributor,
-            distributor_conveyor: DistributorConveyor::default(),
-            accepts_payload: AcceptsPayloadConveyor::all(),
-        }
-    }
 }
 
 fn transfer_payloads_to_distributors(

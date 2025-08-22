@@ -47,7 +47,7 @@ impl PlaceTileEvent for PlaceBridgeEvent {
     }
 
     fn configure_new_entity(&self, mut commands: EntityCommands) {
-        commands.insert((BridgeBundle::new(), Name::new("Bridge")));
+        commands.insert((Bridge::default(), Name::new("Bridge")));
     }
 }
 
@@ -59,31 +59,17 @@ pub struct BridgeConveyor {
 
 #[derive(Component, Default)]
 #[relationship_target(relationship = BridgeTop, linked_spawn)]
+#[require(
+    Conveyor::new(ConveyorDirections::all()),
+    BridgeConveyor,
+    AcceptsPayloadConveyor
+)]
 pub struct Bridge(Vec<Entity>);
 
 /// Mark BridgeTops so they can be despawned when the Bridge is despawned
 #[derive(Component)]
 #[relationship(relationship_target = Bridge)]
 pub struct BridgeTop(Entity);
-
-#[derive(Bundle)]
-pub struct BridgeBundle {
-    conveyor: Conveyor,
-    bridge_conveyor: BridgeConveyor,
-    bridge: Bridge,
-    accepts_payload: AcceptsPayloadConveyor,
-}
-
-impl BridgeBundle {
-    pub fn new() -> Self {
-        BridgeBundle {
-            conveyor: Conveyor::new(ConveyorDirections::all()),
-            bridge_conveyor: BridgeConveyor::default(),
-            bridge: Bridge::default(),
-            accepts_payload: AcceptsPayloadConveyor::default(),
-        }
-    }
-}
 
 /// Bridge conveyors need to look at which neighbors are set to output to this
 /// one to figure out where their inputs are.

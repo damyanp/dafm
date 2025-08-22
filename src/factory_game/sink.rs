@@ -44,30 +44,17 @@ impl PlaceTileEvent for PlaceSinkEvent {
     }
 
     fn configure_new_entity(&self, mut commands: EntityCommands) {
-        commands.insert((SinkBundle::new(), Name::new("Sink")));
+        commands.insert((Sink, Name::new("Sink")));
     }
 }
 
 #[derive(Component)]
-#[require(SimpleConveyorTransferPolicy)]
+#[require(
+    SimpleConveyorTransferPolicy,
+    Conveyor::new(ConveyorDirections::default()),
+    AcceptsPayloadConveyor::all()
+)]
 struct Sink;
-
-#[derive(Bundle)]
-pub struct SinkBundle {
-    sink: Sink,
-    conveyor: Conveyor,
-    accepts_payload: AcceptsPayloadConveyor,
-}
-
-impl SinkBundle {
-    pub fn new() -> Self {
-        SinkBundle {
-            sink: Sink,
-            conveyor: Conveyor::new(ConveyorDirections::default()),
-            accepts_payload: AcceptsPayloadConveyor::all(),
-        }
-    }
-}
 
 fn update_sink_tiles(
     mut commands: Commands,

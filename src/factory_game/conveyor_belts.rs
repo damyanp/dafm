@@ -58,31 +58,20 @@ impl PlaceTileEvent for PlaceConveyorBeltEvent {
     }
 
     fn configure_new_entity(&self, mut commands: EntityCommands) {
-        commands.insert((ConveyorBeltBundle::new(self.1), Name::new("Conveyor Belt")));
+        commands.insert((conveyor_belt_bundle(self.1), Name::new("Conveyor Belt")));
     }
 }
 
 #[derive(Component)]
-#[require(SimpleConveyorTransferPolicy)]
+#[require(SimpleConveyor, SimpleConveyorTransferPolicy)]
 pub struct ConveyorBelt;
 
-#[derive(Bundle)]
-pub struct ConveyorBeltBundle {
-    conveyor: Conveyor,
-    simple_conveyor: SimpleConveyor,
-    belt: ConveyorBelt,
-    accepts_payload: AcceptsPayloadConveyor,
-}
-
-impl ConveyorBeltBundle {
-    pub fn new(output: ConveyorDirection) -> Self {
-        ConveyorBeltBundle {
-            conveyor: Conveyor::from(output),
-            simple_conveyor: SimpleConveyor,
-            belt: ConveyorBelt,
-            accepts_payload: AcceptsPayloadConveyor::except(ConveyorDirections::new(output)),
-        }
-    }
+pub fn conveyor_belt_bundle(output: ConveyorDirection) -> impl Bundle {
+    (
+        ConveyorBelt,
+        Conveyor::from(output),
+        AcceptsPayloadConveyor::except(ConveyorDirections::new(output)),
+    )
 }
 
 #[expect(clippy::type_complexity)]

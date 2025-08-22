@@ -63,7 +63,7 @@ impl Conveyor {
     }
 }
 
-#[derive(Component, Debug, Reflect)]
+#[derive(Component, Debug, Reflect, Default)]
 pub struct SimpleConveyor;
 
 pub fn find_tiles_to_check(
