@@ -5,12 +5,10 @@ use crate::{
     GameState,
     factory_game::{
         BaseLayer, ConveyorSystems,
-        conveyor::{
-            AcceptsPayloadConveyor, Conveyor, Payload, PayloadTransport, Payloads,
-            RequestPayloadTransferEvent,
-        },
+        conveyor::{AcceptsPayloadConveyor, Conveyor},
         helpers::ConveyorDirection,
         interaction::{PlaceTileEvent, RegisterPlaceTileEvent, Tool},
+        payloads::{Payload, PayloadTransport, Payloads, RequestPayloadTransferEvent},
     },
     sprite_sheet::GameSprite,
 };

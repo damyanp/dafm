@@ -4,11 +4,12 @@ use bevy_ecs_tilemap::prelude::*;
 use crate::{
     factory_game::{
         BaseLayer, ConveyorSystems,
-        conveyor::{Conveyor, Payload, PayloadTransport, Payloads},
+        conveyor::Conveyor,
         distributor::{DistributePayloadEvent, DistributorConveyor},
         helpers::ConveyorDirections,
         interaction::{PlaceTileEvent, RegisterPlaceTileEvent, Tool},
         operators::{Operand, OperandPayloadBundle},
+        payloads::{Payload, PayloadTransport, Payloads},
     },
     sprite_sheet::GameSprite,
 };

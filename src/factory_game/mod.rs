@@ -14,6 +14,7 @@ mod generator;
 mod helpers;
 mod interaction;
 mod operators;
+mod payloads;
 mod sink;
 mod ui;
 
@@ -26,6 +27,7 @@ pub fn factory_game_logic_plugin(app: &mut App) {
     app.add_plugins(bridge::bridge_plugin)
         .add_plugins(conveyor_belts::conveyor_belts_plugin)
         .add_plugins(conveyor::conveyor_plugin)
+        .add_plugins(payloads::payloads_plugin)
         .add_plugins(distributor::distributor_plugin)
         .add_plugins(generator::generator_plugin)
         .add_plugins(operators::operators_plugin)

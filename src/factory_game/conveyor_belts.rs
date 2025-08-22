@@ -7,15 +7,13 @@ use bevy_ecs_tilemap::{
 use crate::{
     factory_game::{
         BaseLayer, BaseLayerEntityDespawned, ConveyorSystems,
-        conveyor::{
-            AcceptsPayloadConveyor, Conveyor, SimpleConveyor, SimpleConveyorTransferPolicy,
-            find_tiles_to_check,
-        },
+        conveyor::{AcceptsPayloadConveyor, Conveyor, SimpleConveyor, find_tiles_to_check},
         helpers::{
             ConveyorDirection, ConveyorDirections, get_neighbors_from_query, make_east_relative,
             opposite,
         },
         interaction::{PlaceTileEvent, RegisterPlaceTileEvent, Tool},
+        payloads::SimpleConveyorTransferPolicy,
     },
     sprite_sheet::GameSprite,
 };

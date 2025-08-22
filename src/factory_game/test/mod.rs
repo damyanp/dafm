@@ -11,10 +11,10 @@ use crate::{
     factory_game::{
         BaseLayer, MapConfig,
         bridge::{Bridge, PlaceBridgeEvent},
-        conveyor::Payloads,
         conveyor_belts::{ConveyorBelt, PlaceConveyorBeltEvent},
         generator::PlaceGeneratorEvent,
         operators::Operand,
+        payloads::Payloads,
     },
 };
 

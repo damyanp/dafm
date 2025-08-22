@@ -1,25 +1,25 @@
-use super::*;
+use bevy::prelude::*;
+use bevy_ecs_tilemap::prelude::*;
 
-/// Conveyors that accept input.
-#[derive(Component, Default, Reflect, Debug)]
-pub struct AcceptsPayloadConveyor(ConveyorDirections);
+use crate::factory_game::{
+    BaseLayer, ConveyorSystems, conveyor::Conveyor, helpers::ConveyorDirection,
+};
 
-impl AcceptsPayloadConveyor {
-    pub fn new(directions: ConveyorDirections) -> Self {
-        AcceptsPayloadConveyor(directions)
-    }
-
-    pub fn all() -> Self {
-        AcceptsPayloadConveyor(ConveyorDirections::all())
-    }
-
-    pub fn except(directions: ConveyorDirections) -> Self {
-        AcceptsPayloadConveyor(ConveyorDirections::all_except(directions))
-    }
-
-    pub fn from_direction_iter(iter: impl Iterator<Item = ConveyorDirection>) -> Self {
-        AcceptsPayloadConveyor(ConveyorDirections::from(iter))
-    }
+pub fn payloads_plugin(app: &mut App) {
+    app.register_type::<Payload>()
+        .register_type::<Payloads>()
+        .register_type::<PayloadTransport>()
+        .add_event::<RequestPayloadTransferEvent>()
+        .add_systems(
+            Update,
+            (transfer_payloads_standard, update_payload_mus)
+                .chain()
+                .in_set(ConveyorSystems::TransportLogic),
+        )
+        .add_systems(
+            Update,
+            update_payload_transforms.in_set(ConveyorSystems::PayloadTransforms),
+        );
 }
 
 #[derive(Component, Debug, Reflect)]
@@ -38,19 +38,6 @@ pub struct PayloadTransport {
     pub mu: f32,
     pub source: Option<ConveyorDirection>,
     pub destination: Option<ConveyorDirection>,
-}
-
-pub fn update_conveyor_inputs(
-    conveyors: Query<(&mut Conveyor, &AcceptsPayloadConveyor, Option<&Payloads>)>,
-) {
-    for (mut conveyor, accepts_payload, payloads) in conveyors {
-        let payload_count = payloads.map_or(0, |p| p.len());
-        if payload_count == 0 {
-            conveyor.inputs = accepts_payload.0;
-        } else {
-            conveyor.inputs = ConveyorDirections::default();
-        }
-    }
 }
 
 pub fn update_payload_mus(
@@ -142,5 +129,48 @@ fn get_direction_offset(tile_size: &TilemapTileSize, direction: Option<ConveyorD
         Some(ConveyorDirection::East) => Vec2::new(half_size.x, 0.0),
         Some(ConveyorDirection::West) => Vec2::new(-half_size.x, 0.0),
         None => Vec2::default(),
+    }
+}
+
+#[derive(Event, Debug)]
+pub struct RequestPayloadTransferEvent {
+    pub payload: Entity,
+    pub destination: Entity,
+    pub direction: ConveyorDirection,
+}
+
+#[derive(Component, Default)]
+pub struct SimpleConveyorTransferPolicy;
+
+pub fn transfer_payloads_standard(
+    mut commands: Commands,
+    mut transfers: EventReader<RequestPayloadTransferEvent>,
+    receivers: Query<(&Conveyor, Option<&Payloads>), With<SimpleConveyorTransferPolicy>>,
+) {
+    for RequestPayloadTransferEvent {
+        payload,
+        destination,
+        direction,
+    } in transfers.read()
+    {
+        if let Ok((conveyor, payloads)) = receivers.get(*destination) {
+            if conveyor.inputs().is_none() {
+                continue;
+            }
+            const MAX_PAYLOADS: usize = 1;
+
+            let current_payload_count = payloads.map(|p| p.len()).unwrap_or(0);
+
+            if current_payload_count < MAX_PAYLOADS {
+                commands.entity(*payload).insert((
+                    Payload(*destination),
+                    PayloadTransport {
+                        source: Some(direction.opposite()),
+                        destination: conveyor.single_or_no_output(),
+                        ..default()
+                    },
+                ));
+            }
+        }
     }
 }
