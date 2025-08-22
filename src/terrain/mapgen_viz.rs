@@ -89,7 +89,7 @@ fn mapgen_controls(
 #[derive(Component)]
 struct TileLabel(Entity);
 
-#[allow(clippy::type_complexity)]
+#[expect(clippy::type_complexity)]
 fn manage_generator(
     mut commands: Commands,
     mut control_events: EventReader<MapGenControlEvent>,

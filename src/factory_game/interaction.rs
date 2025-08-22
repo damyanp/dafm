@@ -120,7 +120,6 @@ fn track_mouse(
     }
 }
 
-#[allow(clippy::type_complexity)]
 fn on_click(commands: Commands, tile_pos: Single<&TilePos, With<HoveredTile>>, tools: Res<Tools>) {
     if let Some(tool) = tools.current_tool() {
         tool.tool.execute(commands, *tile_pos);

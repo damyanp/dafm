@@ -85,7 +85,7 @@ impl ConveyorBeltBundle {
     }
 }
 
-#[allow(clippy::type_complexity)]
+#[expect(clippy::type_complexity)]
 fn update_conveyor_belt_tiles(
     mut commands: Commands,
     new_conveyor_belts: Query<&TilePos, Added<Conveyor>>,
