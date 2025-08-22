@@ -15,6 +15,7 @@ use crate::{
 
 pub fn generator_plugin(app: &mut App) {
     app.register_place_tile_event::<PlaceGeneratorEvent>()
+        .register_type::<Generator>()
         .add_systems(
             Update,
             (
@@ -49,9 +50,19 @@ impl PlaceTileEvent for PlaceGeneratorEvent {
     }
 }
 
-#[derive(Component, Default, Debug)]
+#[derive(Component, Debug, Reflect)]
 struct Generator {
     next_generate_time: f32,
+    time_between_generations: f32,
+}
+
+impl Default for Generator {
+    fn default() -> Self {
+        Generator {
+            next_generate_time: 0.0,
+            time_between_generations: 1.0,
+        }
+    }
 }
 
 #[derive(Bundle)]
@@ -107,7 +118,7 @@ fn generate_payloads(
                 transporter: entity,
                 payload,
             });
-            generator.next_generate_time = time.elapsed_secs() + 0.2;
+            generator.next_generate_time = time.elapsed_secs() + generator.time_between_generations;
         }
     }
 }
