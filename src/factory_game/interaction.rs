@@ -14,6 +14,7 @@ use crate::{
         conveyor_belts::ConveyorBeltTool, distributor::DistributorTool, generator::GeneratorTool,
         operators::OperatorsTool, sink::SinkTool,
     },
+    helpers::TilemapQuery,
     sprite_sheet::{GameSprite, SpriteSheet},
 };
 
@@ -103,32 +104,18 @@ fn update_hovered_tile(
     }
 }
 
-#[allow(clippy::type_complexity)]
 fn track_mouse(
     mut cursor_moved: EventReader<CursorMoved>,
     camera_query: Single<(&GlobalTransform, &Camera)>,
-    interaction_layer: Single<
-        (
-            &TilemapSize,
-            &TilemapGridSize,
-            &TilemapTileSize,
-            &TilemapType,
-            &TilemapAnchor,
-        ),
-        With<InteractionLayer>,
-    >,
+    interaction_layer: Single<TilemapQuery, With<InteractionLayer>>,
     mut hovered_tile: Single<&mut TilePos, With<HoveredTile>>,
 ) {
     if let Some(e) = cursor_moved.read().last() {
         let (global_transform, camera) = *camera_query;
-        if let Ok(p) = camera.viewport_to_world_2d(global_transform, e.position) {
-            let (size, grid_size, tile_size, map_type, anchor) = *interaction_layer;
-
-            if let Some(tile_pos) =
-                TilePos::from_world_pos(&p, size, grid_size, tile_size, map_type, anchor)
-            {
-                **hovered_tile = tile_pos;
-            }
+        if let Ok(p) = camera.viewport_to_world_2d(global_transform, e.position)
+            && let Some(tile_pos) = interaction_layer.get_tile_pos_from_world_pos(&p)
+        {
+            **hovered_tile = tile_pos;
         }
     }
 }

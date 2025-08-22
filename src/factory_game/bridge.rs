@@ -9,6 +9,7 @@ use crate::{
         interaction::{PlaceTileEvent, RegisterPlaceTileEvent, Tool},
         payloads::{Payload, PayloadTransport, RequestPayloadTransferEvent},
     },
+    helpers::TilemapQuery,
     sprite_sheet::{GameSprite, SpriteSheet},
 };
 
@@ -186,28 +187,14 @@ fn transfer_bridge_payloads(
     }
 }
 
-#[expect(clippy::type_complexity)]
 fn update_bridge_tiles(
     mut commands: Commands,
     new_bridges: Query<(Entity, &TilePos), Added<Bridge>>,
-    base: Single<
-        (
-            Entity,
-            &TilemapSize,
-            &TilemapGridSize,
-            &TilemapTileSize,
-            &TilemapType,
-            &TilemapAnchor,
-        ),
-        With<BaseLayer>,
-    >,
+    base: Single<TilemapQuery, With<BaseLayer>>,
     sprite_sheet: Res<SpriteSheet>,
 ) {
-    let (tilemap_entity, map_size, grid_size, tile_size, map_type, anchor) = base.into_inner();
-
     for (e, tile_pos) in new_bridges {
-        let tile_center =
-            tile_pos.center_in_world(map_size, grid_size, tile_size, map_type, anchor);
+        let tile_center = base.center_in_world(tile_pos);
 
         commands.spawn((
             Name::new("Bridge Top"),
@@ -217,7 +204,7 @@ fn update_bridge_tiles(
         ));
 
         commands.entity(e).insert_if_new(TileBundle {
-            tilemap_id: TilemapId(tilemap_entity),
+            tilemap_id: TilemapId(base.entity),
             texture_index: GameSprite::BridgeBottom.tile_texture_index(),
             ..default()
         });

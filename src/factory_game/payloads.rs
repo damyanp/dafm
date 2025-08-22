@@ -1,8 +1,9 @@
 use bevy::prelude::*;
 use bevy_ecs_tilemap::prelude::*;
 
-use crate::factory_game::{
-    BaseLayer, ConveyorSystems, conveyor::Conveyor, helpers::ConveyorDirection,
+use crate::{
+    factory_game::{BaseLayer, ConveyorSystems, conveyor::Conveyor, helpers::ConveyorDirection},
+    helpers::TilemapQuery,
 };
 
 pub fn payloads_plugin(app: &mut App) {
@@ -74,32 +75,19 @@ pub fn update_payload_mus(
     }
 }
 
-#[allow(clippy::type_complexity)]
 pub fn update_payload_transforms(
     conveyors: Query<(&TilePos, &Payloads), With<Conveyor>>,
     mut payloads: Query<(&PayloadTransport, &mut Transform)>,
-    base: Single<
-        (
-            &TilemapSize,
-            &TilemapGridSize,
-            &TilemapTileSize,
-            &TilemapType,
-            &TilemapAnchor,
-        ),
-        With<BaseLayer>,
-    >,
+    base: Single<TilemapQuery, With<BaseLayer>>,
 ) {
-    let (map_size, grid_size, tile_size, map_type, anchor) = base.into_inner();
-
     for (tile_pos, conveyor_payloads) in conveyors {
-        let tile_center =
-            tile_pos.center_in_world(map_size, grid_size, tile_size, map_type, anchor);
+        let tile_center = base.center_in_world(tile_pos);
 
         for payload_entity in conveyor_payloads.iter() {
             let (payload, mut transform) = payloads.get_mut(payload_entity).unwrap();
 
-            let start = tile_center + get_direction_offset(tile_size, payload.source);
-            let end = tile_center + get_direction_offset(tile_size, payload.destination);
+            let start = tile_center + get_direction_offset(base.tile_size, payload.source);
+            let end = tile_center + get_direction_offset(base.tile_size, payload.destination);
 
             let pos = if payload.mu < 0.5 {
                 start.lerp(tile_center, payload.mu / 0.5)
