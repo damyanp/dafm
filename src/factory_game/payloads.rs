@@ -1,5 +1,6 @@
 use bevy::prelude::*;
 use bevy_ecs_tilemap::prelude::*;
+use smallvec::SmallVec;
 
 use crate::{
     factory_game::{BaseLayer, ConveyorSystems, conveyor::Conveyor, helpers::ConveyorDirection},
@@ -10,16 +11,27 @@ pub fn payloads_plugin(app: &mut App) {
     app.register_type::<Payload>()
         .register_type::<Payloads>()
         .register_type::<PayloadTransport>()
+        .register_type::<PayloadTransportLine>()
         .add_event::<RequestPayloadTransferEvent>()
         .add_systems(
             Update,
-            (transfer_payloads_standard, update_payload_mus)
-                .chain()
-                .in_set(ConveyorSystems::TransportLogic),
+            (
+                (
+                    transfer_payloads_to_transport_lines,
+                    transfer_payloads_standard,
+                )
+                    .in_set(ConveyorSystems::TransferPayloads),
+                (update_payload_mus, update_payload_transport_lines)
+                    .in_set(ConveyorSystems::TransportLogic),
+            ),
         )
         .add_systems(
             Update,
-            update_payload_transforms.in_set(ConveyorSystems::PayloadTransforms),
+            (
+                update_payload_transforms,
+                update_payload_transport_line_transforms,
+            )
+                .in_set(ConveyorSystems::PayloadTransforms),
         );
 }
 
@@ -27,6 +39,204 @@ pub fn payloads_plugin(app: &mut App) {
 #[relationship_target(relationship = Payload, linked_spawn)]
 #[component(storage = "SparseSet")]
 pub struct Payloads(Vec<Entity>);
+
+#[derive(Component, Debug, Reflect)]
+pub struct PayloadTransportLine {
+    payloads: SmallVec<[(Entity, f32); 2]>,
+    source: ConveyorDirection,
+    destination: ConveyorDirection,
+    spacing: f32,
+}
+
+impl PayloadTransportLine {
+    pub fn new(destination: ConveyorDirection, spacing: f32) -> Self {
+        PayloadTransportLine {
+            payloads: SmallVec::default(),
+            source: destination.opposite(),
+            destination,
+            spacing,
+        }
+    }
+
+    fn try_transfer(&mut self, payload: Entity) {
+        if self.has_room_for_one_more() {
+            self.payloads.push((payload, 0.0));
+        }
+    }
+
+    fn has_room_for_one_more(&self) -> bool {
+        self.payloads
+            .last()
+            .map(|(_, mu)| *mu >= self.spacing)
+            .unwrap_or(true)
+    }
+
+    fn update_payloads(&mut self, t: f32) {
+        assert!(
+            self.payloads.iter().all(|(_, mu)| *mu >= 0.0 && *mu <= 1.0),
+            "All payload mu's in range 0 <= mu <= 1"
+        );
+        assert!(
+            self.payloads.is_sorted_by_key(|(_, mu)| -mu),
+            "Payloads are sorted by descending mu."
+        );
+
+        let mut last_mu = None;
+        for (_, mu) in self.payloads.iter_mut() {
+            let max_mu: f32 = last_mu.map(|mu| mu - self.spacing).unwrap_or(1.0);
+            *mu = max_mu.min(*mu + t);
+            last_mu = Some(*mu);
+        }
+    }
+}
+
+#[cfg(test)]
+mod payload_transport_line_test {
+    use super::*;
+
+    #[test]
+    fn empty() {
+        let ptl = PayloadTransportLine::new(ConveyorDirection::East, 0.5);
+        assert!(ptl.payloads.is_empty());
+    }
+
+    #[test]
+    fn transfer_to_empty() {
+        let mut ptl = PayloadTransportLine::new(ConveyorDirection::East, 0.5);
+        let e = Entity::from_raw(1);
+        ptl.try_transfer(e);
+        assert_eq!(ptl.payloads.as_slice(), &[(e, 0.0)]);
+    }
+
+    #[test]
+    fn transfer_doesnt_happen_when_no_room() {
+        let mut ptl = PayloadTransportLine::new(ConveyorDirection::East, 0.5);
+        let e1 = Entity::from_raw(1);
+        ptl.try_transfer(e1);
+        let e2 = Entity::from_raw(2);
+        ptl.try_transfer(e2);
+
+        assert_eq!(ptl.payloads.as_slice(), &[(e1, 0.0)]);
+    }
+
+    #[test]
+    fn updates() {
+        let mut ptl = PayloadTransportLine::new(ConveyorDirection::East, 0.5);
+        let e: Vec<Entity> = (1..4).map(|i| Entity::from_raw(i)).collect();
+
+        ptl.try_transfer(e[0]);
+        ptl.try_transfer(e[1]);
+        ptl.try_transfer(e[2]);
+        ptl.update_payloads(0.1);
+        assert_eq!(ptl.payloads.as_slice(), &[(e[0], 0.1)]);
+
+        ptl.try_transfer(e[1]);
+        ptl.try_transfer(e[2]);
+        ptl.update_payloads(0.1);
+        assert_eq!(ptl.payloads.as_slice(), &[(e[0], 0.2)]);
+
+        ptl.try_transfer(e[1]);
+        ptl.try_transfer(e[2]);
+        ptl.update_payloads(0.3);
+        assert_eq!(ptl.payloads.as_slice(), &[(e[0], 0.5)]);
+
+        ptl.try_transfer(e[1]);
+        ptl.try_transfer(e[2]);
+        assert_eq!(ptl.payloads.as_slice(), &[(e[0], 0.5), (e[1], 0.0)]);
+
+        ptl.update_payloads(0.5);
+        assert_eq!(ptl.payloads.as_slice(), &[(e[0], 1.0), (e[1], 0.5)]);
+
+        ptl.try_transfer(e[2]);
+        assert_eq!(
+            ptl.payloads.as_slice(),
+            &[(e[0], 1.0), (e[1], 0.5), (e[2], 0.0)]
+        );
+
+        ptl.update_payloads(0.5);
+        assert_eq!(
+            ptl.payloads.as_slice(),
+            &[(e[0], 1.0), (e[1], 0.5), (e[2], 0.0)]
+        );
+
+        // Payloads bunch up - so if we remove one in the middle then the last
+        // one will slide up as close as it is allowed to
+        ptl.payloads.remove(1);
+        ptl.update_payloads(0.5);
+        ptl.update_payloads(0.5);
+        ptl.update_payloads(0.5);
+        assert_eq!(ptl.payloads.as_slice(), &[(e[0], 1.0), (e[2], 0.5)]);
+    }
+
+    #[test]
+    fn updates_with_different_spacing() {
+        let mut ptl = PayloadTransportLine::new(ConveyorDirection::East, 0.2);
+        let e: Vec<Entity> = (1..4).map(|i| Entity::from_raw(i)).collect();
+
+        ptl.try_transfer(e[0]);
+        ptl.try_transfer(e[1]);
+        ptl.try_transfer(e[2]);
+        ptl.update_payloads(0.1);
+        assert_eq!(ptl.payloads.as_slice(), &[(e[0], 0.1)]);
+
+        ptl.try_transfer(e[1]);
+        ptl.try_transfer(e[2]);
+        ptl.update_payloads(0.1);
+        assert_eq!(ptl.payloads.as_slice(), &[(e[0], 0.2)]);
+
+        ptl.try_transfer(e[1]);
+        ptl.try_transfer(e[2]);
+        ptl.update_payloads(0.3);
+        assert_eq!(ptl.payloads.as_slice(), &[(e[0], 0.5), (e[1], 0.3)]);
+
+        ptl.update_payloads(0.5);
+        assert_eq!(ptl.payloads.as_slice(), &[(e[0], 1.0), (e[1], 0.8)]);
+
+        ptl.try_transfer(e[2]);
+        assert_eq!(
+            ptl.payloads.as_slice(),
+            &[(e[0], 1.0), (e[1], 0.8), (e[2], 0.0)]
+        );
+
+        ptl.update_payloads(0.5);
+        assert_eq!(
+            ptl.payloads.as_slice(),
+            &[(e[0], 1.0), (e[1], 0.8), (e[2], 0.5)]
+        );
+
+        // Payloads bunch up - so if we remove one in the middle then the last
+        // one will slide up as close as it is allowed to
+        ptl.payloads.remove(1);
+        ptl.update_payloads(0.5);
+        ptl.update_payloads(0.5);
+        ptl.update_payloads(0.5);
+        assert_eq!(ptl.payloads.as_slice(), &[(e[0], 1.0), (e[2], 0.8)]);
+    }
+}
+
+fn transfer_payloads_to_transport_lines(
+    mut transfers: EventReader<RequestPayloadTransferEvent>,
+    mut transports: Query<&mut PayloadTransportLine>,
+) {
+    for e in transfers.read() {
+        if let Ok(mut transport) = transports.get_mut(e.destination) {
+            assert_eq!(e.direction, transport.source.opposite());
+            transport.try_transfer(e.payload);
+        }
+    }
+}
+
+fn update_payload_transport_line_transforms() {}
+
+fn update_payload_transport_lines(
+    transport_lines: Query<&mut PayloadTransportLine>,
+    time: Res<Time>,
+) {
+    let t = time.delta_secs();
+    for mut transport_line in transport_lines {
+        transport_line.update_payloads(t);
+    }
+}
 
 #[derive(Component, Reflect, Debug)]
 #[relationship(relationship_target = Payloads)]
