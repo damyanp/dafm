@@ -46,25 +46,40 @@ pub struct Payloads(Vec<Entity>);
 
 #[derive(Component, Debug, Reflect)]
 pub struct PayloadTransportLine {
-    payloads: SmallVec<[(Entity, f32); 2]>,
-    input_direction: ConveyorDirection,
+    payloads: SmallVec<[TransportedPayload; 2]>,
     output_direction: ConveyorDirection,
-    spacing: f32,
+    capacity: u32,
+}
+
+#[derive(Debug, Reflect, PartialEq)]
+struct TransportedPayload {
+    entity: Entity,
+    from: ConveyorDirection,
+    mu: f32,
+}
+
+impl TransportedPayload {
+    fn new(entity: Entity, from: ConveyorDirection) -> Self {
+        TransportedPayload {
+            entity,
+            from,
+            mu: 0.0,
+        }
+    }
 }
 
 impl PayloadTransportLine {
-    pub fn new(destination: ConveyorDirection, spacing: f32) -> Self {
+    pub fn new(destination: ConveyorDirection, capacity: u32) -> Self {
         PayloadTransportLine {
             payloads: SmallVec::default(),
-            input_direction: destination.opposite(),
             output_direction: destination,
-            spacing,
+            capacity,
         }
     }
 
-    fn try_transfer_onto(&mut self, payload: Entity) -> bool {
+    fn try_transfer_onto(&mut self, payload: Entity, from: ConveyorDirection) -> bool {
         if self.has_room_for_one_more() {
-            self.payloads.push((payload, 0.0));
+            self.payloads.push(TransportedPayload::new(payload, from));
             true
         } else {
             false
@@ -74,110 +89,134 @@ impl PayloadTransportLine {
     fn has_room_for_one_more(&self) -> bool {
         self.payloads
             .last()
-            .map(|(_, mu)| *mu >= self.spacing)
+            .map(|p| p.mu >= self.spacing())
             .unwrap_or(true)
+    }
+
+    fn spacing(&self) -> f32 {
+        1.0 / (self.capacity as f32)
     }
 
     fn update_payloads(&mut self, t: f32) {
         assert!(
-            self.payloads.iter().all(|(_, mu)| *mu >= 0.0 && *mu <= 1.0),
+            self.payloads.iter().all(|p| p.mu >= 0.0 && p.mu <= 1.0),
             "All payload mu's in range 0 <= mu <= 1"
         );
         assert!(
-            self.payloads.is_sorted_by_key(|(_, mu)| -mu),
+            self.payloads.is_sorted_by_key(|p| -p.mu),
             "Payloads are sorted by descending mu."
         );
+        let spacing = self.spacing();
 
         let mut last_mu = None;
-        for (_, mu) in self.payloads.iter_mut() {
-            let max_mu: f32 = last_mu.map(|mu| mu - self.spacing).unwrap_or(1.0);
-            *mu = max_mu.min(*mu + t);
-            last_mu = Some(*mu);
+        for p in self.payloads.iter_mut() {
+            let max_mu: f32 = last_mu.map(|mu| mu - spacing).unwrap_or(1.0);
+            p.mu = max_mu.min(p.mu + t);
+            last_mu = Some(p.mu);
         }
     }
 
     fn get_payload_to_transfer(&self) -> Option<Entity> {
-        if let Some((payload, mu)) = self.payloads.first()
-            && *mu == 1.0
+        if let Some(p) = self.payloads.first()
+            && p.mu == 1.0
         {
-            return Some(*payload);
+            return Some(p.entity);
         }
 
         None
     }
 
     fn remove_payload(&mut self, payload: Entity) {
-        self.payloads.retain(|(entity, _)| *entity != payload);
+        self.payloads.retain(|p| p.entity != payload);
     }
 }
 
 #[cfg(test)]
 mod payload_transport_line_test {
     use super::*;
+    use ConveyorDirection::*;
+
+    fn tp(entity: Entity, from: ConveyorDirection, mu: f32) -> TransportedPayload {
+        TransportedPayload { entity, from, mu }
+    }
 
     #[test]
     fn empty() {
-        let ptl = PayloadTransportLine::new(ConveyorDirection::East, 0.5);
+        let ptl = PayloadTransportLine::new(East, 2);
         assert!(ptl.payloads.is_empty());
     }
 
     #[test]
     fn transfer_to_empty() {
-        let mut ptl = PayloadTransportLine::new(ConveyorDirection::East, 0.5);
+        let mut ptl = PayloadTransportLine::new(East, 2);
         let e = Entity::from_raw(1);
-        ptl.try_transfer_onto(e);
-        assert_eq!(ptl.payloads.as_slice(), &[(e, 0.0)]);
+        ptl.try_transfer_onto(e, West);
+        assert_eq!(ptl.payloads.as_slice(), &[tp(e, West, 0.0)]);
     }
 
     #[test]
     fn transfer_doesnt_happen_when_no_room() {
-        let mut ptl = PayloadTransportLine::new(ConveyorDirection::East, 0.5);
+        let mut ptl = PayloadTransportLine::new(East, 2);
         let e1 = Entity::from_raw(1);
-        ptl.try_transfer_onto(e1);
+        ptl.try_transfer_onto(e1, West);
         let e2 = Entity::from_raw(2);
-        ptl.try_transfer_onto(e2);
+        ptl.try_transfer_onto(e2, West);
 
-        assert_eq!(ptl.payloads.as_slice(), &[(e1, 0.0)]);
+        assert_eq!(ptl.payloads.as_slice(), &[tp(e1, West, 0.0)]);
     }
 
     #[test]
     fn updates() {
-        let mut ptl = PayloadTransportLine::new(ConveyorDirection::East, 0.5);
+        let mut ptl = PayloadTransportLine::new(ConveyorDirection::East, 2);
         let e: Vec<Entity> = (1..4).map(|i| Entity::from_raw(i)).collect();
 
-        ptl.try_transfer_onto(e[0]);
-        ptl.try_transfer_onto(e[1]);
-        ptl.try_transfer_onto(e[2]);
+        ptl.try_transfer_onto(e[0], West);
+        ptl.try_transfer_onto(e[1], West);
+        ptl.try_transfer_onto(e[2], West);
         ptl.update_payloads(0.1);
-        assert_eq!(ptl.payloads.as_slice(), &[(e[0], 0.1)]);
+        assert_eq!(ptl.payloads.as_slice(), &[tp(e[0], West, 0.1)]);
 
-        ptl.try_transfer_onto(e[1]);
-        ptl.try_transfer_onto(e[2]);
+        ptl.try_transfer_onto(e[1], West);
+        ptl.try_transfer_onto(e[2], West);
         ptl.update_payloads(0.1);
-        assert_eq!(ptl.payloads.as_slice(), &[(e[0], 0.2)]);
+        assert_eq!(ptl.payloads.as_slice(), &[tp(e[0], West, 0.2)]);
 
-        ptl.try_transfer_onto(e[1]);
-        ptl.try_transfer_onto(e[2]);
+        ptl.try_transfer_onto(e[1], West);
+        ptl.try_transfer_onto(e[2], West);
         ptl.update_payloads(0.3);
-        assert_eq!(ptl.payloads.as_slice(), &[(e[0], 0.5)]);
+        assert_eq!(ptl.payloads.as_slice(), &[tp(e[0], West, 0.5)]);
 
-        ptl.try_transfer_onto(e[1]);
-        ptl.try_transfer_onto(e[2]);
-        assert_eq!(ptl.payloads.as_slice(), &[(e[0], 0.5), (e[1], 0.0)]);
-
-        ptl.update_payloads(0.5);
-        assert_eq!(ptl.payloads.as_slice(), &[(e[0], 1.0), (e[1], 0.5)]);
-
-        ptl.try_transfer_onto(e[2]);
+        ptl.try_transfer_onto(e[1], West);
+        ptl.try_transfer_onto(e[2], West);
         assert_eq!(
             ptl.payloads.as_slice(),
-            &[(e[0], 1.0), (e[1], 0.5), (e[2], 0.0)]
+            &[tp(e[0], West, 0.5), tp(e[1], West, 0.0)]
         );
 
         ptl.update_payloads(0.5);
         assert_eq!(
             ptl.payloads.as_slice(),
-            &[(e[0], 1.0), (e[1], 0.5), (e[2], 0.0)]
+            &[tp(e[0], West, 1.0), tp(e[1], West, 0.5)]
+        );
+
+        ptl.try_transfer_onto(e[2], West);
+        assert_eq!(
+            ptl.payloads.as_slice(),
+            &[
+                tp(e[0], West, 1.0),
+                tp(e[1], West, 0.5),
+                tp(e[2], West, 0.0)
+            ]
+        );
+
+        ptl.update_payloads(0.5);
+        assert_eq!(
+            ptl.payloads.as_slice(),
+            &[
+                tp(e[0], West, 1.0),
+                tp(e[1], West, 0.5),
+                tp(e[2], West, 0.0)
+            ]
         );
 
         // Payloads bunch up - so if we remove one in the middle then the last
@@ -186,43 +225,52 @@ mod payload_transport_line_test {
         ptl.update_payloads(0.5);
         ptl.update_payloads(0.5);
         ptl.update_payloads(0.5);
-        assert_eq!(ptl.payloads.as_slice(), &[(e[0], 1.0), (e[2], 0.5)]);
+        assert_eq!(
+            ptl.payloads.as_slice(),
+            &[tp(e[0], West, 1.0), tp(e[2], West, 0.5)]
+        );
     }
 
     #[test]
     fn updates_with_different_spacing() {
-        let mut ptl = PayloadTransportLine::new(ConveyorDirection::East, 0.2);
+        let mut ptl = PayloadTransportLine::new(ConveyorDirection::East, 5);
         let e: Vec<Entity> = (1..4).map(|i| Entity::from_raw(i)).collect();
 
-        ptl.try_transfer_onto(e[0]);
-        ptl.try_transfer_onto(e[1]);
-        ptl.try_transfer_onto(e[2]);
+        ptl.try_transfer_onto(e[0], West);
+        ptl.try_transfer_onto(e[1], West);
+        ptl.try_transfer_onto(e[2], West);
         ptl.update_payloads(0.1);
-        assert_eq!(ptl.payloads.as_slice(), &[(e[0], 0.1)]);
+        assert_eq!(ptl.payloads.as_slice(), &[tp(e[0], West, 0.1)]);
 
-        ptl.try_transfer_onto(e[1]);
-        ptl.try_transfer_onto(e[2]);
+        ptl.try_transfer_onto(e[1], West);
+        ptl.try_transfer_onto(e[2], West);
         ptl.update_payloads(0.1);
-        assert_eq!(ptl.payloads.as_slice(), &[(e[0], 0.2)]);
+        assert_eq!(ptl.payloads.as_slice(), &[tp(e[0], West, 0.2)]);
 
-        ptl.try_transfer_onto(e[1]);
-        ptl.try_transfer_onto(e[2]);
+        ptl.try_transfer_onto(e[1], West);
+        ptl.try_transfer_onto(e[2], West);
         ptl.update_payloads(0.3);
-        assert_eq!(ptl.payloads.as_slice(), &[(e[0], 0.5), (e[1], 0.3)]);
-
-        ptl.update_payloads(0.5);
-        assert_eq!(ptl.payloads.as_slice(), &[(e[0], 1.0), (e[1], 0.8)]);
-
-        ptl.try_transfer_onto(e[2]);
         assert_eq!(
             ptl.payloads.as_slice(),
-            &[(e[0], 1.0), (e[1], 0.8), (e[2], 0.0)]
+            &[tp(e[0], West, 0.5), tp(e[1], West, 0.3)]
         );
 
         ptl.update_payloads(0.5);
         assert_eq!(
             ptl.payloads.as_slice(),
-            &[(e[0], 1.0), (e[1], 0.8), (e[2], 0.5)]
+            &[tp(e[0], West, 1.0), tp(e[1], West, 0.8)]
+        );
+
+        ptl.try_transfer_onto(e[2], West);
+        assert_eq!(
+            ptl.payloads.as_slice(),
+            &[tp(e[0], West, 1.0), tp(e[1], West, 0.8),tp (e[2], West, 0.0)]
+        );
+
+        ptl.update_payloads(0.5);
+        assert_eq!(
+            ptl.payloads.as_slice(),
+            &[tp(e[0], West, 1.0), tp(e[1], West, 0.8), tp(e[2], West, 0.5)]
         );
 
         // Payloads bunch up - so if we remove one in the middle then the last
@@ -231,7 +279,10 @@ mod payload_transport_line_test {
         ptl.update_payloads(0.5);
         ptl.update_payloads(0.5);
         ptl.update_payloads(0.5);
-        assert_eq!(ptl.payloads.as_slice(), &[(e[0], 1.0), (e[2], 0.8)]);
+        assert_eq!(
+            ptl.payloads.as_slice(),
+            &[tp(e[0], West, 1.0), tp(e[2], West, 0.8)]
+        );
     }
 }
 
@@ -254,14 +305,7 @@ fn transfer_payloads_to_transport_lines(
 ) {
     for e in transfers.read() {
         if let Ok(mut transport) = transports.get_mut(e.destination) {
-            if e.direction != transport.input_direction.opposite() {
-                info!(
-                    request_direction = ?e.direction,
-                    transport_input_direction = ?transport.input_direction,
-                    "Ignoring transfer request with mismatching directions");
-                continue;
-            }
-            if transport.try_transfer_onto(e.payload) {
+            if transport.try_transfer_onto(e.payload, e.direction.opposite()) {
                 transferred.write(PayloadTransferredEvent {
                     payload: e.payload,
                     source: e.source,
@@ -313,14 +357,14 @@ fn update_payload_transport_line_transforms(
 ) {
     for (tile_pos, transport) in transport_lines {
         let tile_center = base.center_in_world(tile_pos);
-        for (payload, mu) in transport.payloads.iter().copied() {
-            if let Ok(mut transform) = payloads.get_mut(payload) {
+        for p in &transport.payloads {
+            if let Ok(mut transform) = payloads.get_mut(p.entity) {
                 *transform = get_payload_transform(
                     tile_center,
                     base.tile_size,
-                    Some(transport.input_direction),
+                    Some(p.from),
                     Some(transport.output_direction),
-                    mu,
+                    p.mu,
                 );
             }
         }
@@ -334,8 +378,8 @@ fn on_remove_payload_transport_line(
 ) {
     // despawn anything that this line was holding
     if let Ok(transport) = transports.get(trigger.target()) {
-        for (e, _) in transport.payloads.iter() {
-            commands.entity(*e).try_despawn();
+        for p in &transport.payloads {
+            commands.entity(p.entity).try_despawn();
         }
     }
 }

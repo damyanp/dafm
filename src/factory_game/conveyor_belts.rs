@@ -71,7 +71,7 @@ pub fn conveyor_belt_bundle(output: ConveyorDirection) -> impl Bundle {
         ConveyorBelt,
         Conveyor::from(output),
         AcceptsPayloadConveyor::except(ConveyorDirections::new(output)),
-        PayloadTransportLine::new(output, 0.2),
+        PayloadTransportLine::new(output, 5),
     )
 }
 
