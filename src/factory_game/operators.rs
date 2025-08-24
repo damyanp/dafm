@@ -8,7 +8,7 @@ use crate::{
         conveyor::Conveyor,
         helpers::ConveyorDirection,
         interaction::{PlaceTileEvent, RegisterPlaceTileEvent, Tool},
-        payloads::{PayloadTransferredEvent, RequestPayloadTransferEvent},
+        payloads::{PayloadMarker, RequestPayloadTransferEvent},
     },
     sprite_sheet::GameSprite,
 };
@@ -189,6 +189,7 @@ pub fn operand_bundle(operand: Operand) -> impl Bundle {
         StateScoped(GameState::FactoryGame),
         Name::new(format!("Payload {}", operand.payload_text())),
         operand,
+        PayloadMarker,
         Text2d::new(operand.payload_text()),
         TextColor(Color::srgb(1.0, 0.4, 0.4)),
     )

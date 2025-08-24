@@ -55,6 +55,10 @@ impl Conveyor {
     pub fn inputs(&self) -> ConveyorDirections {
         self.inputs
     }
+
+    pub fn set_inputs(&mut self, inputs: ConveyorDirections) {
+        self.inputs = inputs;
+    }
 }
 
 #[derive(Component, Debug, Reflect, Default)]
@@ -86,4 +90,3 @@ pub fn find_tiles_to_check(
 
     to_check
 }
-

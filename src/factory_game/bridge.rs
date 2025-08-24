@@ -82,7 +82,7 @@ fn update_bridge_conveyor_accepts_payload(
 
     for pos in to_check {
         if let Some(entity) = tile_storage.get(&pos)
-            && let Ok(mut bridge) = bridge_conveyors.get_mut(entity)
+            && let Ok(bridge) = bridge_conveyors.get_mut(entity)
         {
             let neighbor_conveyors =
                 get_neighbors_from_query(tile_storage, &pos, map_size, &conveyors);

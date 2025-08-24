@@ -3,7 +3,7 @@ use bevy_ecs_tilemap::prelude::*;
 use smallvec::SmallVec;
 
 use crate::{
-    factory_game::{BaseLayer, ConveyorSystems, conveyor::Conveyor, helpers::ConveyorDirection},
+    factory_game::{BaseLayer, ConveyorSystems, helpers::ConveyorDirection},
     helpers::TilemapQuery,
 };
 
@@ -289,19 +289,19 @@ fn transfer_payloads_from_transport_lines(
 }
 
 fn transfer_payloads_to_transport_lines(
-    mut commands: Commands,
+    commands: Commands,
     mut transfers: EventReader<RequestPayloadTransferEvent>,
     mut transports: Query<&mut PayloadTransportLine>,
     mut transferred: EventWriter<PayloadTransferredEvent>,
 ) {
     for e in transfers.read() {
-        if let Ok(mut transport) = transports.get_mut(e.destination) {
-            if transport.try_transfer_onto(e.payload, e.direction.opposite()) {
-                transferred.write(PayloadTransferredEvent {
-                    payload: e.payload,
-                    source: e.source,
-                });
-            }
+        if let Ok(mut transport) = transports.get_mut(e.destination)
+            && transport.try_transfer_onto(e.payload, e.direction.opposite())
+        {
+            transferred.write(PayloadTransferredEvent {
+                payload: e.payload,
+                source: e.source,
+            });
         }
     }
 }
@@ -371,7 +371,7 @@ fn on_remove_payload_transport_line(
 #[derive(Component, Default)]
 pub struct PayloadMarker;
 
-fn get_payload_transform(
+pub fn get_payload_transform(
     tile_center: Vec2,
     tile_size: &TilemapTileSize,
     input_direction: Option<ConveyorDirection>,
