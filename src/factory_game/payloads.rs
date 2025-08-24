@@ -35,7 +35,8 @@ pub fn payloads_plugin(app: &mut App) {
                 update_payload_transport_line_transforms,
             )
                 .in_set(ConveyorSystems::PayloadTransforms),
-        );
+        )
+        .add_observer(on_remove_payload_transport_line);
 }
 
 #[derive(Component, Debug, Reflect)]
@@ -61,12 +62,11 @@ impl PayloadTransportLine {
         }
     }
 
-    fn try_transfer_onto(&mut self, payload: Entity) -> bool{
+    fn try_transfer_onto(&mut self, payload: Entity) -> bool {
         if self.has_room_for_one_more() {
             self.payloads.push((payload, 0.0));
             true
-        }
-        else {
+        } else {
             false
         }
     }
@@ -254,7 +254,13 @@ fn transfer_payloads_to_transport_lines(
 ) {
     for e in transfers.read() {
         if let Ok(mut transport) = transports.get_mut(e.destination) {
-            assert_eq!(e.direction, transport.input_direction.opposite());
+            if e.direction != transport.input_direction.opposite() {
+                info!(
+                    request_direction = ?e.direction,
+                    transport_input_direction = ?transport.input_direction,
+                    "Ignoring transfer request with mismatching directions");
+                continue;
+            }
             if transport.try_transfer_onto(e.payload) {
                 transferred.write(PayloadTransferredEvent {
                     payload: e.payload,
@@ -264,7 +270,9 @@ fn transfer_payloads_to_transport_lines(
                 // HACK: explicitly remove the Payload / PayloadTransport
                 // components. This should really, somehow, be done by something
                 // that handles the PayloadTransferredEvent
-                commands.entity(e.payload).try_remove::<(Payload, PayloadTransport)>();
+                commands
+                    .entity(e.payload)
+                    .try_remove::<(Payload, PayloadTransport)>();
             }
         }
     }
@@ -315,6 +323,19 @@ fn update_payload_transport_line_transforms(
                     mu,
                 );
             }
+        }
+    }
+}
+
+fn on_remove_payload_transport_line(
+    trigger: Trigger<OnRemove, PayloadTransportLine>,
+    transports: Query<&PayloadTransportLine>,
+    mut commands: Commands,
+) {
+    // despawn anything that this line was holding
+    if let Ok(transport) = transports.get(trigger.target()) {
+        for (e, _) in transport.payloads.iter() {
+            commands.entity(*e).try_despawn();
         }
     }
 }
