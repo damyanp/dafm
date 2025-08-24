@@ -6,14 +6,9 @@ use bevy_ecs_tilemap::{
 
 use crate::{
     factory_game::{
-        BaseLayer, BaseLayerEntityDespawned, ConveyorSystems,
-        conveyor::{AcceptsPayloadConveyor, Conveyor, SimpleConveyor, find_tiles_to_check},
-        helpers::{
-            ConveyorDirection, ConveyorDirections, get_neighbors_from_query, make_east_relative,
-            opposite,
-        },
-        interaction::{PlaceTileEvent, RegisterPlaceTileEvent, Tool},
-        payloads::SimpleConveyorTransferPolicy,
+        conveyor::{find_tiles_to_check, AcceptsPayloadConveyor, Conveyor, SimpleConveyor}, helpers::{
+            get_neighbors_from_query, make_east_relative, opposite, ConveyorDirection, ConveyorDirections
+        }, interaction::{PlaceTileEvent, RegisterPlaceTileEvent, Tool}, payloads::{PayloadTransportLine, SimpleConveyorTransferPolicy}, BaseLayer, BaseLayerEntityDespawned, ConveyorSystems
     },
     sprite_sheet::GameSprite,
 };
@@ -63,7 +58,7 @@ impl PlaceTileEvent for PlaceConveyorBeltEvent {
 }
 
 #[derive(Component)]
-#[require(SimpleConveyor, SimpleConveyorTransferPolicy)]
+#[require(SimpleConveyor)]
 pub struct ConveyorBelt;
 
 pub fn conveyor_belt_bundle(output: ConveyorDirection) -> impl Bundle {
@@ -71,6 +66,7 @@ pub fn conveyor_belt_bundle(output: ConveyorDirection) -> impl Bundle {
         ConveyorBelt,
         Conveyor::from(output),
         AcceptsPayloadConveyor::except(ConveyorDirections::new(output)),
+        PayloadTransportLine::new(output, 0.2)
     )
 }
 

@@ -8,7 +8,10 @@ use crate::{
         conveyor::{AcceptsPayloadConveyor, Conveyor},
         helpers::ConveyorDirection,
         interaction::{PlaceTileEvent, RegisterPlaceTileEvent, Tool},
-        payloads::{Payload, PayloadTransport, Payloads, RequestPayloadTransferEvent},
+        payloads::{
+            Payload, PayloadTransferredEvent, PayloadTransport, Payloads,
+            RequestPayloadTransferEvent,
+        },
     },
     sprite_sheet::GameSprite,
 };
@@ -166,6 +169,7 @@ fn transfer_payloads_to_operators(
         payload,
         destination,
         direction,
+        ..
     } in transfers.read()
     {
         if let Ok((conveyor, mut operator)) = operators.get_mut(*destination)
@@ -190,14 +194,22 @@ fn transfer_payloads_to_operators(
 fn generate_new_payloads(
     mut commands: Commands,
     operators: Query<(Entity, &Conveyor, &mut OperatorTile), Without<Payloads>>,
+    payloads: Query<&Payload>,
+    mut transferred: EventWriter<PayloadTransferredEvent>,
 ) {
     for (entity, conveyor, mut operator) in operators {
         if let Some(left) = operator.left_operand
             && let Some(right) = operator.right_operand
         {
-            [left.0, right.0]
-                .into_iter()
-                .for_each(|e| commands.entity(e).despawn());
+            [left.0, right.0].into_iter().for_each(|e| {
+                if let Ok(payload) = payloads.get(e) {
+                    transferred.write(PayloadTransferredEvent {
+                        payload: e,
+                        source: payload.0,
+                    });
+                }
+                commands.entity(e).despawn();
+            });
 
             let new_operand = operator.operator.generate_operand(left.1, right.1);
             commands.spawn((
@@ -216,7 +228,7 @@ fn generate_new_payloads(
 }
 
 pub fn operand_bundle(operand: Operand) -> impl Bundle {
-    (        
+    (
         StateScoped(GameState::FactoryGame),
         Name::new(format!("Payload {}", operand.payload_text())),
         operand,

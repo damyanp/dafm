@@ -3,11 +3,7 @@ use bevy_ecs_tilemap::prelude::*;
 
 use crate::{
     factory_game::{
-        BaseLayer, ConveyorSystems,
-        conveyor::{AcceptsPayloadConveyor, Conveyor},
-        helpers::{ConveyorDirection, ConveyorDirections, get_neighbors_from_query},
-        interaction::{PlaceTileEvent, RegisterPlaceTileEvent, Tool},
-        payloads::{Payload, PayloadTransport, Payloads, RequestPayloadTransferEvent},
+        conveyor::{AcceptsPayloadConveyor, Conveyor}, helpers::{get_neighbors_from_query, ConveyorDirection, ConveyorDirections}, interaction::{PlaceTileEvent, RegisterPlaceTileEvent, Tool}, payloads::{Payload, PayloadTransferredEvent, PayloadTransport, Payloads, RequestPayloadTransferEvent}, BaseLayer, ConveyorSystems
     },
     sprite_sheet::GameSprite,
 };
@@ -68,9 +64,11 @@ fn transfer_payloads_to_distributors(
     mut transfers: EventReader<RequestPayloadTransferEvent>,
     mut receivers: Query<Option<&Payloads>, With<DistributorConveyor>>,
     mut events: EventWriter<DistributePayloadEvent>,
+    mut transferred: EventWriter<PayloadTransferredEvent>,
 ) {
     for RequestPayloadTransferEvent {
         payload,
+        source,
         destination,
         direction,
     } in transfers.read()
@@ -91,6 +89,10 @@ fn transfer_payloads_to_distributors(
                 events.write(DistributePayloadEvent {
                     transporter: *destination,
                     payload: *payload,
+                });
+                transferred.write(PayloadTransferredEvent {
+                    payload: *payload,
+                    source: *source,
                 });
             }
         }

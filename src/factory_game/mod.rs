@@ -83,6 +83,7 @@ enum ConveyorSystems {
     TileGenerator,
     TileUpdater,
     TransferPayloads,
+    TransferredPayloads,
     TransportLogic,
     PayloadTransforms,
 }
