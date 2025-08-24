@@ -14,7 +14,6 @@ use crate::{
         conveyor_belts::{ConveyorBelt, PlaceConveyorBeltEvent},
         generator::PlaceGeneratorEvent,
         operators::Operand,
-        payloads::Payloads,
     },
 };
 
@@ -84,11 +83,12 @@ fn generator_transfers_payload_to_conveyor() {
     app.update(); // ready to be transferred
     app.update(); // transferred to conveyor belt
 
-    let mut payloads = app
-        .world_mut()
-        .query_filtered::<&Payloads, With<ConveyorBelt>>();
+    // let mut payloads = app
+    //     .world_mut()
+    //     .query_filtered::<&Payloads, With<ConveyorBelt>>();
 
-    assert_eq!(payloads.iter(app.world()).len(), 1);
+    // assert_eq!(payloads.iter(app.world()).len(), 1);
+    todo!();
 }
 
 #[test]
@@ -110,11 +110,12 @@ fn generator_doesnt_transfer_payload_to_conveyor_pointing_at_it() {
     app.update(); // ready to be transferred
     app.update(); // transferred to conveyor belt
 
-    let mut payloads = app
-        .world_mut()
-        .query_filtered::<&Payloads, With<ConveyorBelt>>();
+    // let mut payloads = app
+    //     .world_mut()
+    //     .query_filtered::<&Payloads, With<ConveyorBelt>>();
 
-    assert_eq!(payloads.iter(app.world()).len(), 0);
+    // assert_eq!(payloads.iter(app.world()).len(), 0);
+    todo!();
 }
 
 #[test]
@@ -133,7 +134,8 @@ fn generator_transfers_payload_to_bridge() {
     app.update(); // ready to be transferred
     app.update(); // transferred to bridge
 
-    let mut payloads = app.world_mut().query_filtered::<&Payloads, With<Bridge>>();
+    // let mut payloads = app.world_mut().query_filtered::<&Payloads, With<Bridge>>();
 
-    assert_eq!(payloads.iter(app.world()).len(), 1);
+    // assert_eq!(payloads.iter(app.world()).len(), 1);
+    todo!();
 }

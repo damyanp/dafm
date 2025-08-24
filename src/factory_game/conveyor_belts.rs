@@ -7,7 +7,7 @@ use bevy_ecs_tilemap::{
 use crate::{
     factory_game::{
         BaseLayer, BaseLayerEntityDespawned, ConveyorSystems,
-        conveyor::{AcceptsPayloadConveyor, Conveyor, SimpleConveyor, find_tiles_to_check},
+        conveyor::{Conveyor, SimpleConveyor, find_tiles_to_check},
         helpers::{
             ConveyorDirection, ConveyorDirections, get_neighbors_from_query, make_east_relative,
             opposite,
@@ -70,7 +70,6 @@ pub fn conveyor_belt_bundle(output: ConveyorDirection) -> impl Bundle {
     (
         ConveyorBelt,
         Conveyor::from(output),
-        AcceptsPayloadConveyor::except(ConveyorDirections::new(output)),
         PayloadTransportLine::new(output, 5),
     )
 }

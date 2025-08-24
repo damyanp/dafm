@@ -4,10 +4,9 @@ use bevy_ecs_tilemap::prelude::*;
 use crate::{
     factory_game::{
         BaseLayer, ConveyorSystems,
-        conveyor::{AcceptsPayloadConveyor, Conveyor},
+        conveyor::Conveyor,
         helpers::ConveyorDirections,
         interaction::{PlaceTileEvent, RegisterPlaceTileEvent, Tool},
-        payloads::{Payloads, SimpleConveyorTransferPolicy},
     },
     sprite_sheet::GameSprite,
 };
@@ -16,10 +15,7 @@ pub fn sink_plugin(app: &mut App) {
     app.register_place_tile_event::<PlaceSinkEvent>()
         .add_systems(
             Update,
-            (
-                update_sink_tiles.in_set(ConveyorSystems::TileUpdater),
-                sink_despawns_everything_in_it.in_set(ConveyorSystems::TransportLogic),
-            ),
+            (update_sink_tiles.in_set(ConveyorSystems::TileUpdater),),
         );
 }
 
@@ -49,11 +45,7 @@ impl PlaceTileEvent for PlaceSinkEvent {
 }
 
 #[derive(Component)]
-#[require(
-    SimpleConveyorTransferPolicy,
-    Conveyor::new(ConveyorDirections::default()),
-    AcceptsPayloadConveyor::all()
-)]
+#[require(Conveyor::new(ConveyorDirections::default()))]
 struct Sink;
 
 fn update_sink_tiles(
@@ -67,13 +59,5 @@ fn update_sink_tiles(
             texture_index: GameSprite::Sink.tile_texture_index(),
             ..default()
         });
-    }
-}
-
-fn sink_despawns_everything_in_it(mut commands: Commands, sinks: Query<&Payloads, With<Sink>>) {
-    for payloads in sinks {
-        for entity in payloads.iter() {
-            commands.entity(entity).despawn();
-        }
     }
 }

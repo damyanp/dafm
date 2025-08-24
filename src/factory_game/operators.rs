@@ -5,13 +5,10 @@ use crate::{
     GameState,
     factory_game::{
         BaseLayer, ConveyorSystems,
-        conveyor::{AcceptsPayloadConveyor, Conveyor},
+        conveyor::Conveyor,
         helpers::ConveyorDirection,
         interaction::{PlaceTileEvent, RegisterPlaceTileEvent, Tool},
-        payloads::{
-            Payload, PayloadTransferredEvent, PayloadTransport, Payloads,
-            RequestPayloadTransferEvent,
-        },
+        payloads::{PayloadTransferredEvent, RequestPayloadTransferEvent},
     },
     sprite_sheet::GameSprite,
 };
@@ -136,13 +133,7 @@ impl OperatorTile {
 }
 
 fn operator_bundle(operator: Operator, direction: ConveyorDirection) -> impl Bundle {
-    (
-        OperatorTile::new(operator),
-        Conveyor::from(direction),
-        AcceptsPayloadConveyor::from_direction_iter(
-            [direction.left(), direction.right()].into_iter(),
-        ),
-    )
+    (OperatorTile::new(operator), Conveyor::from(direction))
 }
 
 fn update_operator_tiles(
@@ -191,41 +182,7 @@ fn transfer_payloads_to_operators(
     }
 }
 
-fn generate_new_payloads(
-    mut commands: Commands,
-    operators: Query<(Entity, &Conveyor, &mut OperatorTile), Without<Payloads>>,
-    payloads: Query<&Payload>,
-    mut transferred: EventWriter<PayloadTransferredEvent>,
-) {
-    for (entity, conveyor, mut operator) in operators {
-        if let Some(left) = operator.left_operand
-            && let Some(right) = operator.right_operand
-        {
-            [left.0, right.0].into_iter().for_each(|e| {
-                if let Ok(payload) = payloads.get(e) {
-                    transferred.write(PayloadTransferredEvent {
-                        payload: e,
-                        source: payload.0,
-                    });
-                }
-                commands.entity(e).despawn();
-            });
-
-            let new_operand = operator.operator.generate_operand(left.1, right.1);
-            commands.spawn((
-                operand_bundle(new_operand),
-                Payload(entity),
-                PayloadTransport {
-                    destination: Some(conveyor.output()),
-                    mu: 0.5,
-                    ..default()
-                },
-            ));
-            operator.left_operand = None;
-            operator.right_operand = None;
-        }
-    }
-}
+fn generate_new_payloads() {}
 
 pub fn operand_bundle(operand: Operand) -> impl Bundle {
     (

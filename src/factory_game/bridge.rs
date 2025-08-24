@@ -4,12 +4,10 @@ use bevy_ecs_tilemap::prelude::*;
 use crate::{
     factory_game::{
         BaseLayer, BaseLayerEntityDespawned, ConveyorSystems,
-        conveyor::{AcceptsPayloadConveyor, Conveyor, find_tiles_to_check},
+        conveyor::{Conveyor, find_tiles_to_check},
         helpers::{ConveyorDirection, ConveyorDirections, get_neighbors_from_query, opposite},
         interaction::{PlaceTileEvent, RegisterPlaceTileEvent, Tool},
-        payloads::{
-            Payload, PayloadTransferredEvent, PayloadTransport, RequestPayloadTransferEvent,
-        },
+        payloads::{PayloadTransferredEvent, PayloadTransportLine, RequestPayloadTransferEvent},
     },
     helpers::TilemapQuery,
     sprite_sheet::{GameSprite, SpriteSheet},
@@ -55,17 +53,13 @@ impl PlaceTileEvent for PlaceBridgeEvent {
 
 #[derive(Component, Default, Reflect, Debug)]
 pub struct BridgeConveyor {
-    top: Vec<Entity>,
-    bottom: Vec<Entity>,
+    top: Option<PayloadTransportLine>,
+    bottom: Option<PayloadTransportLine>,
 }
 
 #[derive(Component, Default)]
 #[relationship_target(relationship = BridgeTop, linked_spawn)]
-#[require(
-    Conveyor::new(ConveyorDirections::all()),
-    BridgeConveyor,
-    AcceptsPayloadConveyor
-)]
+#[require(Conveyor::new(ConveyorDirections::all()), BridgeConveyor)]
 pub struct Bridge(Vec<Entity>);
 
 /// Mark BridgeTops so they can be despawned when the Bridge is despawned
@@ -78,7 +72,7 @@ pub struct BridgeTop(Entity);
 fn update_bridge_conveyor_accepts_payload(
     new_conveyors: Query<&TilePos, Added<Conveyor>>,
     removed_entities: EventReader<BaseLayerEntityDespawned>,
-    mut accepts_payloads: Query<&mut AcceptsPayloadConveyor, With<BridgeConveyor>>,
+    mut bridge_conveyors: Query<&mut BridgeConveyor>,
     conveyors: Query<&Conveyor>,
     base: Single<(&TileStorage, &TilemapSize), With<BaseLayer>>,
 ) {
@@ -88,7 +82,7 @@ fn update_bridge_conveyor_accepts_payload(
 
     for pos in to_check {
         if let Some(entity) = tile_storage.get(&pos)
-            && let Ok(mut accepts) = accepts_payloads.get_mut(entity)
+            && let Ok(mut bridge) = bridge_conveyors.get_mut(entity)
         {
             let neighbor_conveyors =
                 get_neighbors_from_query(tile_storage, &pos, map_size, &conveyors);
@@ -103,34 +97,13 @@ fn update_bridge_conveyor_accepts_payload(
                             None
                         }
                     });
-
-            *accepts = AcceptsPayloadConveyor::new(ConveyorDirections::from(inputs));
         }
     }
 }
 
-fn update_bridge_payloads(
-    bridges: Query<(Entity, &mut BridgeConveyor)>,
-    payloads: Query<&Payload>,
-) {
-    for (bridge_entity, mut bridge) in bridges {
-        // TODO: This polls every bridge....which isn't great...but probably not
-        // really a problem right now.
-
-        let is_on_bridge = |entity: &Entity| {
-            payloads
-                .get(*entity)
-                .map(|payload_of| payload_of.0 == bridge_entity)
-                .unwrap_or(false)
-        };
-
-        bridge.top.retain(is_on_bridge);
-        bridge.bottom.retain(is_on_bridge);
-    }
-}
+fn update_bridge_payloads() {}
 
 fn transfer_bridge_payloads(
-    mut commands: Commands,
     mut transfers: EventReader<RequestPayloadTransferEvent>,
     mut bridges: Query<&mut BridgeConveyor>,
     mut transferred: EventWriter<PayloadTransferredEvent>,
@@ -144,34 +117,17 @@ fn transfer_bridge_payloads(
     {
         if let Ok(mut bridge) = bridges.get_mut(*destination) {
             use ConveyorDirection::*;
-            let take = match direction {
-                North | South => {
-                    if bridge.bottom.is_empty() {
-                        bridge.bottom.push(*payload);
-                        true
-                    } else {
-                        false
-                    }
-                }
-                East | West => {
-                    if bridge.top.is_empty() {
-                        bridge.top.push(*payload);
-                        true
-                    } else {
-                        false
-                    }
-                }
+
+            let transport = match direction {
+                North | South => bridge.bottom.as_mut(),
+                East | West => bridge.top.as_mut(),
             };
 
+            let take = transport
+                .map(|transport| transport.try_transfer_onto(*payload, direction.opposite()))
+                .unwrap_or(false);
+
             if take {
-                commands.entity(*payload).insert((
-                    Payload(*destination),
-                    PayloadTransport {
-                        source: Some(direction.opposite()),
-                        destination: Some(*direction),
-                        ..default()
-                    },
-                ));
                 transferred.write(PayloadTransferredEvent {
                     payload: *payload,
                     source: *source,

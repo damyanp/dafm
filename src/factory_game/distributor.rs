@@ -4,13 +4,10 @@ use bevy_ecs_tilemap::prelude::*;
 use crate::{
     factory_game::{
         BaseLayer, ConveyorSystems,
-        conveyor::{AcceptsPayloadConveyor, Conveyor},
+        conveyor::Conveyor,
         helpers::{ConveyorDirection, ConveyorDirections, get_neighbors_from_query},
         interaction::{PlaceTileEvent, RegisterPlaceTileEvent, Tool},
-        payloads::{
-            Payload, PayloadTransferredEvent, PayloadTransport, Payloads,
-            RequestPayloadTransferEvent,
-        },
+        payloads::{PayloadTransferredEvent, RequestPayloadTransferEvent},
     },
     sprite_sheet::GameSprite,
 };
@@ -56,8 +53,7 @@ impl PlaceTileEvent for PlaceDistributorEvent {
 #[derive(Component)]
 #[require(
     Conveyor::new(ConveyorDirections::all()),
-    DistributorConveyor::default(),
-    AcceptsPayloadConveyor::all()
+    DistributorConveyor::default()
 )]
 struct Distributor;
 
@@ -69,7 +65,7 @@ pub struct DistributorConveyor {
 fn transfer_payloads_to_distributors(
     mut commands: Commands,
     mut transfers: EventReader<RequestPayloadTransferEvent>,
-    mut receivers: Query<Option<&Payloads>, With<DistributorConveyor>>,
+    mut receivers: Query<Entity, With<DistributorConveyor>>,
     mut events: EventWriter<DistributePayloadEvent>,
     mut transferred: EventWriter<PayloadTransferredEvent>,
 ) {
@@ -79,31 +75,7 @@ fn transfer_payloads_to_distributors(
         destination,
         direction,
     } in transfers.read()
-    {
-        if let Ok(payloads) = receivers.get_mut(*destination) {
-            const MAX_PAYLOADS: usize = 1;
-
-            let current_payload_count = payloads.map(|p| p.len()).unwrap_or(0);
-
-            if current_payload_count < MAX_PAYLOADS {
-                commands.entity(*payload).insert((
-                    Payload(*destination),
-                    PayloadTransport {
-                        source: Some(direction.opposite()),
-                        ..default()
-                    },
-                ));
-                events.write(DistributePayloadEvent {
-                    transporter: *destination,
-                    payload: *payload,
-                });
-                transferred.write(PayloadTransferredEvent {
-                    payload: *payload,
-                    source: *source,
-                });
-            }
-        }
-    }
+    {}
 }
 
 #[derive(Event)]
@@ -116,7 +88,6 @@ fn distribute_payloads(
     mut events: ResMut<Events<DistributePayloadEvent>>,
     mut reader: Local<EventCursor<DistributePayloadEvent>>,
     mut distributors: Query<(&Conveyor, &TilePos, &mut DistributorConveyor)>,
-    mut payloads: Query<&mut PayloadTransport>,
     base: Single<(&TileStorage, &TilemapSize), With<BaseLayer>>,
     conveyors: Query<&Conveyor>,
 ) {
@@ -129,9 +100,7 @@ fn distribute_payloads(
         payload,
     } in reader.read(&events)
     {
-        if let Ok((conveyor, tile_pos, mut distributor)) = distributors.get_mut(*transporter)
-            && let Ok(mut payload_transport) = payloads.get_mut(*payload)
-        {
+        if let Ok((conveyor, tile_pos, mut distributor)) = distributors.get_mut(*transporter) {
             // Figure out where this payload will be going
             let neighbors = get_neighbors_from_query(tile_storage, tile_pos, map_size, &conveyors);
             let destination_direction =
@@ -144,7 +113,7 @@ fn distribute_payloads(
                             .map(|conveyor| conveyor.inputs().is_set(direction.opposite()))
                             .unwrap_or(false)
                     });
-
+            /*
             if let Some(destination_direction) = destination_direction {
                 assert!(payload_transport.destination.is_none());
                 payload_transport.destination = Some(destination_direction);
@@ -155,6 +124,7 @@ fn distribute_payloads(
                     payload: *payload,
                 });
             }
+            */
         }
     }
 

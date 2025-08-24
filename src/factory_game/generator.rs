@@ -9,7 +9,6 @@ use crate::{
         helpers::ConveyorDirections,
         interaction::{PlaceTileEvent, RegisterPlaceTileEvent, Tool},
         operators::{Operand, operand_bundle},
-        payloads::{Payload, PayloadTransport, Payloads},
     },
     sprite_sheet::GameSprite,
 };
@@ -87,21 +86,12 @@ fn update_generator_tiles(
 fn generate_payloads(
     mut commands: Commands,
     time: Res<Time>,
-    generators: Query<(Entity, &mut Generator, Option<&Payloads>)>,
+    generators: Query<(Entity, &mut Generator)>,
     mut events: EventWriter<DistributePayloadEvent>,
 ) {
-    for (entity, mut generator, payloads) in generators {
-        if time.elapsed_secs() > generator.next_generate_time && payloads.is_none() {
-            let payload = commands
-                .spawn((
-                    operand_bundle(Operand(1)),
-                    Payload(entity),
-                    PayloadTransport {
-                        mu: 0.5,
-                        ..default()
-                    },
-                ))
-                .id();
+    for (entity, mut generator) in generators {
+        if time.elapsed_secs() > generator.next_generate_time {
+            let payload = commands.spawn((operand_bundle(Operand(1)),)).id();
             events.write(DistributePayloadEvent {
                 transporter: entity,
                 payload,
