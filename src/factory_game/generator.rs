@@ -102,6 +102,7 @@ fn generate_payloads(
                 tile_pos,
                 map_size,
                 &conveyors,
+                None,
                 || commands.spawn(operand_bundle(Operand(1))).id(),
             )
         {

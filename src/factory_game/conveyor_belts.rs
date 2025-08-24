@@ -7,7 +7,7 @@ use bevy_ecs_tilemap::{
 use crate::{
     factory_game::{
         BaseLayer, BaseLayerEntityDespawned, ConveyorSystems,
-        conveyor::{Conveyor, SimpleConveyor, find_tiles_to_check},
+        conveyor::{Conveyor, SimpleConveyor, TilesToCheck, update_tiles_to_check},
         helpers::{
             ConveyorDirection, ConveyorDirections, get_neighbors_from_query, make_east_relative,
             opposite,
@@ -77,32 +77,31 @@ pub fn conveyor_belt_bundle(output: ConveyorDirection) -> impl Bundle {
 
 #[expect(clippy::type_complexity)]
 fn update_conveyor_belt_conveyors(
-    mut conveyors: ParamSet<(Query<&TilePos, Added<Conveyor>>, Query<&mut Conveyor>)>,
-    removed_entities: EventReader<BaseLayerEntityDespawned>,
+    to_check: Res<TilesToCheck>,
+    mut conveyors: Query<&mut Conveyor>,
     conveyor_belts: Query<(), With<ConveyorBelt>>,
-    base: Single<(Entity, &TileStorage, &TilemapSize), With<BaseLayer>>,
+    base: Single<(&TileStorage, &TilemapSize), With<BaseLayer>>,
 ) {
-    let (tilemap_entity, tile_storage, map_size) = base.into_inner();
+    let (tile_storage, map_size) = base.into_inner();
 
-    let to_check = find_tiles_to_check(conveyors.p0(), removed_entities, map_size);
-    for tile_pos in to_check {
-        if let Some(entity) = tile_storage.get(&tile_pos)
-            && conveyor_belts.get(entity).is_ok()
+    for tile_pos in &to_check.0 {
+        if let Some(entity) = tile_storage.get(tile_pos)
+            && conveyor_belts.contains(entity)
         {
             let directions = find_incoming_directions(
                 &tile_pos,
                 tile_storage,
                 map_size,
-                &conveyors.p1().as_readonly(),
+                &conveyors.as_readonly(),
             );
-            if let Ok(mut conveyor) = conveyors.p1().get_mut(entity) {
+            if let Ok(mut conveyor) = conveyors.get_mut(entity) {
                 conveyor.set_inputs(directions);
             }
         }
     }
 }
 
-fn find_incoming_directions(
+pub fn find_incoming_directions(
     tile_pos: &TilePos,
     tile_storage: &TileStorage,
     map_size: &TilemapSize,
@@ -140,9 +139,8 @@ fn find_conveyors_outputting_to<'a>(
 
 #[expect(clippy::type_complexity)]
 fn update_conveyor_belt_tiles(
+    to_check: Res<TilesToCheck>,
     mut commands: Commands,
-    new_conveyor_belts: Query<&TilePos, Added<Conveyor>>,
-    removed_entities: EventReader<BaseLayerEntityDespawned>,
     conveyors: Query<&Conveyor>,
     conveyor_belts: Query<
         (&Conveyor, Option<&TileTextureIndex>, Option<&TileFlip>),
@@ -152,9 +150,7 @@ fn update_conveyor_belt_tiles(
 ) {
     let (tilemap_entity, tile_storage, map_size) = base.into_inner();
 
-    let to_check = find_tiles_to_check(new_conveyor_belts, removed_entities, map_size);
-
-    for pos in to_check {
+    for pos in &to_check.0 {
         if let Some(entity) = tile_storage.get(&pos)
             && let Ok(conveyor_belt) = conveyor_belts.get(entity)
         {

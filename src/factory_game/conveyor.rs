@@ -6,13 +6,15 @@ use bevy_ecs_tilemap::{helpers::square_grid::neighbors::Neighbors, prelude::*};
 use crate::{
     GameState,
     factory_game::{
-        BaseLayerEntityDespawned,
+        BaseLayer, BaseLayerEntityDespawned,
         helpers::{ConveyorDirection, ConveyorDirections},
     },
 };
 
 pub fn conveyor_plugin(app: &mut App) {
-    app.register_type::<Conveyor>();
+    app.register_type::<Conveyor>()
+        .init_resource::<TilesToCheck>()
+        .add_systems(PreUpdate, update_tiles_to_check);
 }
 
 #[derive(Component, Clone, Debug, Reflect, Default)]
@@ -59,16 +61,26 @@ impl Conveyor {
     pub fn set_inputs(&mut self, inputs: ConveyorDirections) {
         self.inputs = inputs;
     }
+
+    pub fn set_outputs(&mut self, outputs: ConveyorDirections) {
+        self.outputs = outputs;
+    }
 }
 
 #[derive(Component, Debug, Reflect, Default)]
 pub struct SimpleConveyor;
 
-pub fn find_tiles_to_check(
+#[derive(Resource, Default)]
+pub struct TilesToCheck(pub HashSet<TilePos>);
+
+pub fn update_tiles_to_check(
+    mut commands: Commands,
     new: Query<&TilePos, Added<Conveyor>>,
     mut removed: EventReader<BaseLayerEntityDespawned>,
-    map_size: &TilemapSize,
-) -> HashSet<TilePos> {
+    base: Single<&TilemapSize, With<BaseLayer>>,
+) {
+    let map_size = base.into_inner();
+
     let mut to_check = HashSet::new();
 
     new.iter().for_each(|pos| {
@@ -88,5 +100,5 @@ pub fn find_tiles_to_check(
         }
     }
 
-    to_check
+    commands.insert_resource(TilesToCheck(to_check));
 }

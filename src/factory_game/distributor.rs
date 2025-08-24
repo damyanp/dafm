@@ -5,7 +5,8 @@ use smallvec::SmallVec;
 use crate::{
     factory_game::{
         BaseLayer, ConveyorSystems,
-        conveyor::Conveyor,
+        conveyor::{Conveyor, TilesToCheck},
+        conveyor_belts::find_incoming_directions,
         helpers::{ConveyorDirection, ConveyorDirections, get_neighbors_from_query},
         interaction::{PlaceTileEvent, RegisterPlaceTileEvent, Tool},
         payloads::{
@@ -28,7 +29,8 @@ pub fn distributor_plugin(app: &mut App) {
                 transfer_payloads_from_distributors.in_set(ConveyorSystems::TransferredPayloads),
                 (distribute_payloads, update_distributor_payloads)
                     .in_set(ConveyorSystems::TransportLogic),
-                update_distributor_tiles.in_set(ConveyorSystems::TileUpdater),
+                (update_distributor_conveyors, update_distributor_tiles)
+                    .in_set(ConveyorSystems::TileUpdater),
                 update_distributor_payload_transforms.in_set(ConveyorSystems::PayloadTransforms),
             ),
         );
@@ -89,6 +91,7 @@ impl DistributorConveyor {
         tile_pos: &TilePos,
         map_size: &TilemapSize,
         conveyors: &Query<&Conveyor>,
+        from: Option<ConveyorDirection>,
         get_entity_to_take: F,
     ) -> bool
     where
@@ -119,6 +122,7 @@ impl DistributorConveyor {
             self.payloads.push(DistributedPayload {
                 entity: get_entity_to_take(),
                 to: destination_direction,
+                from,
                 mu: 0.0,
             });
             self.next_output = destination_direction.next();
@@ -130,7 +134,8 @@ impl DistributorConveyor {
     fn update_payloads(&mut self, t: f32) {
         assert!(
             self.payloads.iter().all(|p| p.mu >= 0.0 && p.mu <= 1.0),
-            "All payload mu;s in rage 0 <= mu <= 1"
+            "All payload mu's in rage 0 <= mu <= 1: {:?}",
+            self.payloads
         );
         assert!(
             self.payloads.is_sorted_by_key(|p| -p.mu),
@@ -165,24 +170,67 @@ impl DistributorConveyor {
 #[derive(Debug, Reflect)]
 struct DistributedPayload {
     entity: Entity,
+    from: Option<ConveyorDirection>,
     to: ConveyorDirection,
     mu: f32,
+}
+
+fn update_distributor_conveyors(
+    to_check: Res<TilesToCheck>,
+    mut conveyors: Query<&mut Conveyor>,
+    distributors: Query<(), With<Distributor>>,
+    base: Single<(&TileStorage, &TilemapSize), With<BaseLayer>>,
+) {
+    let (tile_storage, map_size) = base.into_inner();
+
+    for tile_pos in &to_check.0 {
+        if let Some(entity) = tile_storage.get(tile_pos)
+            && distributors.contains(entity)
+        {
+            let inputs = find_incoming_directions(
+                tile_pos,
+                tile_storage,
+                map_size,
+                &conveyors.as_readonly(),
+            );
+
+            if let Ok(mut conveyor) = conveyors.get_mut(entity) {
+                conveyor.set_inputs(inputs);
+                conveyor.set_outputs(ConveyorDirections::all_except(inputs));
+            }
+        }
+    }
 }
 
 fn transfer_payloads_to_distributors(
     commands: Commands,
     mut transfers: EventReader<RequestPayloadTransferEvent>,
-    receivers: Query<Entity, With<DistributorConveyor>>,
+    mut receivers: Query<(&TilePos, &Conveyor, &mut DistributorConveyor), With<Distributor>>,
     events: EventWriter<DistributePayloadEvent>,
-    transferred: EventWriter<PayloadTransferredEvent>,
+    mut transferred: EventWriter<PayloadTransferredEvent>,
+    base: Single<(&TileStorage, &TilemapSize), With<BaseLayer>>,
+    conveyors: Query<&Conveyor>,
 ) {
-    for RequestPayloadTransferEvent {
-        payload,
-        source,
-        destination,
-        direction,
-    } in transfers.read()
-    {}
+    let (tile_storage, map_size) = base.into_inner();
+
+    for e in transfers.read() {
+        if let Ok((tile_pos, conveyor, mut distributor)) = receivers.get_mut(e.destination) {
+            if distributor.try_take(
+                conveyor,
+                tile_storage,
+                tile_pos,
+                map_size,
+                &conveyors,
+                Some(e.direction.opposite()),
+                || e.payload,
+            ) {
+                transferred.write(PayloadTransferredEvent {
+                    payload: e.payload,
+                    source: e.source,
+                });
+            }
+        }
+    }
 }
 
 fn transfer_payloads_from_distributors(
@@ -302,7 +350,7 @@ fn update_distributor_payload_transforms(
         for p in &distributor.payloads {
             if let Ok(mut transform) = payloads.get_mut(p.entity) {
                 *transform =
-                    get_payload_transform(tile_center, base.tile_size, None, Some(p.to), p.mu);
+                    get_payload_transform(tile_center, base.tile_size, p.from, Some(p.to), p.mu);
             }
         }
     }
