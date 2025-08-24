@@ -1,4 +1,4 @@
-use bevy::{ecs::event::EventCursor, prelude::*};
+use bevy::prelude::*;
 use bevy_ecs_tilemap::prelude::*;
 use smallvec::SmallVec;
 
@@ -20,15 +20,13 @@ use crate::{
 
 pub fn distributor_plugin(app: &mut App) {
     app.register_place_tile_event::<PlaceDistributorEvent>()
-        .add_event::<DistributePayloadEvent>()
         .register_type::<DistributorConveyor>()
         .add_systems(
             Update,
             (
                 transfer_payloads_to_distributors.in_set(ConveyorSystems::TransferPayloads),
                 transfer_payloads_from_distributors.in_set(ConveyorSystems::TransferredPayloads),
-                (distribute_payloads, update_distributor_payloads)
-                    .in_set(ConveyorSystems::TransportLogic),
+                update_distributor_payloads.in_set(ConveyorSystems::TransportLogic),
                 (update_distributor_conveyors, update_distributor_tiles)
                     .in_set(ConveyorSystems::TileUpdater),
                 update_distributor_payload_transforms.in_set(ConveyorSystems::PayloadTransforms),
@@ -84,6 +82,7 @@ impl DistributorConveyor {
         1.0 / (self.capacity as f32)
     }
 
+    #[expect(clippy::too_many_arguments)]
     pub fn try_take<F>(
         &mut self,
         conveyor: &Conveyor,
@@ -203,10 +202,8 @@ fn update_distributor_conveyors(
 }
 
 fn transfer_payloads_to_distributors(
-    commands: Commands,
     mut transfers: EventReader<RequestPayloadTransferEvent>,
     mut receivers: Query<(&TilePos, &Conveyor, &mut DistributorConveyor), With<Distributor>>,
-    events: EventWriter<DistributePayloadEvent>,
     mut transferred: EventWriter<PayloadTransferredEvent>,
     base: Single<(&TileStorage, &TilemapSize), With<BaseLayer>>,
     conveyors: Query<&Conveyor>,
@@ -214,8 +211,8 @@ fn transfer_payloads_to_distributors(
     let (tile_storage, map_size) = base.into_inner();
 
     for e in transfers.read() {
-        if let Ok((tile_pos, conveyor, mut distributor)) = receivers.get_mut(e.destination) {
-            if distributor.try_take(
+        if let Ok((tile_pos, conveyor, mut distributor)) = receivers.get_mut(e.destination)
+            && distributor.try_take(
                 conveyor,
                 tile_storage,
                 tile_pos,
@@ -223,12 +220,12 @@ fn transfer_payloads_to_distributors(
                 &conveyors,
                 Some(e.direction.opposite()),
                 || e.payload,
-            ) {
-                transferred.write(PayloadTransferredEvent {
-                    payload: e.payload,
-                    source: e.source,
-                });
-            }
+            )
+        {
+            transferred.write(PayloadTransferredEvent {
+                payload: e.payload,
+                source: e.source,
+            });
         }
     }
 }
@@ -269,61 +266,6 @@ fn update_distributor_payloads(
             }
         }
     }
-}
-
-#[derive(Event)]
-pub struct DistributePayloadEvent {
-    pub transporter: Entity,
-    pub payload: Entity,
-}
-
-fn distribute_payloads(
-    mut events: ResMut<Events<DistributePayloadEvent>>,
-    mut reader: Local<EventCursor<DistributePayloadEvent>>,
-    mut distributors: Query<(&Conveyor, &TilePos, &mut DistributorConveyor)>,
-    base: Single<(&TileStorage, &TilemapSize), With<BaseLayer>>,
-    conveyors: Query<&Conveyor>,
-) {
-    let (tile_storage, map_size) = base.into_inner();
-
-    let retry_events = Vec::new();
-
-    for DistributePayloadEvent {
-        transporter,
-        payload,
-    } in reader.read(&events)
-    {
-        if let Ok((conveyor, tile_pos, distributor)) = distributors.get_mut(*transporter) {
-            // Figure out where this payload will be going
-            let neighbors = get_neighbors_from_query(tile_storage, tile_pos, map_size, &conveyors);
-            let destination_direction =
-                conveyor
-                    .outputs()
-                    .iter_from(distributor.next_output)
-                    .find(|direction| {
-                        let neighbor = neighbors.get((*direction).into());
-                        neighbor
-                            .map(|conveyor| conveyor.inputs().is_set(direction.opposite()))
-                            .unwrap_or(false)
-                    });
-            /*
-            if let Some(destination_direction) = destination_direction {
-                assert!(payload_transport.destination.is_none());
-                payload_transport.destination = Some(destination_direction);
-                distributor.next_output = destination_direction.next();
-            } else {
-                retry_events.push(DistributePayloadEvent {
-                    transporter: *transporter,
-                    payload: *payload,
-                });
-            }
-            */
-        }
-    }
-
-    retry_events.into_iter().for_each(|event| {
-        events.send(event);
-    });
 }
 
 fn update_distributor_tiles(

@@ -289,7 +289,6 @@ fn transfer_payloads_from_transport_lines(
 }
 
 fn transfer_payloads_to_transport_lines(
-    commands: Commands,
     mut transfers: EventReader<RequestPayloadTransferEvent>,
     mut transports: Query<&mut PayloadTransportLine>,
     mut transferred: EventWriter<PayloadTransferredEvent>,

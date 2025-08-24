@@ -6,8 +6,8 @@ use bevy_ecs_tilemap::{
 
 use crate::{
     factory_game::{
-        BaseLayer, BaseLayerEntityDespawned, ConveyorSystems,
-        conveyor::{Conveyor, SimpleConveyor, TilesToCheck, update_tiles_to_check},
+        BaseLayer, ConveyorSystems,
+        conveyor::{Conveyor, SimpleConveyor, TilesToCheck},
         helpers::{
             ConveyorDirection, ConveyorDirections, get_neighbors_from_query, make_east_relative,
             opposite,
@@ -75,7 +75,6 @@ pub fn conveyor_belt_bundle(output: ConveyorDirection) -> impl Bundle {
     )
 }
 
-#[expect(clippy::type_complexity)]
 fn update_conveyor_belt_conveyors(
     to_check: Res<TilesToCheck>,
     mut conveyors: Query<&mut Conveyor>,
@@ -89,7 +88,7 @@ fn update_conveyor_belt_conveyors(
             && conveyor_belts.contains(entity)
         {
             let directions = find_incoming_directions(
-                &tile_pos,
+                tile_pos,
                 tile_storage,
                 map_size,
                 &conveyors.as_readonly(),
@@ -151,7 +150,7 @@ fn update_conveyor_belt_tiles(
     let (tilemap_entity, tile_storage, map_size) = base.into_inner();
 
     for pos in &to_check.0 {
-        if let Some(entity) = tile_storage.get(&pos)
+        if let Some(entity) = tile_storage.get(pos)
             && let Ok(conveyor_belt) = conveyor_belts.get(entity)
         {
             commands.entity(entity).insert_if_new(TileBundle {
@@ -163,7 +162,7 @@ fn update_conveyor_belt_tiles(
                 commands.reborrow(),
                 entity,
                 conveyor_belt,
-                &pos,
+                pos,
                 tile_storage,
                 map_size,
                 &conveyors,

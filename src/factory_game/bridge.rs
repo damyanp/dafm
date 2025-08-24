@@ -3,8 +3,8 @@ use bevy_ecs_tilemap::prelude::*;
 
 use crate::{
     factory_game::{
-        BaseLayer, BaseLayerEntityDespawned, ConveyorSystems,
-        conveyor::{Conveyor, TilesToCheck, update_tiles_to_check},
+        BaseLayer, ConveyorSystems,
+        conveyor::{Conveyor, TilesToCheck},
         helpers::{ConveyorDirection, ConveyorDirections, get_neighbors_from_query, opposite},
         interaction::{PlaceTileEvent, RegisterPlaceTileEvent, Tool},
         payloads::{PayloadTransferredEvent, PayloadTransportLine, RequestPayloadTransferEvent},
@@ -78,11 +78,11 @@ fn update_bridge_conveyor_accepts_payload(
     let (tile_storage, map_size) = base.into_inner();
 
     for pos in &to_check.0 {
-        if let Some(entity) = tile_storage.get(&pos)
+        if let Some(entity) = tile_storage.get(pos)
             && let Ok(bridge) = bridge_conveyors.get_mut(entity)
         {
             let neighbor_conveyors =
-                get_neighbors_from_query(tile_storage, &pos, map_size, &conveyors);
+                get_neighbors_from_query(tile_storage, pos, map_size, &conveyors);
 
             let inputs =
                 neighbor_conveyors

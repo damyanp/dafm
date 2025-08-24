@@ -30,6 +30,7 @@ impl From<ConveyorDirection> for Conveyor {
     }
 }
 
+#[allow(dead_code)]
 impl Conveyor {
     pub fn new(outputs: ConveyorDirections) -> Self {
         Conveyor {
