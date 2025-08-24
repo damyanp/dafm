@@ -3,7 +3,14 @@ use bevy_ecs_tilemap::prelude::*;
 
 use crate::{
     factory_game::{
-        conveyor::{AcceptsPayloadConveyor, Conveyor}, helpers::{get_neighbors_from_query, ConveyorDirection, ConveyorDirections}, interaction::{PlaceTileEvent, RegisterPlaceTileEvent, Tool}, payloads::{Payload, PayloadTransferredEvent, PayloadTransport, Payloads, RequestPayloadTransferEvent}, BaseLayer, ConveyorSystems
+        BaseLayer, ConveyorSystems,
+        conveyor::{AcceptsPayloadConveyor, Conveyor},
+        helpers::{ConveyorDirection, ConveyorDirections, get_neighbors_from_query},
+        interaction::{PlaceTileEvent, RegisterPlaceTileEvent, Tool},
+        payloads::{
+            Payload, PayloadTransferredEvent, PayloadTransport, Payloads,
+            RequestPayloadTransferEvent,
+        },
     },
     sprite_sheet::GameSprite,
 };

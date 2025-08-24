@@ -97,10 +97,10 @@ impl PayloadTransportLine {
     }
 
     fn get_payload_to_transfer(&self) -> Option<Entity> {
-        if let Some((payload, mu)) = self.payloads.first() {
-            if *mu == 1.0 {
-                return Some(*payload);
-            }
+        if let Some((payload, mu)) = self.payloads.first()
+            && *mu == 1.0
+        {
+            return Some(*payload);
         }
 
         None
