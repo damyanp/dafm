@@ -3,8 +3,8 @@ use bevy_ecs_tilemap::prelude::*;
 use smallvec::SmallVec;
 
 use crate::{
-    factory_game::{BaseLayer, ConveyorSystems, helpers::ConveyorDirection},
-    helpers::TilemapQuery,
+    factory_game::{BaseLayer, ConveyorSystems, conveyor::Conveyor, helpers::ConveyorDirection},
+    helpers::{TilemapQuery, TilemapQueryItem},
 };
 
 pub fn payloads_plugin(app: &mut App) {
@@ -60,6 +60,10 @@ impl PayloadTransportLine {
         }
     }
 
+    pub fn output_direction(&self) -> ConveyorDirection {
+        self.output_direction
+    }
+
     pub fn try_transfer_onto(&mut self, payload: Entity, from: ConveyorDirection) -> bool {
         if self.has_room_for_one_more() {
             self.payloads.push(TransportedPayload::new(payload, from));
@@ -78,6 +82,31 @@ impl PayloadTransportLine {
 
     fn spacing(&self) -> f32 {
         1.0 / (self.capacity as f32)
+    }
+
+    pub fn update(
+        &mut self,
+        this_entity: Entity,
+        tile_pos: &TilePos,
+        t: f32,
+        tile_storage: &TileStorage,
+        map_size: &TilemapSize,
+        send_payloads: &mut EventWriter<RequestPayloadTransferEvent>,
+    ) {
+        self.update_payloads(t);
+        if let Some(payload) = self.get_payload_to_transfer() {
+            let destination_pos = tile_pos.square_offset(&self.output_direction.into(), map_size);
+            let destination_entity = destination_pos.and_then(|pos| tile_storage.get(&pos));
+            if let Some(destination) = destination_entity {
+                let e = RequestPayloadTransferEvent {
+                    payload,
+                    source: this_entity,
+                    destination,
+                    direction: self.output_direction,
+                };
+                send_payloads.write(e);
+            }
+        }
     }
 
     fn update_payloads(&mut self, t: f32) {
@@ -109,8 +138,28 @@ impl PayloadTransportLine {
         None
     }
 
-    fn remove_payload(&mut self, payload: Entity) {
+    pub fn remove_payload(&mut self, payload: Entity) {
         self.payloads.retain(|p| p.entity != payload);
+    }
+
+    pub fn update_payload_transforms(
+        &self,
+        tile_pos: &TilePos,
+        payloads: &mut Query<&mut Transform, With<PayloadMarker>>,
+        base: &TilemapQueryItem,
+    ) {
+        let tile_center = base.center_in_world(tile_pos);
+        for p in &self.payloads {
+            if let Ok(mut transform) = payloads.get_mut(p.entity) {
+                *transform = get_payload_transform(
+                    tile_center,
+                    base.tile_size,
+                    Some(p.from),
+                    Some(self.output_direction),
+                    p.mu,
+                );
+            }
+        }
     }
 }
 
@@ -315,21 +364,14 @@ fn update_payload_transport_lines(
 
     let t = time.delta_secs();
     for (source, mut transport_line, tile_pos) in transport_lines {
-        transport_line.update_payloads(t);
-        if let Some(payload) = transport_line.get_payload_to_transfer() {
-            let destination_pos =
-                tile_pos.square_offset(&transport_line.output_direction.into(), map_size);
-            let destination_entity = destination_pos.and_then(|pos| tile_storage.get(&pos));
-            if let Some(destination) = destination_entity {
-                let e = RequestPayloadTransferEvent {
-                    payload,
-                    source,
-                    destination,
-                    direction: transport_line.output_direction,
-                };
-                send_payloads.write(e);
-            }
-        }
+        transport_line.update(
+            source,
+            tile_pos,
+            t,
+            tile_storage,
+            map_size,
+            &mut send_payloads,
+        );
     }
 }
 
@@ -339,18 +381,7 @@ fn update_payload_transport_line_transforms(
     base: Single<TilemapQuery, With<BaseLayer>>,
 ) {
     for (tile_pos, transport) in transport_lines {
-        let tile_center = base.center_in_world(tile_pos);
-        for p in &transport.payloads {
-            if let Ok(mut transform) = payloads.get_mut(p.entity) {
-                *transform = get_payload_transform(
-                    tile_center,
-                    base.tile_size,
-                    Some(p.from),
-                    Some(transport.output_direction),
-                    p.mu,
-                );
-            }
-        }
+        transport.update_payload_transforms(tile_pos, &mut payloads, &base);
     }
 }
 
