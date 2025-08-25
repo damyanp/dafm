@@ -6,7 +6,7 @@ use crate::{
         BaseLayer, ConveyorSystems,
         conveyor::{Conveyor, TilesToCheck},
         conveyor_belts::find_incoming_directions,
-        helpers::{ConveyorDirection, ConveyorDirections, get_neighbors_from_query, opposite},
+        helpers::{ConveyorDirection, ConveyorDirections},
         interaction::{PlaceTileEvent, RegisterPlaceTileEvent, Tool},
         payloads::{
             PayloadMarker, PayloadTransferredEvent, PayloadTransportLine,
@@ -119,7 +119,6 @@ pub struct BridgeTop(Entity);
 /// Bridge conveyors need to look at which neighbors are set to output to this
 /// one to figure out where their inputs are.
 fn update_bridge_conveyors(
-    mut commands: Commands,
     to_check: Res<TilesToCheck>,
     mut bridge_conveyors: Query<&mut BridgeConveyor>,
     mut conveyors: Query<&mut Conveyor>,

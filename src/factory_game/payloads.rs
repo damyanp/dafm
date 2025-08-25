@@ -3,7 +3,7 @@ use bevy_ecs_tilemap::prelude::*;
 use smallvec::SmallVec;
 
 use crate::{
-    factory_game::{BaseLayer, ConveyorSystems, conveyor::Conveyor, helpers::ConveyorDirection},
+    factory_game::{BaseLayer, ConveyorSystems, helpers::ConveyorDirection},
     helpers::{TilemapQuery, TilemapQueryItem},
 };
 
