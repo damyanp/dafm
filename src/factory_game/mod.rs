@@ -39,6 +39,8 @@ pub fn factory_game_logic_plugin(app: &mut App) {
             (
                 ConveyorSystems::TileGenerator,
                 ConveyorSystems::TileUpdater,
+                ConveyorSystems::TransferPayloads,
+                ConveyorSystems::TransferredPayloads,
                 ConveyorSystems::TransportLogic,
                 ConveyorSystems::PayloadTransforms,
             )

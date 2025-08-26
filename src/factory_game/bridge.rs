@@ -229,7 +229,7 @@ fn transfer_payloads_to_bridges(
             };
 
             let take = transport
-                .map(|transport| transport.try_transfer_onto(*payload, direction.opposite()))
+                .map(|transport| transport.try_transfer_onto(direction.opposite(), || *payload))
                 .unwrap_or(false);
 
             if take {
