@@ -9,11 +9,8 @@ use bevy_ecs_tilemap::{
 use crate::{
     GameState,
     factory_game::{
-        BaseLayer, MapConfig,
-        bridge::{Bridge, PlaceBridgeEvent},
-        conveyor_belts::{ConveyorBelt, PlaceConveyorBeltEvent},
-        generator::PlaceGeneratorEvent,
-        operators::Operand,
+        BaseLayer, MapConfig, bridge::PlaceBridgeEvent, conveyor_belts::PlaceConveyorBeltEvent,
+        generator::PlaceGeneratorEvent, operators::Operand,
     },
 };
 

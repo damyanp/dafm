@@ -208,8 +208,8 @@ fn update_operator_payloads(
     }
 }
 
-fn generate_new_payloads(mut commands: Commands, operators: Query<(Entity, &mut OperatorTile)>) {
-    for (entity, mut operator) in operators {
+fn generate_new_payloads(mut commands: Commands, operators: Query<&mut OperatorTile>) {
+    for mut operator in operators {
         if let Some((left_entity, left_operand)) = operator.left_operand
             && let Some((right_entity, right_operand)) = operator.right_operand
         {
@@ -233,11 +233,11 @@ fn generate_new_payloads(mut commands: Commands, operators: Query<(Entity, &mut 
 }
 
 fn update_operator_payload_transforms(
-    operators: Query<(Entity, &TilePos, &mut OperatorTile, &Conveyor)>,
+    operators: Query<(&TilePos, &mut OperatorTile, &Conveyor)>,
     mut payloads: Query<&mut Transform, With<PayloadMarker>>,
     base: Single<TilemapQuery, With<BaseLayer>>,
 ) {
-    for (entity, tile_pos, mut operator, conveyor) in operators {
+    for (tile_pos, operator, conveyor) in operators {
         operator
             .payload_transport_line
             .update_payload_transforms(tile_pos, &mut payloads, &base);
