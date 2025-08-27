@@ -6,14 +6,14 @@ use bevy_ecs_tilemap::{
 
 use crate::{
     factory_game::{
-        BaseLayer, BaseLayerEntityDespawned, ConveyorSystems,
-        conveyor::{AcceptsPayloadConveyor, Conveyor, SimpleConveyor, find_tiles_to_check},
+        BaseLayer, ConveyorSystems,
+        conveyor::{Conveyor, SimpleConveyor, TilesToCheck},
         helpers::{
             ConveyorDirection, ConveyorDirections, get_neighbors_from_query, make_east_relative,
             opposite,
         },
         interaction::{PlaceTileEvent, RegisterPlaceTileEvent, Tool},
-        payloads::SimpleConveyorTransferPolicy,
+        payloads::PayloadTransportLine,
     },
     sprite_sheet::GameSprite,
 };
@@ -22,7 +22,8 @@ pub fn conveyor_belts_plugin(app: &mut App) {
     app.register_place_tile_event::<PlaceConveyorBeltEvent>()
         .add_systems(
             Update,
-            (update_conveyor_belt_tiles.in_set(ConveyorSystems::TileUpdater),),
+            (update_conveyor_belt_tiles, update_conveyor_belt_conveyors)
+                .in_set(ConveyorSystems::TileUpdater),
         );
 }
 
@@ -63,22 +64,82 @@ impl PlaceTileEvent for PlaceConveyorBeltEvent {
 }
 
 #[derive(Component)]
-#[require(SimpleConveyor, SimpleConveyorTransferPolicy)]
+#[require(SimpleConveyor)]
 pub struct ConveyorBelt;
 
 pub fn conveyor_belt_bundle(output: ConveyorDirection) -> impl Bundle {
     (
         ConveyorBelt,
         Conveyor::from(output),
-        AcceptsPayloadConveyor::except(ConveyorDirections::new(output)),
+        PayloadTransportLine::new(output, 5),
     )
+}
+
+fn update_conveyor_belt_conveyors(
+    to_check: Res<TilesToCheck>,
+    mut conveyors: Query<&mut Conveyor>,
+    conveyor_belts: Query<(), With<ConveyorBelt>>,
+    base: Single<(&TileStorage, &TilemapSize), With<BaseLayer>>,
+) {
+    let (tile_storage, map_size) = base.into_inner();
+
+    for tile_pos in &to_check.0 {
+        if let Some(entity) = tile_storage.get(tile_pos)
+            && conveyor_belts.contains(entity)
+        {
+            let directions = find_incoming_directions(
+                tile_pos,
+                tile_storage,
+                map_size,
+                &conveyors.as_readonly(),
+            );
+            if let Ok(mut conveyor) = conveyors.get_mut(entity) {
+                conveyor.set_inputs(directions);
+            }
+        }
+    }
+}
+
+pub fn find_incoming_directions(
+    tile_pos: &TilePos,
+    tile_storage: &TileStorage,
+    map_size: &TilemapSize,
+    conveyors: &Query<&Conveyor>,
+) -> ConveyorDirections {
+    let neighbors = find_conveyors_outputting_to(tile_pos, tile_storage, map_size, conveyors);
+    let directions = neighbors
+        .iter_with_direction()
+        .map(|(d, _)| ConveyorDirection::from(d));
+
+    directions.into()
+}
+
+fn find_conveyors_outputting_to<'a>(
+    tile_pos: &TilePos,
+    tile_storage: &TileStorage,
+    map_size: &TilemapSize,
+    conveyors: &'a Query<&Conveyor>,
+) -> Neighbors<&'a Conveyor> {
+    // Find the neighbors that have conveyors on them
+    let neighbor_conveyors = get_neighbors_from_query(tile_storage, tile_pos, map_size, conveyors);
+
+    // And just the conveyors pointing towards this one
+
+    Neighbors::from_directional_closure(|dir| {
+        neighbor_conveyors.get(dir).and_then(|c| {
+            if c.outputs().is_set(opposite(dir).into()) {
+                Some(*c)
+            } else {
+                None
+            }
+        })
+    })
 }
 
 #[expect(clippy::type_complexity)]
 fn update_conveyor_belt_tiles(
+    to_check: Res<TilesToCheck>,
     mut commands: Commands,
-    new_conveyor_belts: Query<&TilePos, Added<Conveyor>>,
-    removed_entities: EventReader<BaseLayerEntityDespawned>,
     conveyors: Query<&Conveyor>,
     conveyor_belts: Query<
         (&Conveyor, Option<&TileTextureIndex>, Option<&TileFlip>),
@@ -88,10 +149,8 @@ fn update_conveyor_belt_tiles(
 ) {
     let (tilemap_entity, tile_storage, map_size) = base.into_inner();
 
-    let to_check = find_tiles_to_check(new_conveyor_belts, removed_entities, map_size);
-
-    for pos in to_check {
-        if let Some(entity) = tile_storage.get(&pos)
+    for pos in &to_check.0 {
+        if let Some(entity) = tile_storage.get(pos)
             && let Ok(conveyor_belt) = conveyor_belts.get(entity)
         {
             commands.entity(entity).insert_if_new(TileBundle {
@@ -103,7 +162,7 @@ fn update_conveyor_belt_tiles(
                 commands.reborrow(),
                 entity,
                 conveyor_belt,
-                &pos,
+                pos,
                 tile_storage,
                 map_size,
                 &conveyors,
@@ -125,19 +184,8 @@ fn update_conveyor_belt_tile(
 
     let out_dir: SquareDirection = conveyor.output().into();
 
-    // Find the neighbors that have conveyors on them
-    let neighbor_conveyors = get_neighbors_from_query(tile_storage, tile_pos, map_size, conveyors);
-
-    // And just the conveyors pointing towards this one
-    let neighbor_conveyors = Neighbors::from_directional_closure(|dir| {
-        neighbor_conveyors.get(dir).and_then(|c| {
-            if c.outputs().is_set(opposite(dir).into()) {
-                Some(*c)
-            } else {
-                None
-            }
-        })
-    });
+    let neighbor_conveyors =
+        find_conveyors_outputting_to(tile_pos, tile_storage, map_size, conveyors);
 
     // Rotate all of this so that east is always the "out" direction
     let neighbor_conveyors = make_east_relative(neighbor_conveyors, out_dir);

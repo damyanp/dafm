@@ -1,14 +1,19 @@
 use bevy::prelude::*;
 use bevy_ecs_tilemap::prelude::*;
+use smallvec::SmallVec;
 
 use crate::{
     factory_game::{
         BaseLayer, ConveyorSystems,
-        conveyor::{AcceptsPayloadConveyor, Conveyor},
-        helpers::ConveyorDirections,
+        conveyor::Conveyor,
+        helpers::{ConveyorDirection, ConveyorDirections},
         interaction::{PlaceTileEvent, RegisterPlaceTileEvent, Tool},
-        payloads::{Payloads, SimpleConveyorTransferPolicy},
+        payloads::{
+            PayloadMarker, PayloadTransferredEvent, RequestPayloadTransferEvent,
+            get_payload_transform,
+        },
     },
+    helpers::TilemapQuery,
     sprite_sheet::GameSprite,
 };
 
@@ -18,7 +23,9 @@ pub fn sink_plugin(app: &mut App) {
             Update,
             (
                 update_sink_tiles.in_set(ConveyorSystems::TileUpdater),
-                sink_despawns_everything_in_it.in_set(ConveyorSystems::TransportLogic),
+                transfer_payloads_to_sinks.in_set(ConveyorSystems::TransferPayloads),
+                update_sinks.in_set(ConveyorSystems::TransportLogic),
+                update_sink_transforms.in_set(ConveyorSystems::PayloadTransforms),
             ),
         );
 }
@@ -44,17 +51,66 @@ impl PlaceTileEvent for PlaceSinkEvent {
     }
 
     fn configure_new_entity(&self, mut commands: EntityCommands) {
-        commands.insert((Sink, Name::new("Sink")));
+        commands.insert((Sink::default(), Name::new("Sink")));
     }
 }
 
-#[derive(Component)]
-#[require(
-    SimpleConveyorTransferPolicy,
-    Conveyor::new(ConveyorDirections::default()),
-    AcceptsPayloadConveyor::all()
-)]
-struct Sink;
+#[derive(Component, Default)]
+#[require(Conveyor::new(ConveyorDirections::default()))]
+struct Sink {
+    payloads: SmallVec<[(Entity, ConveyorDirection, f32); 4]>,
+}
+
+fn transfer_payloads_to_sinks(
+    mut transfers: EventReader<RequestPayloadTransferEvent>,
+    mut sinks: Query<&mut Sink>,
+    mut transferred: EventWriter<PayloadTransferredEvent>,
+) {
+    for e in transfers.read() {
+        if let Ok(mut sink) = sinks.get_mut(e.destination) {
+            transferred.write(PayloadTransferredEvent {
+                payload: e.payload,
+                source: e.source,
+            });
+
+            sink.payloads.push((e.payload, e.direction.opposite(), 0.0));
+        }
+    }
+}
+
+fn update_sinks(mut commands: Commands, time: Res<Time>, sinks: Query<&mut Sink>) {
+    let t = time.delta_secs();
+
+    for mut sink in sinks {
+        for (entity, _, mu) in &mut sink.payloads {
+            *mu += t;
+            if *mu >= 1.0 {
+                commands.entity(*entity).despawn();
+            }
+        }
+        sink.payloads.retain(|(_, _, mu)| *mu < 1.0);
+    }
+}
+
+fn update_sink_transforms(
+    sinks: Query<(&TilePos, &Sink)>,
+    mut payloads: Query<&mut Transform, With<PayloadMarker>>,
+    base: Single<TilemapQuery, With<BaseLayer>>,
+) {
+    for (tile_pos, sink) in sinks {
+        let tile_center = base.center_in_world(tile_pos);
+        for (entity, direction, mu) in &sink.payloads {
+            if let Ok(mut transform) = payloads.get_mut(*entity) {
+                let payload_transform =
+                    get_payload_transform(tile_center, base.tile_size, Some(*direction), None, *mu);
+
+                let scale_mu = 1.0 - ((*mu - 0.5) * 2.0).max(0.0);
+
+                *transform = payload_transform * Transform::from_scale(Vec3::splat(scale_mu));
+            }
+        }
+    }
+}
 
 fn update_sink_tiles(
     mut commands: Commands,
@@ -67,13 +123,5 @@ fn update_sink_tiles(
             texture_index: GameSprite::Sink.tile_texture_index(),
             ..default()
         });
-    }
-}
-
-fn sink_despawns_everything_in_it(mut commands: Commands, sinks: Query<&Payloads, With<Sink>>) {
-    for payloads in sinks {
-        for entity in payloads.iter() {
-            commands.entity(entity).despawn();
-        }
     }
 }

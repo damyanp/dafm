@@ -5,11 +5,10 @@ use crate::{
     factory_game::{
         BaseLayer, ConveyorSystems,
         conveyor::Conveyor,
-        distributor::{DistributePayloadEvent, DistributorConveyor},
+        distributor::DistributorConveyor,
         helpers::ConveyorDirections,
         interaction::{PlaceTileEvent, RegisterPlaceTileEvent, Tool},
         operators::{Operand, operand_bundle},
-        payloads::{Payload, PayloadTransport, Payloads},
     },
     sprite_sheet::GameSprite,
 };
@@ -52,10 +51,7 @@ impl PlaceTileEvent for PlaceGeneratorEvent {
 }
 
 #[derive(Component, Debug, Reflect)]
-#[require(
-    Conveyor::new(ConveyorDirections::all()),
-    DistributorConveyor::default()
-)]
+#[require(Conveyor::new(ConveyorDirections::all()), DistributorConveyor::new(5))]
 struct Generator {
     next_generate_time: f32,
     time_between_generations: f32,
@@ -87,25 +83,29 @@ fn update_generator_tiles(
 fn generate_payloads(
     mut commands: Commands,
     time: Res<Time>,
-    generators: Query<(Entity, &mut Generator, Option<&Payloads>)>,
-    mut events: EventWriter<DistributePayloadEvent>,
+    generators: Query<(
+        &TilePos,
+        &Conveyor,
+        &mut Generator,
+        &mut DistributorConveyor,
+    )>,
+    base: Single<(&TileStorage, &TilemapSize), With<BaseLayer>>,
+    conveyors: Query<&Conveyor>,
 ) {
-    for (entity, mut generator, payloads) in generators {
-        if time.elapsed_secs() > generator.next_generate_time && payloads.is_none() {
-            let payload = commands
-                .spawn((
-                    operand_bundle(Operand(1)),
-                    Payload(entity),
-                    PayloadTransport {
-                        mu: 0.5,
-                        ..default()
-                    },
-                ))
-                .id();
-            events.write(DistributePayloadEvent {
-                transporter: entity,
-                payload,
-            });
+    let (tile_storage, map_size) = base.into_inner();
+
+    for (tile_pos, conveyor, mut generator, mut distributor) in generators {
+        if time.elapsed_secs() > generator.next_generate_time
+            && distributor.try_take(
+                conveyor,
+                tile_storage,
+                tile_pos,
+                map_size,
+                &conveyors,
+                None,
+                || commands.spawn(operand_bundle(Operand(1))).id(),
+            )
+        {
             generator.next_generate_time = time.elapsed_secs() + generator.time_between_generations;
         }
     }

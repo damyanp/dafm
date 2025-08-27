@@ -5,11 +5,15 @@ use crate::{
     GameState,
     factory_game::{
         BaseLayer, ConveyorSystems,
-        conveyor::{AcceptsPayloadConveyor, Conveyor},
+        conveyor::Conveyor,
         helpers::ConveyorDirection,
         interaction::{PlaceTileEvent, RegisterPlaceTileEvent, Tool},
-        payloads::{Payload, PayloadTransport, Payloads, RequestPayloadTransferEvent},
+        payloads::{
+            PayloadMarker, PayloadTransferredEvent, PayloadTransportLine,
+            RequestPayloadTransferEvent, get_payload_transform,
+        },
     },
+    helpers::{TilemapQuery, TilemapQueryItem},
     sprite_sheet::GameSprite,
 };
 
@@ -22,11 +26,14 @@ pub fn operators_plugin(app: &mut App) {
             Update,
             (
                 update_operator_tiles.in_set(ConveyorSystems::TileUpdater),
-                (transfer_payloads_to_operators, generate_new_payloads)
-                    .chain()
+                transfer_payloads_to_operators.in_set(ConveyorSystems::TransferPayloads),
+                transfer_payloads_from_operators.in_set(ConveyorSystems::TransferredPayloads),
+                (generate_new_payloads, update_operator_payloads)
                     .in_set(ConveyorSystems::TransportLogic),
+                update_operator_payload_transforms.in_set(ConveyorSystems::PayloadTransforms),
             ),
-        );
+        )
+        .add_observer(on_remove_operator_tile);
 }
 
 #[derive(Debug, Clone, Copy, Reflect)]
@@ -116,14 +123,16 @@ struct OperatorTile {
     operator: Operator,
     left_operand: Option<(Entity, Operand)>,
     right_operand: Option<(Entity, Operand)>,
+    payload_transport_line: PayloadTransportLine,
 }
 
 impl OperatorTile {
-    pub fn new(operator: Operator) -> Self {
+    pub fn new(operator: Operator, direction: ConveyorDirection) -> Self {
         OperatorTile {
             operator,
             left_operand: None,
             right_operand: None,
+            payload_transport_line: PayloadTransportLine::new(direction, 2),
         }
     }
 
@@ -132,13 +141,158 @@ impl OperatorTile {
     }
 }
 
+fn on_remove_operator_tile(
+    trigger: Trigger<OnRemove, OperatorTile>,
+    operators: Query<&OperatorTile>,
+    mut commands: Commands,
+) {
+    if let Ok(operator) = operators.get(trigger.target()) {
+        operator
+            .payload_transport_line
+            .despawn_payloads(commands.reborrow());
+        operator
+            .left_operand
+            .iter()
+            .chain(operator.right_operand.iter())
+            .for_each(|(e, _)| commands.entity(*e).despawn());
+    }
+}
+
+fn transfer_payloads_to_operators(
+    mut transfers: EventReader<RequestPayloadTransferEvent>,
+    mut operators: Query<(&Conveyor, &mut OperatorTile)>,
+    operands: Query<&Operand>,
+    mut transferred: EventWriter<PayloadTransferredEvent>,
+) {
+    for e in transfers.read() {
+        if let Ok((conveyor, mut operator)) = operators.get_mut(e.destination)
+            && let Ok(operand) = operands.get(e.payload)
+        {
+            let incoming_direction = e.direction.opposite();
+
+            let took = if incoming_direction == conveyor.output().left()
+                && operator.left_operand.is_none()
+            {
+                operator.left_operand = Some((e.payload, *operand));
+                true
+            } else if incoming_direction == conveyor.output().right()
+                && operator.right_operand.is_none()
+            {
+                operator.right_operand = Some((e.payload, *operand));
+                true
+            } else {
+                false
+            };
+
+            if took {
+                transferred.write(PayloadTransferredEvent {
+                    payload: e.payload,
+                    source: e.source,
+                });
+            }
+        }
+    }
+}
+
+fn transfer_payloads_from_operators(
+    mut transferred: EventReader<PayloadTransferredEvent>,
+    mut operators: Query<&mut OperatorTile>,
+) {
+    for e in transferred.read() {
+        if let Ok(mut operator) = operators.get_mut(e.source) {
+            operator.payload_transport_line.remove_payload(e.payload);
+        }
+    }
+}
+
+fn update_operator_payloads(
+    operators: Query<(Entity, &mut OperatorTile, &TilePos)>,
+    time: Res<Time>,
+    base: Single<(&TileStorage, &TilemapSize), With<BaseLayer>>,
+    mut send_payloads: EventWriter<RequestPayloadTransferEvent>,
+) {
+    let (tile_storage, map_size) = base.into_inner();
+    let t = time.delta_secs();
+
+    for (entity, mut operator, tile_pos) in operators {
+        operator.payload_transport_line.update(
+            entity,
+            tile_pos,
+            t,
+            tile_storage,
+            map_size,
+            &mut send_payloads,
+        );
+    }
+}
+
+fn generate_new_payloads(mut commands: Commands, operators: Query<&mut OperatorTile>) {
+    for mut operator in operators {
+        if let Some((left_entity, left_operand)) = operator.left_operand
+            && let Some((right_entity, right_operand)) = operator.right_operand
+        {
+            let output_direction = operator.payload_transport_line.output_direction();
+            let new_operand = operator
+                .operator
+                .generate_operand(left_operand, right_operand);
+
+            if operator.payload_transport_line.try_transfer_onto_with_mu(
+                output_direction.opposite(),
+                0.5,
+                || commands.spawn(operand_bundle(new_operand)).id(),
+            ) {
+                commands.entity(left_entity).try_despawn();
+                commands.entity(right_entity).try_despawn();
+                operator.left_operand = None;
+                operator.right_operand = None;
+            }
+        }
+    }
+}
+
+fn update_operator_payload_transforms(
+    operators: Query<(&TilePos, &mut OperatorTile, &Conveyor)>,
+    mut payloads: Query<&mut Transform, With<PayloadMarker>>,
+    base: Single<TilemapQuery, With<BaseLayer>>,
+) {
+    for (tile_pos, operator, conveyor) in operators {
+        operator
+            .payload_transport_line
+            .update_payload_transforms(tile_pos, &mut payloads, &base);
+
+        if let Some((entity, _)) = operator.left_operand
+            && let Ok(mut transform) = payloads.get_mut(entity)
+        {
+            *transform = get_operand_transform(&base, tile_pos, conveyor.output().left());
+        }
+        if let Some((entity, _)) = operator.right_operand
+            && let Ok(mut transform) = payloads.get_mut(entity)
+        {
+            *transform = get_operand_transform(&base, tile_pos, conveyor.output().right());
+        }
+    }
+}
+
+fn get_operand_transform(
+    base: &TilemapQueryItem,
+    tile_pos: &TilePos,
+    direction: ConveyorDirection,
+) -> Transform {
+    let tile_center = base.center_in_world(tile_pos);
+    let transform = get_payload_transform(tile_center, base.tile_size, None, Some(direction), 1.0);
+
+    let scale_center = tile_center.extend(0.0) - transform.translation;
+
+    transform
+        * Transform::from_translation(scale_center)
+        * Transform::from_scale(Vec3::splat(0.75))
+        * Transform::from_translation(-scale_center)
+}
+
 fn operator_bundle(operator: Operator, direction: ConveyorDirection) -> impl Bundle {
     (
-        OperatorTile::new(operator),
+        OperatorTile::new(operator, direction),
         Conveyor::from(direction),
-        AcceptsPayloadConveyor::from_direction_iter(
-            [direction.left(), direction.right()].into_iter(),
-        ),
     )
 }
 
@@ -157,69 +311,12 @@ fn update_operator_tiles(
     }
 }
 
-fn transfer_payloads_to_operators(
-    mut transfers: EventReader<RequestPayloadTransferEvent>,
-    mut operators: Query<(&Conveyor, &mut OperatorTile)>,
-    operands: Query<&Operand>,
-) {
-    for RequestPayloadTransferEvent {
-        payload,
-        destination,
-        direction,
-    } in transfers.read()
-    {
-        if let Ok((conveyor, mut operator)) = operators.get_mut(*destination)
-            && let Ok(operand) = operands.get(*payload)
-        {
-            let incoming_direction = direction.opposite();
-
-            if incoming_direction == conveyor.output().left() && operator.left_operand.is_none() {
-                operator.left_operand = Some((*payload, *operand));
-            } else if incoming_direction == conveyor.output().right()
-                && operator.right_operand.is_none()
-            {
-                operator.right_operand = Some((*payload, *operand));
-            }
-
-            // NOTE: the transfer only actually happens in
-            // generate_new_payloads. This isn't ideal and should be changed.
-        }
-    }
-}
-
-fn generate_new_payloads(
-    mut commands: Commands,
-    operators: Query<(Entity, &Conveyor, &mut OperatorTile), Without<Payloads>>,
-) {
-    for (entity, conveyor, mut operator) in operators {
-        if let Some(left) = operator.left_operand
-            && let Some(right) = operator.right_operand
-        {
-            [left.0, right.0]
-                .into_iter()
-                .for_each(|e| commands.entity(e).despawn());
-
-            let new_operand = operator.operator.generate_operand(left.1, right.1);
-            commands.spawn((
-                operand_bundle(new_operand),
-                Payload(entity),
-                PayloadTransport {
-                    destination: Some(conveyor.output()),
-                    mu: 0.5,
-                    ..default()
-                },
-            ));
-            operator.left_operand = None;
-            operator.right_operand = None;
-        }
-    }
-}
-
 pub fn operand_bundle(operand: Operand) -> impl Bundle {
-    (        
+    (
         StateScoped(GameState::FactoryGame),
         Name::new(format!("Payload {}", operand.payload_text())),
         operand,
+        PayloadMarker,
         Text2d::new(operand.payload_text()),
         TextColor(Color::srgb(1.0, 0.4, 0.4)),
     )
