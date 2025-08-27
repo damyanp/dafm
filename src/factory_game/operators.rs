@@ -32,7 +32,8 @@ pub fn operators_plugin(app: &mut App) {
                     .in_set(ConveyorSystems::TransportLogic),
                 update_operator_payload_transforms.in_set(ConveyorSystems::PayloadTransforms),
             ),
-        );
+        )
+        .add_observer(on_remove_operator_tile);
 }
 
 #[derive(Debug, Clone, Copy, Reflect)]
@@ -137,6 +138,23 @@ impl OperatorTile {
 
     pub fn sprite(&self) -> GameSprite {
         self.operator.sprite()
+    }
+}
+
+fn on_remove_operator_tile(
+    trigger: Trigger<OnRemove, OperatorTile>,
+    operators: Query<&OperatorTile>,
+    mut commands: Commands,
+) {
+    if let Ok(operator) = operators.get(trigger.target()) {
+        operator
+            .payload_transport_line
+            .despawn_payloads(commands.reborrow());
+        operator
+            .left_operand
+            .iter()
+            .chain(operator.right_operand.iter())
+            .for_each(|(e, _)| commands.entity(*e).despawn());
     }
 }
 

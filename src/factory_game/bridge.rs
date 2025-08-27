@@ -29,7 +29,8 @@ pub fn bridge_plugin(app: &mut App) {
                 update_bridge_payloads.in_set(ConveyorSystems::TransportLogic),
                 update_bridge_payload_transforms.in_set(ConveyorSystems::PayloadTransforms),
             ),
-        );
+        )
+        .add_observer(on_remove_bridge_conveyor);
 }
 
 pub struct BridgeTool;
@@ -103,6 +104,20 @@ impl BridgeConveyor {
 
     fn current_top_output(&self) -> Option<ConveyorDirection> {
         self.top.as_ref().map(|top| top.output_direction())
+    }
+}
+
+fn on_remove_bridge_conveyor(
+    trigger: Trigger<OnRemove, BridgeConveyor>,
+    bridges: Query<&BridgeConveyor>,
+    mut commands: Commands,
+) {
+    if let Ok(bridge) = bridges.get(trigger.target()) {
+        bridge
+            .top
+            .iter()
+            .chain(bridge.bottom.iter())
+            .for_each(|p| p.despawn_payloads(commands.reborrow()));
     }
 }
 

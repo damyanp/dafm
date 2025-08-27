@@ -173,6 +173,12 @@ impl PayloadTransportLine {
             }
         }
     }
+
+    pub fn despawn_payloads(&self, mut commands: Commands) {
+        for p in &self.payloads {
+            commands.entity(p.entity).try_despawn();
+        }
+    }
 }
 
 #[cfg(test)]
@@ -400,13 +406,11 @@ fn update_payload_transport_line_transforms(
 fn on_remove_payload_transport_line(
     trigger: Trigger<OnRemove, PayloadTransportLine>,
     transports: Query<&PayloadTransportLine>,
-    mut commands: Commands,
+    commands: Commands,
 ) {
     // despawn anything that this line was holding
     if let Ok(transport) = transports.get(trigger.target()) {
-        for p in &transport.payloads {
-            commands.entity(p.entity).try_despawn();
-        }
+        transport.despawn_payloads(commands);
     }
 }
 

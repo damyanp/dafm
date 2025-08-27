@@ -31,7 +31,8 @@ pub fn distributor_plugin(app: &mut App) {
                     .in_set(ConveyorSystems::TileUpdater),
                 update_distributor_payload_transforms.in_set(ConveyorSystems::PayloadTransforms),
             ),
-        );
+        )
+        .add_observer(on_remove_distributor_conveyor);
 }
 
 pub struct DistributorTool;
@@ -163,6 +164,22 @@ impl DistributorConveyor {
 
     fn remove_payload(&mut self, payload: Entity) {
         self.payloads.retain(|p| p.entity != payload);
+    }
+
+    fn despawn_payloads(&self, mut commands: Commands) {
+        self.payloads
+            .iter()
+            .for_each(|p| commands.entity(p.entity).despawn());
+    }
+}
+
+fn on_remove_distributor_conveyor(
+    trigger: Trigger<OnRemove, DistributorConveyor>,
+    distributors: Query<&DistributorConveyor>,
+    commands: Commands,
+) {
+    if let Ok(distributor) = distributors.get(trigger.target()) {
+        distributor.despawn_payloads(commands);
     }
 }
 
