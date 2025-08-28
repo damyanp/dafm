@@ -8,10 +8,8 @@ use crate::{
         conveyor_belts::find_incoming_directions,
         helpers::{ConveyorDirection, ConveyorDirections},
         interaction::{PlaceTileEvent, RegisterPlaceTileEvent, Tool},
-        payloads::{
-            Payload, PayloadTransferredEvent, PayloadTransportLine,
-            RequestPayloadTransferEvent,
-        },
+        payload_handler::{AddPayloadHandler, PayloadHandler},
+        payloads::{Payload, PayloadTransportLine, RequestPayloadTransferEvent},
     },
     helpers::{TilemapQuery, TilemapQueryItem},
     sprite_sheet::{GameSprite, SpriteSheet},
@@ -19,13 +17,11 @@ use crate::{
 
 pub fn bridge_plugin(app: &mut App) {
     app.register_place_tile_event::<PlaceBridgeEvent>()
-        .register_type::<BridgeConveyor>()
+        .add_payload_handler::<BridgeConveyor>()
         .add_systems(
             Update,
             (
                 (update_bridge_conveyors, update_bridge_tiles).in_set(ConveyorSystems::TileUpdater),
-                transfer_payloads_to_bridges.in_set(ConveyorSystems::TransferPayloads),
-                transfer_payloads_from_bridges.in_set(ConveyorSystems::TransferredPayloads),
                 update_bridge_payloads.in_set(ConveyorSystems::TransportLogic),
                 update_bridge_payload_transforms.in_set(ConveyorSystems::PayloadTransforms),
             ),
@@ -74,7 +70,22 @@ impl Default for BridgeConveyor {
     }
 }
 
-impl BridgeConveyor {
+impl PayloadHandler for BridgeConveyor {
+    fn try_transfer(&mut self, _: &Conveyor, request: &RequestPayloadTransferEvent) -> bool {
+        use ConveyorDirection::*;
+
+        let transport = match request.direction {
+            North | South => self.bottom.as_mut(),
+            East | West => self.top.as_mut(),
+        };
+
+        transport
+            .map(|transport| {
+                transport.try_transfer_onto(request.direction.opposite(), || request.payload)
+            })
+            .unwrap_or(false)
+    }
+
     fn remove_payload(&mut self, payload: Entity) {
         if let Some(top) = &mut self.top {
             top.remove_payload(payload);
@@ -84,6 +95,14 @@ impl BridgeConveyor {
         }
     }
 
+    fn iter_payloads(&self) -> impl Iterator<Item = Entity> {
+        std::iter::empty()
+            .chain(self.top.iter().flat_map(|t| t.iter_payloads()))
+            .chain(self.bottom.iter().flat_map(|b| b.iter_payloads()))
+    }
+}
+
+impl BridgeConveyor {
     fn update_payload_transforms(
         &self,
         tile_pos: &TilePos,
@@ -219,51 +238,6 @@ fn update_bridge_payloads(
                 map_size,
                 &mut send_payloads,
             );
-        }
-    }
-}
-
-fn transfer_payloads_to_bridges(
-    mut transfers: EventReader<RequestPayloadTransferEvent>,
-    mut bridges: Query<&mut BridgeConveyor>,
-    mut transferred: EventWriter<PayloadTransferredEvent>,
-) {
-    for RequestPayloadTransferEvent {
-        payload,
-        source,
-        destination,
-        direction,
-    } in transfers.read()
-    {
-        if let Ok(mut bridge) = bridges.get_mut(*destination) {
-            use ConveyorDirection::*;
-
-            let transport = match direction {
-                North | South => bridge.bottom.as_mut(),
-                East | West => bridge.top.as_mut(),
-            };
-
-            let take = transport
-                .map(|transport| transport.try_transfer_onto(direction.opposite(), || *payload))
-                .unwrap_or(false);
-
-            if take {
-                transferred.write(PayloadTransferredEvent {
-                    payload: *payload,
-                    source: *source,
-                });
-            }
-        }
-    }
-}
-
-fn transfer_payloads_from_bridges(
-    mut transferred: EventReader<PayloadTransferredEvent>,
-    mut bridges: Query<&mut BridgeConveyor>,
-) {
-    for e in transferred.read() {
-        if let Ok(mut bridge) = bridges.get_mut(e.source) {
-            bridge.remove_payload(e.payload);
         }
     }
 }

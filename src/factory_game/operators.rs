@@ -8,9 +8,9 @@ use crate::{
         conveyor::Conveyor,
         helpers::ConveyorDirection,
         interaction::{PlaceTileEvent, RegisterPlaceTileEvent, Tool},
+        payload_handler::{AddPayloadHandler, PayloadHandler},
         payloads::{
-            Payload, PayloadTransferredEvent, PayloadTransportLine,
-            RequestPayloadTransferEvent, get_payload_transform,
+            Payload, PayloadTransportLine, RequestPayloadTransferEvent, get_payload_transform,
         },
     },
     helpers::{TilemapQuery, TilemapQueryItem},
@@ -19,21 +19,18 @@ use crate::{
 
 pub fn operators_plugin(app: &mut App) {
     app.register_place_tile_event::<PlaceOperatorEvent>()
+        .add_payload_handler::<OperatorTile>()
         .register_type::<Operator>()
-        .register_type::<OperatorTile>()
         .register_type::<Operand>()
         .add_systems(
             Update,
             (
                 update_operator_tiles.in_set(ConveyorSystems::TileUpdater),
-                transfer_payloads_to_operators.in_set(ConveyorSystems::TransferPayloads),
-                transfer_payloads_from_operators.in_set(ConveyorSystems::TransferredPayloads),
                 (generate_new_payloads, update_operator_payloads)
                     .in_set(ConveyorSystems::TransportLogic),
                 update_operator_payload_transforms.in_set(ConveyorSystems::PayloadTransforms),
             ),
-        )
-        .add_observer(on_remove_operator_tile);
+        );
 }
 
 #[derive(Debug, Clone, Copy, Reflect)]
@@ -50,7 +47,7 @@ impl Operator {
         }
     }
 
-    fn generate_operand(&self, left: Operand, right: Operand) -> Operand {
+    fn generate_operand(&self, left: &Operand, right: &Operand) -> Operand {
         match self {
             Operator::Plus => Operand(left.0.checked_add(right.0).unwrap_or(1)),
             Operator::Multiply => Operand(left.0.checked_mul(right.0).unwrap_or(1)),
@@ -121,9 +118,41 @@ impl Operand {
 #[derive(Component, Debug, Reflect)]
 struct OperatorTile {
     operator: Operator,
-    left_operand: Option<(Entity, Operand)>,
-    right_operand: Option<(Entity, Operand)>,
+    left_operand: Option<Entity>,
+    right_operand: Option<Entity>,
     payload_transport_line: PayloadTransportLine,
+}
+
+impl PayloadHandler for OperatorTile {
+    fn try_transfer(
+        &mut self,
+        self_conveyor: &Conveyor,
+        request: &RequestPayloadTransferEvent,
+    ) -> bool {
+        let incoming_direction = request.direction.opposite();
+
+        if incoming_direction == self_conveyor.output().left() && self.left_operand.is_none() {
+            self.left_operand = Some(request.payload);
+            return true;
+        } else if incoming_direction == self_conveyor.output().right()
+            && self.right_operand.is_none()
+        {
+            self.right_operand = Some(request.payload);
+            return true;
+        }
+        false
+    }
+
+    fn remove_payload(&mut self, payload: Entity) {
+        self.payload_transport_line.remove_payload(payload);
+    }
+
+    fn iter_payloads(&self) -> impl Iterator<Item = Entity> {
+        self.payload_transport_line
+            .iter_payloads()
+            .chain(self.left_operand)
+            .chain(self.right_operand)
+    }
 }
 
 impl OperatorTile {
@@ -138,70 +167,6 @@ impl OperatorTile {
 
     pub fn sprite(&self) -> GameSprite {
         self.operator.sprite()
-    }
-}
-
-fn on_remove_operator_tile(
-    trigger: Trigger<OnRemove, OperatorTile>,
-    operators: Query<&OperatorTile>,
-    mut commands: Commands,
-) {
-    if let Ok(operator) = operators.get(trigger.target()) {
-        operator
-            .payload_transport_line
-            .despawn_payloads(commands.reborrow());
-        operator
-            .left_operand
-            .iter()
-            .chain(operator.right_operand.iter())
-            .for_each(|(e, _)| commands.entity(*e).despawn());
-    }
-}
-
-fn transfer_payloads_to_operators(
-    mut transfers: EventReader<RequestPayloadTransferEvent>,
-    mut operators: Query<(&Conveyor, &mut OperatorTile)>,
-    operands: Query<&Operand>,
-    mut transferred: EventWriter<PayloadTransferredEvent>,
-) {
-    for e in transfers.read() {
-        if let Ok((conveyor, mut operator)) = operators.get_mut(e.destination)
-            && let Ok(operand) = operands.get(e.payload)
-        {
-            let incoming_direction = e.direction.opposite();
-
-            let took = if incoming_direction == conveyor.output().left()
-                && operator.left_operand.is_none()
-            {
-                operator.left_operand = Some((e.payload, *operand));
-                true
-            } else if incoming_direction == conveyor.output().right()
-                && operator.right_operand.is_none()
-            {
-                operator.right_operand = Some((e.payload, *operand));
-                true
-            } else {
-                false
-            };
-
-            if took {
-                transferred.write(PayloadTransferredEvent {
-                    payload: e.payload,
-                    source: e.source,
-                });
-            }
-        }
-    }
-}
-
-fn transfer_payloads_from_operators(
-    mut transferred: EventReader<PayloadTransferredEvent>,
-    mut operators: Query<&mut OperatorTile>,
-) {
-    for e in transferred.read() {
-        if let Ok(mut operator) = operators.get_mut(e.source) {
-            operator.payload_transport_line.remove_payload(e.payload);
-        }
     }
 }
 
@@ -226,10 +191,16 @@ fn update_operator_payloads(
     }
 }
 
-fn generate_new_payloads(mut commands: Commands, operators: Query<&mut OperatorTile>) {
+fn generate_new_payloads(
+    mut commands: Commands,
+    operators: Query<&mut OperatorTile>,
+    operands: Query<&Operand>,
+) {
     for mut operator in operators {
-        if let Some((left_entity, left_operand)) = operator.left_operand
-            && let Some((right_entity, right_operand)) = operator.right_operand
+        if let Some(left_entity) = operator.left_operand
+            && let Some(right_entity) = operator.right_operand
+            && let Ok(left_operand) = operands.get(left_entity)
+            && let Ok(right_operand) = operands.get(right_entity)
         {
             let output_direction = operator.payload_transport_line.output_direction();
             let new_operand = operator
@@ -260,12 +231,12 @@ fn update_operator_payload_transforms(
             .payload_transport_line
             .update_payload_transforms(tile_pos, &mut payloads, &base);
 
-        if let Some((entity, _)) = operator.left_operand
+        if let Some(entity) = operator.left_operand
             && let Ok(mut transform) = payloads.get_mut(entity)
         {
             *transform = get_operand_transform(&base, tile_pos, conveyor.output().left());
         }
-        if let Some((entity, _)) = operator.right_operand
+        if let Some(entity) = operator.right_operand
             && let Ok(mut transform) = payloads.get_mut(entity)
         {
             *transform = get_operand_transform(&base, tile_pos, conveyor.output().right());

@@ -14,6 +14,7 @@ mod generator;
 mod helpers;
 mod interaction;
 mod operators;
+mod payload_handler;
 mod payloads;
 mod sink;
 mod ui;
@@ -39,8 +40,8 @@ pub fn factory_game_logic_plugin(app: &mut App) {
             (
                 ConveyorSystems::TileGenerator,
                 ConveyorSystems::TileUpdater,
-                ConveyorSystems::TransferPayloads,
-                ConveyorSystems::TransferredPayloads,
+                ConveyorSystems::TransferPayloadsToHandlers,
+                ConveyorSystems::TransferPayloadsFromHandlers,
                 ConveyorSystems::TransportLogic,
                 ConveyorSystems::PayloadTransforms,
             )
@@ -84,8 +85,8 @@ fn setup_camera(mut commands: Commands) {
 enum ConveyorSystems {
     TileGenerator,
     TileUpdater,
-    TransferPayloads,
-    TransferredPayloads,
+    TransferPayloadsToHandlers,
+    TransferPayloadsFromHandlers,
     TransportLogic,
     PayloadTransforms,
 }

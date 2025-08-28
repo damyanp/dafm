@@ -8,10 +8,8 @@ use crate::{
         conveyor::Conveyor,
         helpers::{ConveyorDirection, ConveyorDirections},
         interaction::{PlaceTileEvent, RegisterPlaceTileEvent, Tool},
-        payloads::{
-            Payload, PayloadTransferredEvent, RequestPayloadTransferEvent,
-            get_payload_transform,
-        },
+        payload_handler::{AddPayloadHandler, PayloadHandler},
+        payloads::{Payload, RequestPayloadTransferEvent, get_payload_transform},
     },
     helpers::TilemapQuery,
     sprite_sheet::GameSprite,
@@ -19,11 +17,11 @@ use crate::{
 
 pub fn sink_plugin(app: &mut App) {
     app.register_place_tile_event::<PlaceSinkEvent>()
+        .add_payload_handler::<Sink>()
         .add_systems(
             Update,
             (
                 update_sink_tiles.in_set(ConveyorSystems::TileUpdater),
-                transfer_payloads_to_sinks.in_set(ConveyorSystems::TransferPayloads),
                 update_sinks.in_set(ConveyorSystems::TransportLogic),
                 update_sink_transforms.in_set(ConveyorSystems::PayloadTransforms),
             ),
@@ -55,26 +53,25 @@ impl PlaceTileEvent for PlaceSinkEvent {
     }
 }
 
-#[derive(Component, Default)]
+#[derive(Component, Reflect, Default)]
 #[require(Conveyor::new(ConveyorDirections::default()))]
 struct Sink {
     payloads: SmallVec<[(Entity, ConveyorDirection, f32); 4]>,
 }
 
-fn transfer_payloads_to_sinks(
-    mut transfers: EventReader<RequestPayloadTransferEvent>,
-    mut sinks: Query<&mut Sink>,
-    mut transferred: EventWriter<PayloadTransferredEvent>,
-) {
-    for e in transfers.read() {
-        if let Ok(mut sink) = sinks.get_mut(e.destination) {
-            transferred.write(PayloadTransferredEvent {
-                payload: e.payload,
-                source: e.source,
-            });
+impl PayloadHandler for Sink {
+    fn try_transfer(&mut self, _: &Conveyor, request: &RequestPayloadTransferEvent) -> bool {
+        self.payloads
+            .push((request.payload, request.direction.opposite(), 0.0));
+        true
+    }
 
-            sink.payloads.push((e.payload, e.direction.opposite(), 0.0));
-        }
+    fn remove_payload(&mut self, _: Entity) {
+        panic!("Sink should never transfer a payload to another handler!");
+    }
+
+    fn iter_payloads(&self) -> impl Iterator<Item = Entity> {
+        self.payloads.iter().map(|(e, _, _)| *e)
     }
 }
 
