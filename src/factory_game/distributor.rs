@@ -10,7 +10,7 @@ use crate::{
         helpers::{ConveyorDirection, ConveyorDirections, get_neighbors_from_query},
         interaction::{PlaceTileEvent, RegisterPlaceTileEvent, Tool},
         payloads::{
-            PayloadMarker, PayloadTransferredEvent, RequestPayloadTransferEvent,
+            Payload, PayloadTransferredEvent, RequestPayloadTransferEvent,
             get_payload_transform,
         },
     },
@@ -301,7 +301,7 @@ fn update_distributor_tiles(
 
 fn update_distributor_payload_transforms(
     distributors: Query<(&TilePos, &DistributorConveyor)>,
-    mut payloads: Query<&mut Transform, With<PayloadMarker>>,
+    mut payloads: Query<&mut Transform, With<Payload>>,
     base: Single<TilemapQuery, With<BaseLayer>>,
 ) {
     for (tile_pos, distributor) in distributors {

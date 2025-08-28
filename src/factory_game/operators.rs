@@ -9,7 +9,7 @@ use crate::{
         helpers::ConveyorDirection,
         interaction::{PlaceTileEvent, RegisterPlaceTileEvent, Tool},
         payloads::{
-            PayloadMarker, PayloadTransferredEvent, PayloadTransportLine,
+            Payload, PayloadTransferredEvent, PayloadTransportLine,
             RequestPayloadTransferEvent, get_payload_transform,
         },
     },
@@ -252,7 +252,7 @@ fn generate_new_payloads(mut commands: Commands, operators: Query<&mut OperatorT
 
 fn update_operator_payload_transforms(
     operators: Query<(&TilePos, &mut OperatorTile, &Conveyor)>,
-    mut payloads: Query<&mut Transform, With<PayloadMarker>>,
+    mut payloads: Query<&mut Transform, With<Payload>>,
     base: Single<TilemapQuery, With<BaseLayer>>,
 ) {
     for (tile_pos, operator, conveyor) in operators {
@@ -316,7 +316,7 @@ pub fn operand_bundle(operand: Operand) -> impl Bundle {
         StateScoped(GameState::FactoryGame),
         Name::new(format!("Payload {}", operand.payload_text())),
         operand,
-        PayloadMarker,
+        Payload,
         Text2d::new(operand.payload_text()),
         TextColor(Color::srgb(1.0, 0.4, 0.4)),
     )

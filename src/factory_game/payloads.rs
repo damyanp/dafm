@@ -157,7 +157,7 @@ impl PayloadTransportLine {
     pub fn update_payload_transforms(
         &self,
         tile_pos: &TilePos,
-        payloads: &mut Query<&mut Transform, With<PayloadMarker>>,
+        payloads: &mut Query<&mut Transform, With<Payload>>,
         base: &TilemapQueryItem,
     ) {
         let tile_center = base.center_in_world(tile_pos);
@@ -395,7 +395,7 @@ fn update_payload_transport_lines(
 
 fn update_payload_transport_line_transforms(
     transport_lines: Query<(&TilePos, &PayloadTransportLine)>,
-    mut payloads: Query<&mut Transform, With<PayloadMarker>>,
+    mut payloads: Query<&mut Transform, With<Payload>>,
     base: Single<TilemapQuery, With<BaseLayer>>,
 ) {
     for (tile_pos, transport) in transport_lines {
@@ -415,7 +415,7 @@ fn on_remove_payload_transport_line(
 }
 
 #[derive(Component, Default)]
-pub struct PayloadMarker;
+pub struct Payload;
 
 pub fn get_payload_transform(
     tile_center: Vec2,

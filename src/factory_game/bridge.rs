@@ -9,7 +9,7 @@ use crate::{
         helpers::{ConveyorDirection, ConveyorDirections},
         interaction::{PlaceTileEvent, RegisterPlaceTileEvent, Tool},
         payloads::{
-            PayloadMarker, PayloadTransferredEvent, PayloadTransportLine,
+            Payload, PayloadTransferredEvent, PayloadTransportLine,
             RequestPayloadTransferEvent,
         },
     },
@@ -87,7 +87,7 @@ impl BridgeConveyor {
     fn update_payload_transforms(
         &self,
         tile_pos: &TilePos,
-        payloads: &mut Query<&mut Transform, With<PayloadMarker>>,
+        payloads: &mut Query<&mut Transform, With<Payload>>,
         base: &TilemapQueryItem,
     ) {
         if let Some(top) = &self.top {
@@ -270,7 +270,7 @@ fn transfer_payloads_from_bridges(
 
 fn update_bridge_payload_transforms(
     bridges: Query<(&TilePos, &BridgeConveyor)>,
-    mut payloads: Query<&mut Transform, With<PayloadMarker>>,
+    mut payloads: Query<&mut Transform, With<Payload>>,
     base: Single<TilemapQuery, With<BaseLayer>>,
 ) {
     for (tile_pos, bridge) in bridges {

@@ -9,7 +9,7 @@ use crate::{
         helpers::{ConveyorDirection, ConveyorDirections},
         interaction::{PlaceTileEvent, RegisterPlaceTileEvent, Tool},
         payloads::{
-            PayloadMarker, PayloadTransferredEvent, RequestPayloadTransferEvent,
+            Payload, PayloadTransferredEvent, RequestPayloadTransferEvent,
             get_payload_transform,
         },
     },
@@ -94,7 +94,7 @@ fn update_sinks(mut commands: Commands, time: Res<Time>, sinks: Query<&mut Sink>
 
 fn update_sink_transforms(
     sinks: Query<(&TilePos, &Sink)>,
-    mut payloads: Query<&mut Transform, With<PayloadMarker>>,
+    mut payloads: Query<&mut Transform, With<Payload>>,
     base: Single<TilemapQuery, With<BaseLayer>>,
 ) {
     for (tile_pos, sink) in sinks {
