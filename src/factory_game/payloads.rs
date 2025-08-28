@@ -23,8 +23,7 @@ pub fn payloads_plugin(app: &mut App) {
         .add_systems(
             Update,
             (update_payload_transport_line_transforms,).in_set(ConveyorSystems::PayloadTransforms),
-        )
-        .add_observer(on_remove_payload_transport_line);
+        );
 }
 
 #[derive(Component, Debug, Reflect)]
@@ -54,6 +53,10 @@ impl PayloadHandler for PayloadTransportLine {
 
     fn remove_payload(&mut self, payload: Entity) {
         self.payloads.retain(|p| p.entity != payload);
+    }
+
+    fn iter_payloads(&self) -> impl Iterator<Item = Entity> {
+        self.payloads.iter().map(|p| p.entity)
     }
 }
 
@@ -378,17 +381,6 @@ fn update_payload_transport_line_transforms(
 ) {
     for (tile_pos, transport) in transport_lines {
         transport.update_payload_transforms(tile_pos, &mut payloads, &base);
-    }
-}
-
-fn on_remove_payload_transport_line(
-    trigger: Trigger<OnRemove, PayloadTransportLine>,
-    transports: Query<&PayloadTransportLine>,
-    commands: Commands,
-) {
-    // despawn anything that this line was holding
-    if let Ok(transport) = transports.get(trigger.target()) {
-        transport.despawn_payloads(commands);
     }
 }
 

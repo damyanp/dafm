@@ -69,6 +69,10 @@ impl PayloadHandler for Sink {
     fn remove_payload(&mut self, _: Entity) {
         panic!("Sink should never transfer a payload to another handler!");
     }
+
+    fn iter_payloads(&self) -> impl Iterator<Item = Entity> {
+        self.payloads.iter().map(|(e, _, _)| *e)
+    }
 }
 
 fn update_sinks(mut commands: Commands, time: Res<Time>, sinks: Query<&mut Sink>) {

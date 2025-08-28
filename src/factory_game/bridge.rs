@@ -94,6 +94,12 @@ impl PayloadHandler for BridgeConveyor {
             bottom.remove_payload(payload);
         }
     }
+
+    fn iter_payloads(&self) -> impl Iterator<Item = Entity> {
+        std::iter::empty()
+            .chain(self.top.iter().flat_map(|t| t.iter_payloads()))
+            .chain(self.bottom.iter().flat_map(|b| b.iter_payloads()))
+    }
 }
 
 impl BridgeConveyor {

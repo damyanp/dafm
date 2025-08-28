@@ -14,6 +14,8 @@ pub trait PayloadHandler: GetTypeRegistration + Component<Mutability = Mutable> 
     ) -> bool;
 
     fn remove_payload(&mut self, payload: Entity);
+
+    fn iter_payloads(&self) -> impl Iterator<Item = Entity>;
 }
 
 pub trait AddPayloadHandler {
@@ -22,15 +24,17 @@ pub trait AddPayloadHandler {
 
 impl AddPayloadHandler for App {
     fn add_payload_handler<T: PayloadHandler>(&mut self) -> &mut Self {
-        self.register_type::<T>().add_systems(
-            Update,
-            (
-                transfer_payloads_to_handlers::<T>
-                    .in_set(ConveyorSystems::TransferPayloadsToHandlers),
-                transfer_payloads_from_handlers::<T>
-                    .in_set(ConveyorSystems::TransferPayloadsFromHandlers),
-            ),
-        )
+        self.register_type::<T>()
+            .add_systems(
+                Update,
+                (
+                    transfer_payloads_to_handlers::<T>
+                        .in_set(ConveyorSystems::TransferPayloadsToHandlers),
+                    transfer_payloads_from_handlers::<T>
+                        .in_set(ConveyorSystems::TransferPayloadsFromHandlers),
+                ),
+            )
+            .add_observer(on_remove_handler::<T>)
     }
 }
 
@@ -59,5 +63,17 @@ fn transfer_payloads_from_handlers<T: PayloadHandler>(
         if let Ok(mut handler) = handlers.get_mut(e.source) {
             handler.remove_payload(e.payload);
         }
+    }
+}
+
+fn on_remove_handler<T: PayloadHandler>(
+    trigger: Trigger<OnRemove, T>,
+    handlers: Query<&T>,
+    mut commands: Commands,
+) {
+    if let Ok(handler) = handlers.get(trigger.target()) {
+        handler
+            .iter_payloads()
+            .for_each(|payload| commands.entity(payload).despawn());
     }
 }
