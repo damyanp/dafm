@@ -7,7 +7,7 @@ use crate::{
     GameState,
     factory_game::{
         BaseLayer, BaseLayerEntityDespawned,
-        helpers::{ConveyorDirection, ConveyorDirections},
+        helpers::{ConveyorDirection, ConveyorDirections, get_neighbors_from_query},
     },
 };
 
@@ -65,6 +65,26 @@ impl Conveyor {
 
     pub fn set_outputs(&mut self, outputs: ConveyorDirections) {
         self.outputs = outputs;
+    }
+
+    pub fn get_available_destination(
+        &self,
+        starting_direction: ConveyorDirection,
+        tile_storage: &TileStorage,
+        tile_pos: &TilePos,
+        map_size: &TilemapSize,
+        conveyors: &Query<&Conveyor>,
+    ) -> Option<ConveyorDirection> {
+        let neighbors = get_neighbors_from_query(tile_storage, tile_pos, map_size, conveyors);
+
+        self.outputs()
+            .iter_from(starting_direction)
+            .find(|direction| {
+                let neighbor = neighbors.get((*direction).into());
+                neighbor
+                    .map(|conveyor| conveyor.inputs().is_set(direction.opposite()))
+                    .unwrap_or(false)
+            })
     }
 }
 
