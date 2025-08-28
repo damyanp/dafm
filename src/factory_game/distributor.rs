@@ -10,8 +10,7 @@ use crate::{
         helpers::{ConveyorDirection, ConveyorDirections, get_neighbors_from_query},
         interaction::{PlaceTileEvent, RegisterPlaceTileEvent, Tool},
         payloads::{
-            Payload, PayloadTransferredEvent, RequestPayloadTransferEvent,
-            get_payload_transform,
+            Payload, PayloadTransferredEvent, RequestPayloadTransferEvent, get_payload_transform,
         },
     },
     helpers::TilemapQuery,
@@ -24,8 +23,10 @@ pub fn distributor_plugin(app: &mut App) {
         .add_systems(
             Update,
             (
-                transfer_payloads_to_distributors.in_set(ConveyorSystems::TransferPayloads),
-                transfer_payloads_from_distributors.in_set(ConveyorSystems::TransferredPayloads),
+                transfer_payloads_to_distributors
+                    .in_set(ConveyorSystems::TransferPayloadsToHandlers),
+                transfer_payloads_from_distributors
+                    .in_set(ConveyorSystems::TransferPayloadsFromHandlers),
                 update_distributor_payloads.in_set(ConveyorSystems::TransportLogic),
                 (update_distributor_conveyors, update_distributor_tiles)
                     .in_set(ConveyorSystems::TileUpdater),

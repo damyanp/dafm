@@ -3,22 +3,22 @@ use bevy_ecs_tilemap::prelude::*;
 use smallvec::SmallVec;
 
 use crate::{
-    factory_game::{BaseLayer, ConveyorSystems, helpers::ConveyorDirection},
+    factory_game::{
+        BaseLayer, ConveyorSystems,
+        conveyor::Conveyor,
+        helpers::ConveyorDirection,
+        payload_handler::{AddPayloadHandler, PayloadHandler},
+    },
     helpers::{TilemapQuery, TilemapQueryItem},
 };
 
 pub fn payloads_plugin(app: &mut App) {
-    app.register_type::<PayloadTransportLine>()
+    app.add_payload_handler::<PayloadTransportLine>()
         .add_event::<RequestPayloadTransferEvent>()
         .add_event::<PayloadTransferredEvent>()
         .add_systems(
             Update,
-            (
-                (transfer_payloads_to_transport_lines,).in_set(ConveyorSystems::TransferPayloads),
-                (transfer_payloads_from_transport_lines,)
-                    .in_set(ConveyorSystems::TransferredPayloads),
-                (update_payload_transport_lines).in_set(ConveyorSystems::TransportLogic),
-            ),
+            ((update_payload_transport_lines).in_set(ConveyorSystems::TransportLogic),),
         )
         .add_systems(
             Update,
@@ -44,6 +44,16 @@ struct TransportedPayload {
 impl TransportedPayload {
     fn new(entity: Entity, from: ConveyorDirection, mu: f32) -> Self {
         TransportedPayload { entity, from, mu }
+    }
+}
+
+impl PayloadHandler for PayloadTransportLine {
+    fn try_transfer(&mut self, _: &Conveyor, request: &RequestPayloadTransferEvent) -> bool {
+        self.try_transfer_onto(request.direction.opposite(), || request.payload)
+    }
+
+    fn remove_payload(&mut self, payload: Entity) {
+        self.payloads.retain(|p| p.entity != payload);
     }
 }
 
@@ -148,10 +158,6 @@ impl PayloadTransportLine {
         }
 
         None
-    }
-
-    pub fn remove_payload(&mut self, payload: Entity) {
-        self.payloads.retain(|p| p.entity != payload);
     }
 
     pub fn update_payload_transforms(
@@ -341,34 +347,6 @@ mod payload_transport_line_test {
             ptl.payloads.as_slice(),
             &[tp(e[0], West, 1.0), tp(e[2], West, 0.8)]
         );
-    }
-}
-
-fn transfer_payloads_from_transport_lines(
-    mut transferred: EventReader<PayloadTransferredEvent>,
-    mut transports: Query<&mut PayloadTransportLine>,
-) {
-    for e in transferred.read() {
-        if let Ok(mut transport) = transports.get_mut(e.source) {
-            transport.remove_payload(e.payload);
-        }
-    }
-}
-
-fn transfer_payloads_to_transport_lines(
-    mut transfers: EventReader<RequestPayloadTransferEvent>,
-    mut transports: Query<&mut PayloadTransportLine>,
-    mut transferred: EventWriter<PayloadTransferredEvent>,
-) {
-    for e in transfers.read() {
-        if let Ok(mut transport) = transports.get_mut(e.destination)
-            && transport.try_transfer_onto(e.direction.opposite(), || e.payload)
-        {
-            transferred.write(PayloadTransferredEvent {
-                payload: e.payload,
-                source: e.source,
-            });
-        }
     }
 }
 

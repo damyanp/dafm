@@ -20,7 +20,7 @@ pub fn generator_plugin(app: &mut App) {
             Update,
             (
                 update_generator_tiles.in_set(ConveyorSystems::TileUpdater),
-                generate_payloads.in_set(ConveyorSystems::TransferPayloads),
+                generate_payloads.in_set(ConveyorSystems::TransferPayloadsToHandlers),
             ),
         );
 }
