@@ -39,9 +39,11 @@ pub fn interaction_plugin(app: &mut App) {
                 )
                     .in_set(ConveyorSystems::TileGenerator)
                     .run_if(not(egui_wants_any_input)),
-                update_hovered_tile
-                    .in_set(ConveyorSystems::TileUpdater)
-                    .run_if(resource_exists_and_changed::<Tools>),
+                (
+                    update_hovered_tile.run_if(resource_exists_and_changed::<Tools>),
+                    flash_hovered_tile,
+                )
+                    .in_set(ConveyorSystems::TileUpdater),
                 give_control_to_egui
                     .run_if(in_state(GameState::FactoryGame))
                     .run_if(
@@ -101,6 +103,14 @@ fn update_hovered_tile(
 
     if let Some((t, f)) = tools.get_sprite_flip() {
         (*texture_index, *flip) = (t.tile_texture_index(), f);
+    }
+}
+
+fn flash_hovered_tile(q: Option<Single<&mut TileColor, With<HoveredTile>>>, time: Res<Time>) {
+    if let Some(mut color) = q {
+        let bright_pulse = 1.0 + ((time.elapsed_secs() * 5.0).sin() + 1.0) / 2.0;
+        let alpha_pulse = ((time.elapsed_secs() * 10.0).sin() + 1.0) / 2.0;
+        **color = TileColor(Color::hsla(0.0, 0.5, bright_pulse, alpha_pulse));
     }
 }
 
@@ -321,6 +331,6 @@ pub struct InteractionLayer;
 fn make_interaction_layer(config: &MapConfig, texture: Handle<Image>) -> impl Bundle {
     (
         InteractionLayer,
-        super::make_layer(config, texture, 1.0, "InteractionLayer"),
+        super::make_layer(config, texture, 10.0, "InteractionLayer"),
     )
 }
