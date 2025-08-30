@@ -60,10 +60,14 @@ struct Sink {
 }
 
 impl PayloadHandler for Sink {
-    fn try_transfer(&mut self, _: &Conveyor, request: &RequestPayloadTransferEvent) -> bool {
+    fn try_transfer(
+        &mut self,
+        _: &Conveyor,
+        request: &RequestPayloadTransferEvent,
+    ) -> Option<Entity> {
         self.payloads
             .push((request.payload, request.direction.opposite(), 0.0));
-        true
+        Some(request.payload)
     }
 
     fn remove_payload(&mut self, _: Entity) {

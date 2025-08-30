@@ -70,7 +70,11 @@ impl Default for BridgeConveyor {
 }
 
 impl PayloadHandler for BridgeConveyor {
-    fn try_transfer(&mut self, _: &Conveyor, request: &RequestPayloadTransferEvent) -> bool {
+    fn try_transfer(
+        &mut self,
+        _: &Conveyor,
+        request: &RequestPayloadTransferEvent,
+    ) -> Option<Entity> {
         use ConveyorDirection::*;
 
         let transport = match request.direction {
@@ -78,11 +82,9 @@ impl PayloadHandler for BridgeConveyor {
             East | West => self.top.as_mut(),
         };
 
-        transport
-            .map(|transport| {
-                transport.try_transfer_onto(request.direction.opposite(), || request.payload)
-            })
-            .unwrap_or(false)
+        transport.and_then(|transport| {
+            transport.try_transfer_onto(request.direction.opposite(), || request.payload)
+        })
     }
 
     fn remove_payload(&mut self, payload: Entity) {

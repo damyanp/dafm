@@ -96,14 +96,16 @@ fn generate_payloads(
 
     for (tile_pos, conveyor, mut generator, mut distributor) in generators {
         if time.elapsed_secs() > generator.next_generate_time
-            && distributor.distribute(
-                conveyor,
-                tile_storage,
-                tile_pos,
-                map_size,
-                &conveyors,
-                || commands.spawn(operand_bundle(Operand(1))).id(),
-            )
+            && distributor
+                .distribute(
+                    conveyor,
+                    tile_storage,
+                    tile_pos,
+                    map_size,
+                    &conveyors,
+                    || commands.spawn(operand_bundle(Operand(1))).id(),
+                )
+                .is_some()
         {
             generator.next_generate_time = time.elapsed_secs() + generator.time_between_generations;
         }

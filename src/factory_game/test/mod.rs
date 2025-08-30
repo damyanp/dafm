@@ -1,15 +1,12 @@
 use std::time::Duration;
 
 use bevy::{prelude::*, state::app::StatesPlugin, time::TimeUpdateStrategy};
-use bevy_ecs_tilemap::{
-    map::TilemapSize,
-    tiles::{TilePos, TileStorage},
-};
+use bevy_ecs_tilemap::tiles::{TilePos, TileStorage};
 
 use crate::{
     GameState,
     factory_game::{
-        BaseLayer, BaseLayerEntityDespawned, MapConfig,
+        BaseLayer, MapConfig,
         bridge::{BridgeConveyor, PlaceBridgeEvent},
         conveyor_belts::{ConveyorBelt, PlaceConveyorBeltEvent},
         generator::PlaceGeneratorEvent,
@@ -39,7 +36,7 @@ fn setup() -> App {
     app.world_mut().spawn((
         BaseLayer,
         TileStorage::empty(map_config.size),
-        TilemapSize::from(map_config.size),
+        map_config.size,
     ));
 
     app

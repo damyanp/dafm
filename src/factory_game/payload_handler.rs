@@ -11,7 +11,7 @@ pub trait PayloadHandler: GetTypeRegistration + Component<Mutability = Mutable> 
         &mut self,
         self_conveyor: &Conveyor,
         request: &RequestPayloadTransferEvent,
-    ) -> bool;
+    ) -> Option<Entity>;
 
     fn remove_payload(&mut self, payload: Entity);
 
@@ -45,7 +45,7 @@ fn transfer_payloads_to_handlers<T: PayloadHandler>(
 ) {
     for e in transfers.read() {
         if let Ok((conveyor, mut handler)) = handlers.get_mut(e.destination)
-            && handler.try_transfer(conveyor, e)
+            && handler.try_transfer(conveyor, e).is_some()
         {
             transferred.write(PayloadTransferredEvent {
                 payload: e.payload,

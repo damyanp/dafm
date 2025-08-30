@@ -47,7 +47,11 @@ impl TransportedPayload {
 }
 
 impl PayloadHandler for PayloadTransportLine {
-    fn try_transfer(&mut self, _: &Conveyor, request: &RequestPayloadTransferEvent) -> bool {
+    fn try_transfer(
+        &mut self,
+        _: &Conveyor,
+        request: &RequestPayloadTransferEvent,
+    ) -> Option<Entity> {
         self.try_transfer_onto(request.direction.opposite(), || request.payload)
     }
 
@@ -81,7 +85,11 @@ impl PayloadTransportLine {
         self.output_direction.unwrap()
     }
 
-    pub fn try_transfer_onto<F>(&mut self, from: ConveyorDirection, get_payload: F) -> bool
+    pub fn try_transfer_onto<F>(
+        &mut self,
+        from: ConveyorDirection,
+        get_payload: F,
+    ) -> Option<Entity>
     where
         F: FnOnce() -> Entity,
     {
@@ -93,17 +101,17 @@ impl PayloadTransportLine {
         from: ConveyorDirection,
         mu: f32,
         get_payload: F,
-    ) -> bool
+    ) -> Option<Entity>
     where
         F: FnOnce() -> Entity,
     {
         if self.has_room_for_one_more_with_mu(mu) {
+            let payload = get_payload();
             self.payloads
-                .push(TransportedPayload::new(get_payload(), from, mu));
-            true
-        } else {
-            false
+                .push(TransportedPayload::new(payload, from, mu));
+            return Some(payload);
         }
+        None
     }
 
     fn has_room_for_one_more_with_mu(&self, mu: f32) -> bool {
@@ -239,7 +247,7 @@ mod payload_transport_line_test {
     #[test]
     fn updates() {
         let mut ptl = PayloadTransportLine::new(ConveyorDirection::East, 2);
-        let e: Vec<Entity> = (1..4).map(|i| Entity::from_raw(i)).collect();
+        let e: Vec<Entity> = (1..4).map(Entity::from_raw).collect();
 
         ptl.try_transfer_onto(West, || e[0]);
         ptl.try_transfer_onto(West, || e[1]);
@@ -305,7 +313,7 @@ mod payload_transport_line_test {
     #[test]
     fn updates_with_different_spacing() {
         let mut ptl = PayloadTransportLine::new(ConveyorDirection::East, 5);
-        let e: Vec<Entity> = (1..4).map(|i| Entity::from_raw(i)).collect();
+        let e: Vec<Entity> = (1..4).map(Entity::from_raw).collect();
 
         ptl.try_transfer_onto(West, || e[0]);
         ptl.try_transfer_onto(West, || e[1]);

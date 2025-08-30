@@ -128,19 +128,19 @@ impl PayloadHandler for OperatorTile {
         &mut self,
         self_conveyor: &Conveyor,
         request: &RequestPayloadTransferEvent,
-    ) -> bool {
+    ) -> Option<Entity> {
         let incoming_direction = request.direction.opposite();
 
         if incoming_direction == self_conveyor.output().left() && self.left_operand.is_none() {
             self.left_operand = Some(request.payload);
-            return true;
+            return self.left_operand;
         } else if incoming_direction == self_conveyor.output().right()
             && self.right_operand.is_none()
         {
             self.right_operand = Some(request.payload);
-            return true;
+            return self.right_operand;
         }
-        false
+        None
     }
 
     fn remove_payload(&mut self, payload: Entity) {
@@ -207,11 +207,13 @@ fn generate_new_payloads(
                 .operator
                 .generate_operand(left_operand, right_operand);
 
-            if operator.payload_transport_line.try_transfer_onto_with_mu(
-                output_direction.opposite(),
-                0.5,
-                || commands.spawn(operand_bundle(new_operand)).id(),
-            ) {
+            if operator
+                .payload_transport_line
+                .try_transfer_onto_with_mu(output_direction.opposite(), 0.5, || {
+                    commands.spawn(operand_bundle(new_operand)).id()
+                })
+                .is_some()
+            {
                 commands.entity(left_entity).try_despawn();
                 commands.entity(right_entity).try_despawn();
                 operator.left_operand = None;

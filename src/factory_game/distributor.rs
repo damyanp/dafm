@@ -71,9 +71,9 @@ impl PayloadHandler for DistributorConveyor {
         &mut self,
         self_conveyor: &Conveyor,
         request: &RequestPayloadTransferEvent,
-    ) -> bool {
+    ) -> Option<Entity> {
         if self.count() >= self.capacity as usize {
-            return false;
+            return None;
         }
 
         self.input.try_transfer(self_conveyor, request)
@@ -129,7 +129,7 @@ impl DistributorConveyor {
         map_size: &TilemapSize,
         conveyors: &Query<&Conveyor>,
         get_payload: F,
-    ) -> bool
+    ) -> Option<Entity>
     where
         F: FnOnce() -> Entity,
     {
@@ -140,26 +140,23 @@ impl DistributorConveyor {
             map_size,
             conveyors,
         ) {
-            let payload = get_payload();
-
-            let took = self
+            let payload = self
                 .outputs
                 .iter_mut()
                 .find(|(dir, _)| *dir == destination)
-                .map(|(_, ptl)| {
-                    ptl.try_transfer_onto_with_mu(ConveyorDirection::default(), 0.5, || payload)
-                })
-                .unwrap_or(false);
+                .and_then(|(_, ptl)| {
+                    ptl.try_transfer_onto_with_mu(ConveyorDirection::default(), 0.5, get_payload)
+                });
 
-            if took {
+            if let Some(payload) = payload {
                 self.input.remove_payload(payload);
             }
 
             self.next_output = destination.next();
 
-            return took;
+            return payload;
         }
-        false
+        None
     }
 
     fn get_payload_to_transfer(&self) -> Option<(ConveyorDirection, Entity)> {
