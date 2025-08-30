@@ -29,7 +29,7 @@ pub fn payloads_plugin(app: &mut App) {
 #[derive(Component, Debug, Reflect)]
 pub struct PayloadTransportLine {
     payloads: SmallVec<[TransportedPayload; 2]>,
-    output_direction: ConveyorDirection,
+    output_direction: Option<ConveyorDirection>,
     capacity: u32,
 }
 
@@ -47,7 +47,11 @@ impl TransportedPayload {
 }
 
 impl PayloadHandler for PayloadTransportLine {
-    fn try_transfer(&mut self, _: &Conveyor, request: &RequestPayloadTransferEvent) -> bool {
+    fn try_transfer(
+        &mut self,
+        _: &Conveyor,
+        request: &RequestPayloadTransferEvent,
+    ) -> Option<Entity> {
         self.try_transfer_onto(request.direction.opposite(), || request.payload)
     }
 
@@ -64,16 +68,28 @@ impl PayloadTransportLine {
     pub fn new(destination: ConveyorDirection, capacity: u32) -> Self {
         PayloadTransportLine {
             payloads: SmallVec::default(),
-            output_direction: destination,
+            output_direction: Some(destination),
+            capacity,
+        }
+    }
+
+    pub fn new_no_output(capacity: u32) -> Self {
+        PayloadTransportLine {
+            payloads: SmallVec::default(),
+            output_direction: None,
             capacity,
         }
     }
 
     pub fn output_direction(&self) -> ConveyorDirection {
-        self.output_direction
+        self.output_direction.unwrap()
     }
 
-    pub fn try_transfer_onto<F>(&mut self, from: ConveyorDirection, get_payload: F) -> bool
+    pub fn try_transfer_onto<F>(
+        &mut self,
+        from: ConveyorDirection,
+        get_payload: F,
+    ) -> Option<Entity>
     where
         F: FnOnce() -> Entity,
     {
@@ -85,17 +101,17 @@ impl PayloadTransportLine {
         from: ConveyorDirection,
         mu: f32,
         get_payload: F,
-    ) -> bool
+    ) -> Option<Entity>
     where
         F: FnOnce() -> Entity,
     {
         if self.has_room_for_one_more_with_mu(mu) {
+            let payload = get_payload();
             self.payloads
-                .push(TransportedPayload::new(get_payload(), from, mu));
-            true
-        } else {
-            false
+                .push(TransportedPayload::new(payload, from, mu));
+            return Some(payload);
         }
+        None
     }
 
     fn has_room_for_one_more_with_mu(&self, mu: f32) -> bool {
@@ -120,21 +136,21 @@ impl PayloadTransportLine {
     ) {
         self.update_payloads(t);
         if let Some(payload) = self.get_payload_to_transfer() {
-            let destination_pos = tile_pos.square_offset(&self.output_direction.into(), map_size);
+            let destination_pos = tile_pos.square_offset(&self.output_direction().into(), map_size);
             let destination_entity = destination_pos.and_then(|pos| tile_storage.get(&pos));
             if let Some(destination) = destination_entity {
                 let e = RequestPayloadTransferEvent {
                     payload,
                     source: this_entity,
                     destination,
-                    direction: self.output_direction,
+                    direction: self.output_direction(),
                 };
                 send_payloads.write(e);
             }
         }
     }
 
-    fn update_payloads(&mut self, t: f32) {
+    pub fn update_payloads(&mut self, t: f32) {
         assert!(
             self.payloads.iter().all(|p| p.mu >= 0.0 && p.mu <= 1.0),
             "All payload mu's in range 0 <= mu <= 1"
@@ -153,7 +169,7 @@ impl PayloadTransportLine {
         }
     }
 
-    fn get_payload_to_transfer(&self) -> Option<Entity> {
+    pub fn get_payload_to_transfer(&self) -> Option<Entity> {
         if let Some(p) = self.payloads.first()
             && p.mu == 1.0
         {
@@ -176,7 +192,7 @@ impl PayloadTransportLine {
                     tile_center,
                     base.tile_size,
                     Some(p.from),
-                    Some(self.output_direction),
+                    self.output_direction,
                     p.mu,
                 );
             }
@@ -187,6 +203,10 @@ impl PayloadTransportLine {
         for p in &self.payloads {
             commands.entity(p.entity).try_despawn();
         }
+    }
+
+    pub fn count(&self) -> usize {
+        self.payloads.len()
     }
 }
 
@@ -227,7 +247,7 @@ mod payload_transport_line_test {
     #[test]
     fn updates() {
         let mut ptl = PayloadTransportLine::new(ConveyorDirection::East, 2);
-        let e: Vec<Entity> = (1..4).map(|i| Entity::from_raw(i)).collect();
+        let e: Vec<Entity> = (1..4).map(Entity::from_raw).collect();
 
         ptl.try_transfer_onto(West, || e[0]);
         ptl.try_transfer_onto(West, || e[1]);
@@ -293,7 +313,7 @@ mod payload_transport_line_test {
     #[test]
     fn updates_with_different_spacing() {
         let mut ptl = PayloadTransportLine::new(ConveyorDirection::East, 5);
-        let e: Vec<Entity> = (1..4).map(|i| Entity::from_raw(i)).collect();
+        let e: Vec<Entity> = (1..4).map(Entity::from_raw).collect();
 
         ptl.try_transfer_onto(West, || e[0]);
         ptl.try_transfer_onto(West, || e[1]);

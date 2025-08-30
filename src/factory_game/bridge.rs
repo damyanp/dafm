@@ -4,7 +4,7 @@ use bevy_ecs_tilemap::prelude::*;
 use crate::{
     factory_game::{
         BaseLayer, ConveyorSystems,
-        conveyor::{Conveyor, TilesToCheck},
+        conveyor::{Conveyor, ConveyorUpdated, TilesToCheck},
         conveyor_belts::find_incoming_directions,
         helpers::{ConveyorDirection, ConveyorDirections},
         interaction::{PlaceTileEvent, RegisterPlaceTileEvent, Tool},
@@ -25,8 +25,7 @@ pub fn bridge_plugin(app: &mut App) {
                 update_bridge_payloads.in_set(ConveyorSystems::TransportLogic),
                 update_bridge_payload_transforms.in_set(ConveyorSystems::PayloadTransforms),
             ),
-        )
-        .add_observer(on_remove_bridge_conveyor);
+        );
 }
 
 pub struct BridgeTool;
@@ -71,7 +70,11 @@ impl Default for BridgeConveyor {
 }
 
 impl PayloadHandler for BridgeConveyor {
-    fn try_transfer(&mut self, _: &Conveyor, request: &RequestPayloadTransferEvent) -> bool {
+    fn try_transfer(
+        &mut self,
+        _: &Conveyor,
+        request: &RequestPayloadTransferEvent,
+    ) -> Option<Entity> {
         use ConveyorDirection::*;
 
         let transport = match request.direction {
@@ -79,11 +82,9 @@ impl PayloadHandler for BridgeConveyor {
             East | West => self.top.as_mut(),
         };
 
-        transport
-            .map(|transport| {
-                transport.try_transfer_onto(request.direction.opposite(), || request.payload)
-            })
-            .unwrap_or(false)
+        transport.and_then(|transport| {
+            transport.try_transfer_onto(request.direction.opposite(), || request.payload)
+        })
     }
 
     fn remove_payload(&mut self, payload: Entity) {
@@ -126,23 +127,9 @@ impl BridgeConveyor {
     }
 }
 
-fn on_remove_bridge_conveyor(
-    trigger: Trigger<OnRemove, BridgeConveyor>,
-    bridges: Query<&BridgeConveyor>,
-    mut commands: Commands,
-) {
-    if let Ok(bridge) = bridges.get(trigger.target()) {
-        bridge
-            .top
-            .iter()
-            .chain(bridge.bottom.iter())
-            .for_each(|p| p.despawn_payloads(commands.reborrow()));
-    }
-}
-
 #[derive(Component, Default)]
 #[relationship_target(relationship = BridgeTop, linked_spawn)]
-#[require(Conveyor::new(ConveyorDirections::all()), BridgeConveyor)]
+#[require(Conveyor::new(ConveyorDirections::default()), BridgeConveyor)]
 pub struct Bridge(Vec<Entity>);
 
 /// Mark BridgeTops so they can be despawned when the Bridge is despawned
@@ -157,6 +144,7 @@ fn update_bridge_conveyors(
     mut bridge_conveyors: Query<&mut BridgeConveyor>,
     mut conveyors: Query<&mut Conveyor>,
     base: Single<(&TileStorage, &TilemapSize), With<BaseLayer>>,
+    mut conveyor_updated: EventWriter<ConveyorUpdated>,
 ) {
     let (tile_storage, map_size) = base.into_inner();
 
@@ -172,8 +160,9 @@ fn update_bridge_conveyors(
             );
 
             if let Ok(mut conveyor) = conveyors.get_mut(entity) {
+                let old_value = conveyor.clone();
+
                 conveyor.set_inputs(inputs);
-                conveyor.set_outputs(ConveyorDirections::all_except(inputs));
 
                 use ConveyorDirection::*;
 
@@ -193,6 +182,14 @@ fn update_bridge_conveyors(
                     None
                 };
 
+                let mut outputs = ConveyorDirections::default();
+                wanted_bottom_output
+                    .iter()
+                    .chain(wanted_top_output.iter())
+                    .for_each(|output| outputs.add(*output));
+
+                conveyor.set_outputs(outputs);
+
                 let current_bottom_output = bridge.current_bottom_output();
                 if current_bottom_output != wanted_bottom_output {
                     bridge.bottom = wanted_bottom_output
@@ -202,6 +199,10 @@ fn update_bridge_conveyors(
                 if current_top_output != wanted_top_output {
                     bridge.top = wanted_top_output
                         .map(|output| PayloadTransportLine::new(output, bridge.capacity));
+                }
+
+                if old_value != *conveyor {
+                    conveyor_updated.write(ConveyorUpdated(*tile_pos));
                 }
             }
         }

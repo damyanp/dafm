@@ -34,7 +34,6 @@ pub fn factory_game_logic_plugin(app: &mut App) {
         .add_plugins(operators::operators_plugin)
         .add_plugins(sink::sink_plugin)
         .insert_resource(MapConfig::default())
-        .add_event::<BaseLayerEntityDespawned>()
         .configure_sets(
             Update,
             (
@@ -146,6 +145,3 @@ fn make_base_layer(mut commands: Commands, sprite_sheet: Res<SpriteSheet>, confi
         make_layer(&config, sprite_sheet.image(), 0.0, "BaseLayer"),
     ));
 }
-
-#[derive(Event)]
-pub struct BaseLayerEntityDespawned(TilePos);

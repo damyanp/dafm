@@ -1,16 +1,18 @@
 use std::time::Duration;
 
 use bevy::{prelude::*, state::app::StatesPlugin, time::TimeUpdateStrategy};
-use bevy_ecs_tilemap::{
-    map::TilemapSize,
-    tiles::{TilePos, TileStorage},
-};
+use bevy_ecs_tilemap::tiles::{TilePos, TileStorage};
 
 use crate::{
     GameState,
     factory_game::{
-        BaseLayer, MapConfig, bridge::PlaceBridgeEvent, conveyor_belts::PlaceConveyorBeltEvent,
-        generator::PlaceGeneratorEvent, operators::Operand,
+        BaseLayer, MapConfig,
+        bridge::{BridgeConveyor, PlaceBridgeEvent},
+        conveyor_belts::{ConveyorBelt, PlaceConveyorBeltEvent},
+        generator::PlaceGeneratorEvent,
+        operators::Operand,
+        payload_handler::PayloadHandler,
+        payloads::PayloadTransportLine,
     },
 };
 
@@ -34,7 +36,7 @@ fn setup() -> App {
     app.world_mut().spawn((
         BaseLayer,
         TileStorage::empty(map_config.size),
-        TilemapSize::from(map_config.size),
+        map_config.size,
     ));
 
     app
@@ -47,6 +49,10 @@ fn generator_generates_payload() {
     let world = app.world_mut();
 
     world.trigger(PlaceGeneratorEvent(TilePos { x: 0, y: 0 }));
+    world.trigger(PlaceConveyorBeltEvent(
+        TilePos { x: 1, y: 0 },
+        ConveyorDirection::East,
+    ));
 
     world
         .resource_mut::<Time<Virtual>>()
@@ -80,12 +86,11 @@ fn generator_transfers_payload_to_conveyor() {
     app.update(); // ready to be transferred
     app.update(); // transferred to conveyor belt
 
-    // let mut payloads = app
-    //     .world_mut()
-    //     .query_filtered::<&Payloads, With<ConveyorBelt>>();
+    let mut ptl = app
+        .world_mut()
+        .query_filtered::<&PayloadTransportLine, With<ConveyorBelt>>();
 
-    // assert_eq!(payloads.iter(app.world()).len(), 1);
-    todo!();
+    assert_eq!(ptl.single(app.world()).unwrap().count(), 1);
 }
 
 #[test]
@@ -107,21 +112,21 @@ fn generator_doesnt_transfer_payload_to_conveyor_pointing_at_it() {
     app.update(); // ready to be transferred
     app.update(); // transferred to conveyor belt
 
-    // let mut payloads = app
-    //     .world_mut()
-    //     .query_filtered::<&Payloads, With<ConveyorBelt>>();
+    let mut ptl = app
+        .world_mut()
+        .query_filtered::<&PayloadTransportLine, With<ConveyorBelt>>();
 
-    // assert_eq!(payloads.iter(app.world()).len(), 0);
-    todo!();
+    assert_eq!(ptl.single(app.world()).unwrap().count(), 0);
 }
 
 #[test]
 fn generator_transfers_payload_to_bridge() {
     let mut app = setup();
 
-    let world = app.world_mut();
-    world.trigger(PlaceGeneratorEvent(TilePos { x: 0, y: 0 }));
-    world.trigger(PlaceBridgeEvent(TilePos { x: 1, y: 0 }));
+    app.world_mut()
+        .trigger(PlaceBridgeEvent(TilePos { x: 2, y: 1 }));
+    app.world_mut()
+        .trigger(PlaceGeneratorEvent(TilePos { x: 1, y: 1 }));
 
     app.world_mut()
         .insert_resource(TimeUpdateStrategy::ManualDuration(Duration::from_secs(1)));
@@ -131,8 +136,10 @@ fn generator_transfers_payload_to_bridge() {
     app.update(); // ready to be transferred
     app.update(); // transferred to bridge
 
-    // let mut payloads = app.world_mut().query_filtered::<&Payloads, With<Bridge>>();
+    let mut bridge = app.world_mut().query::<&BridgeConveyor>();
 
-    // assert_eq!(payloads.iter(app.world()).len(), 1);
-    todo!();
+    let bridge = bridge.single(app.world()).unwrap();
+    println!("{bridge:?}");
+
+    assert_eq!(bridge.iter_payloads().count(), 1);
 }

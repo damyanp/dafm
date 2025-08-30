@@ -36,7 +36,8 @@
                     "test",
                     "--no-run",
                     "--bin=dafm",
-                    "--package=dafm"
+                    "--package=dafm",
+                    "factory_game::test::generator_transfers_payload_to_bridge"
                 ],
                 "filter": {
                     "name": "dafm",
@@ -44,7 +45,11 @@
                 }
             },
             "args": [],
-            "cwd": "${workspaceFolder}"
+            "cwd": "${workspaceFolder}",
+            "env" : {
+                "PATH": "${env:USERPROFILE}/.rustup/toolchains/nightly-x86_64-pc-windows-msvc/bin;${workspaceFolder}/target/debug/deps;${env:PATH}",
+                "CARGO_MANIFEST_DIR": "${workspaceFolder}"
+            }
         }
     ]
 }

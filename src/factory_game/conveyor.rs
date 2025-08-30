@@ -6,18 +6,19 @@ use bevy_ecs_tilemap::{helpers::square_grid::neighbors::Neighbors, prelude::*};
 use crate::{
     GameState,
     factory_game::{
-        BaseLayer, BaseLayerEntityDespawned,
-        helpers::{ConveyorDirection, ConveyorDirections},
+        BaseLayer,
+        helpers::{ConveyorDirection, ConveyorDirections, get_neighbors_from_query},
     },
 };
 
 pub fn conveyor_plugin(app: &mut App) {
     app.register_type::<Conveyor>()
         .init_resource::<TilesToCheck>()
+        .add_event::<ConveyorUpdated>()
         .add_systems(PreUpdate, update_tiles_to_check);
 }
 
-#[derive(Component, Clone, Debug, Reflect, Default)]
+#[derive(Component, Clone, Debug, Reflect, Default, PartialEq, Eq)]
 #[require(StateScoped::<GameState>(GameState::FactoryGame))]
 pub struct Conveyor {
     outputs: ConveyorDirections,
@@ -66,6 +67,26 @@ impl Conveyor {
     pub fn set_outputs(&mut self, outputs: ConveyorDirections) {
         self.outputs = outputs;
     }
+
+    pub fn get_available_destination(
+        &self,
+        starting_direction: ConveyorDirection,
+        tile_storage: &TileStorage,
+        tile_pos: &TilePos,
+        map_size: &TilemapSize,
+        conveyors: &Query<&Conveyor>,
+    ) -> Option<ConveyorDirection> {
+        let neighbors = get_neighbors_from_query(tile_storage, tile_pos, map_size, conveyors);
+
+        self.outputs()
+            .iter_from(starting_direction)
+            .find(|direction| {
+                let neighbor = neighbors.get((*direction).into());
+                neighbor
+                    .map(|conveyor| conveyor.inputs().is_set(direction.opposite()))
+                    .unwrap_or(false)
+            })
+    }
 }
 
 #[derive(Component, Debug, Reflect, Default)]
@@ -74,10 +95,13 @@ pub struct SimpleConveyor;
 #[derive(Resource, Default)]
 pub struct TilesToCheck(pub HashSet<TilePos>);
 
+#[derive(Event)]
+pub struct ConveyorUpdated(pub TilePos);
+
 pub fn update_tiles_to_check(
     mut commands: Commands,
     new: Query<&TilePos, Added<Conveyor>>,
-    mut removed: EventReader<BaseLayerEntityDespawned>,
+    mut updated: EventReader<ConveyorUpdated>,
     base: Single<&TilemapSize, With<BaseLayer>>,
 ) {
     let map_size = base.into_inner();
@@ -88,7 +112,7 @@ pub fn update_tiles_to_check(
         to_check.insert(*pos);
     });
 
-    removed.read().for_each(|entity| {
+    updated.read().for_each(|entity| {
         to_check.insert(entity.0);
     });
 

@@ -10,7 +10,7 @@ use std::fmt::Debug;
 use crate::{
     GameState,
     factory_game::{
-        BaseLayer, BaseLayerEntityDespawned, ConveyorSystems, MapConfig, bridge::BridgeTool,
+        BaseLayer, ConveyorSystems, MapConfig, bridge::BridgeTool, conveyor::ConveyorUpdated,
         conveyor_belts::ConveyorBeltTool, distributor::DistributorTool, generator::GeneratorTool,
         operators::OperatorsTool, sink::SinkTool,
     },
@@ -275,13 +275,13 @@ fn handle_place_tile_event<T: PlaceTileEvent + Debug>(
     trigger: Trigger<T>,
     mut commands: Commands,
     mut storage: Single<&mut TileStorage, With<BaseLayer>>,
-    mut despawned_event: EventWriter<BaseLayerEntityDespawned>,
+    mut despawned_event: EventWriter<ConveyorUpdated>,
 ) {
     let tile_pos = trigger.tile_pos();
 
     if let Some(entity) = storage.remove(&tile_pos) {
         commands.entity(entity).despawn();
-        despawned_event.write(BaseLayerEntityDespawned(tile_pos));
+        despawned_event.write(ConveyorUpdated(tile_pos));
     }
 
     if let Some(entity) = trigger.make_new_entity(commands.reborrow(), &mut storage) {
