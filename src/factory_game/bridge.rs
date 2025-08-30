@@ -182,7 +182,7 @@ fn update_bridge_conveyors(
                 let mut outputs = ConveyorDirections::default();
                 wanted_bottom_output
                     .iter()
-                    .chain(wanted_bottom_output.iter())
+                    .chain(wanted_top_output.iter())
                     .for_each(|output| outputs.add(*output));
 
                 conveyor.set_outputs(outputs);
