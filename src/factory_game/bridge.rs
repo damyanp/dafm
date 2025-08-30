@@ -4,7 +4,7 @@ use bevy_ecs_tilemap::prelude::*;
 use crate::{
     factory_game::{
         BaseLayer, ConveyorSystems,
-        conveyor::{Conveyor, TilesToCheck},
+        conveyor::{Conveyor, ConveyorUpdated, TilesToCheck},
         conveyor_belts::find_incoming_directions,
         helpers::{ConveyorDirection, ConveyorDirections},
         interaction::{PlaceTileEvent, RegisterPlaceTileEvent, Tool},
@@ -144,6 +144,7 @@ fn update_bridge_conveyors(
     mut bridge_conveyors: Query<&mut BridgeConveyor>,
     mut conveyors: Query<&mut Conveyor>,
     base: Single<(&TileStorage, &TilemapSize), With<BaseLayer>>,
+    mut conveyor_updated: EventWriter<ConveyorUpdated>,
 ) {
     let (tile_storage, map_size) = base.into_inner();
 
@@ -159,6 +160,8 @@ fn update_bridge_conveyors(
             );
 
             if let Ok(mut conveyor) = conveyors.get_mut(entity) {
+                let old_value = conveyor.clone();
+
                 conveyor.set_inputs(inputs);
 
                 use ConveyorDirection::*;
@@ -196,6 +199,10 @@ fn update_bridge_conveyors(
                 if current_top_output != wanted_top_output {
                     bridge.top = wanted_top_output
                         .map(|output| PayloadTransportLine::new(output, bridge.capacity));
+                }
+
+                if old_value != *conveyor {
+                    conveyor_updated.write(ConveyorUpdated(*tile_pos));
                 }
             }
         }

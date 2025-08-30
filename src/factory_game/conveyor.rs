@@ -6,7 +6,7 @@ use bevy_ecs_tilemap::{helpers::square_grid::neighbors::Neighbors, prelude::*};
 use crate::{
     GameState,
     factory_game::{
-        BaseLayer, BaseLayerEntityDespawned,
+        BaseLayer,
         helpers::{ConveyorDirection, ConveyorDirections, get_neighbors_from_query},
     },
 };
@@ -14,10 +14,11 @@ use crate::{
 pub fn conveyor_plugin(app: &mut App) {
     app.register_type::<Conveyor>()
         .init_resource::<TilesToCheck>()
+        .add_event::<ConveyorUpdated>()
         .add_systems(PreUpdate, update_tiles_to_check);
 }
 
-#[derive(Component, Clone, Debug, Reflect, Default)]
+#[derive(Component, Clone, Debug, Reflect, Default, PartialEq, Eq)]
 #[require(StateScoped::<GameState>(GameState::FactoryGame))]
 pub struct Conveyor {
     outputs: ConveyorDirections,
@@ -94,10 +95,13 @@ pub struct SimpleConveyor;
 #[derive(Resource, Default)]
 pub struct TilesToCheck(pub HashSet<TilePos>);
 
+#[derive(Event)]
+pub struct ConveyorUpdated(pub TilePos);
+
 pub fn update_tiles_to_check(
     mut commands: Commands,
     new: Query<&TilePos, Added<Conveyor>>,
-    mut removed: EventReader<BaseLayerEntityDespawned>,
+    mut updated: EventReader<ConveyorUpdated>,
     base: Single<&TilemapSize, With<BaseLayer>>,
 ) {
     let map_size = base.into_inner();
@@ -108,7 +112,7 @@ pub fn update_tiles_to_check(
         to_check.insert(*pos);
     });
 
-    removed.read().for_each(|entity| {
+    updated.read().for_each(|entity| {
         to_check.insert(entity.0);
     });
 
