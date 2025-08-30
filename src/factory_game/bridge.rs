@@ -25,8 +25,7 @@ pub fn bridge_plugin(app: &mut App) {
                 update_bridge_payloads.in_set(ConveyorSystems::TransportLogic),
                 update_bridge_payload_transforms.in_set(ConveyorSystems::PayloadTransforms),
             ),
-        )
-        .add_observer(on_remove_bridge_conveyor);
+        );
 }
 
 pub struct BridgeTool;
@@ -126,23 +125,9 @@ impl BridgeConveyor {
     }
 }
 
-fn on_remove_bridge_conveyor(
-    trigger: Trigger<OnRemove, BridgeConveyor>,
-    bridges: Query<&BridgeConveyor>,
-    mut commands: Commands,
-) {
-    if let Ok(bridge) = bridges.get(trigger.target()) {
-        bridge
-            .top
-            .iter()
-            .chain(bridge.bottom.iter())
-            .for_each(|p| p.despawn_payloads(commands.reborrow()));
-    }
-}
-
 #[derive(Component, Default)]
 #[relationship_target(relationship = BridgeTop, linked_spawn)]
-#[require(Conveyor::new(ConveyorDirections::all()), BridgeConveyor)]
+#[require(Conveyor::new(ConveyorDirections::default()), BridgeConveyor)]
 pub struct Bridge(Vec<Entity>);
 
 /// Mark BridgeTops so they can be despawned when the Bridge is despawned
@@ -173,7 +158,6 @@ fn update_bridge_conveyors(
 
             if let Ok(mut conveyor) = conveyors.get_mut(entity) {
                 conveyor.set_inputs(inputs);
-                conveyor.set_outputs(ConveyorDirections::all_except(inputs));
 
                 use ConveyorDirection::*;
 
@@ -192,6 +176,14 @@ fn update_bridge_conveyors(
                 } else {
                     None
                 };
+
+                let mut outputs = ConveyorDirections::default();
+                wanted_bottom_output
+                    .iter()
+                    .chain(wanted_bottom_output.iter())
+                    .for_each(|output| outputs.add(*output));
+
+                conveyor.set_outputs(outputs);
 
                 let current_bottom_output = bridge.current_bottom_output();
                 if current_bottom_output != wanted_bottom_output {

@@ -114,7 +114,7 @@ pub fn find_incoming_directions(
     directions.into()
 }
 
-fn find_conveyors_outputting_to<'a>(
+pub fn find_conveyors_outputting_to<'a>(
     tile_pos: &TilePos,
     tile_storage: &TileStorage,
     map_size: &TilemapSize,
