@@ -9,9 +9,9 @@ use crate::{
     GameState,
     factory_game::{
         BaseLayer, ConveyorDirection, conveyor::Conveyor, conveyor_belts::conveyor_belt_bundle,
-        interaction::InteractionLayer,
     },
-    sprite_sheet::GameSprite,
+    helpers::TilemapQuery,
+    sprite_sheet::{GameSprite, SpriteSheet},
 };
 
 pub fn dev_plugin(app: &mut App) {
@@ -73,46 +73,33 @@ struct DirectionArrow;
 fn on_toggle_show_conveyors(
     mut commands: Commands,
     arrows: Query<Entity, With<DirectionArrow>>,
-    interaction_layer: Single<Entity, With<InteractionLayer>>,
+    base: Single<TilemapQuery, With<BaseLayer>>,
     conveyors: Query<(&Conveyor, &TilePos)>,
+    sprite_sheet: Res<SpriteSheet>,
     mut enabled: Local<bool>,
 ) {
     *enabled = !*enabled;
 
     if *enabled {
         for (conveyor, tile_pos) in conveyors {
-            if conveyor.outputs().is_multiple() {
-                continue;
-            }
-            let flip = match conveyor.output() {
-                ConveyorDirection::North => TileFlip {
-                    y: true,
-                    d: true,
-                    ..default()
-                },
-                ConveyorDirection::South => TileFlip {
-                    d: true,
-                    ..default()
-                },
-                ConveyorDirection::East => TileFlip::default(),
-                ConveyorDirection::West => TileFlip {
-                    x: true,
-                    ..default()
-                },
-            };
+            for output in conveyor.outputs().iter() {
+                let angle = match output {
+                    ConveyorDirection::North => std::f32::consts::FRAC_PI_2,
+                    ConveyorDirection::South => -std::f32::consts::FRAC_PI_2,
+                    ConveyorDirection::East => 0.0,
+                    ConveyorDirection::West => std::f32::consts::PI,
+                };
+                let tile_center = base.center_in_world(tile_pos);
 
-            commands.spawn((
-                StateScoped(GameState::FactoryGame),
-                Name::new("ConveyorDirection"),
-                DirectionArrow,
-                TileBundle {
-                    texture_index: GameSprite::Arrow.tile_texture_index(),
-                    tilemap_id: TilemapId(*interaction_layer),
-                    flip,
-                    position: *tile_pos,
-                    ..default()
-                },
-            ));
+                commands.spawn((
+                    StateScoped(GameState::FactoryGame),
+                    Name::new("ConveyorDirection"),
+                    DirectionArrow,
+                    sprite_sheet.sprite(GameSprite::Arrow),
+                    Transform::from_translation(tile_center.extend(5.0))
+                        .with_rotation(Quat::from_rotation_z(angle)),
+                ));
+            }
         }
     } else {
         arrows
