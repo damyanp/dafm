@@ -34,6 +34,19 @@ impl From<ConveyorDirection> for u8 {
     }
 }
 
+impl From<usize> for ConveyorDirection {
+    fn from(value: usize) -> Self {
+        use ConveyorDirection::*;
+        match value {
+            0 => North,
+            1 => East,
+            2 => South,
+            3 => West,
+            _ => panic!(),
+        }
+    }
+}
+
 pub const CONVEYOR_DIRECTIONS: [ConveyorDirection; 4] = [
     ConveyorDirection::North,
     ConveyorDirection::East,

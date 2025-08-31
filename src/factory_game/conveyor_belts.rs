@@ -36,13 +36,7 @@ impl Tool for ConveyorBeltTool {
     }
 
     fn next_variant(&mut self) {
-        use ConveyorDirection::*;
-        self.0 = match self.0 {
-            North => East,
-            East => South,
-            South => West,
-            West => North,
-        }
+        self.0 = self.0.next();
     }
 
     fn execute(&self, mut commands: Commands, tile_pos: &TilePos) {

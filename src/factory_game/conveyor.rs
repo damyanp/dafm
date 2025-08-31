@@ -56,6 +56,9 @@ impl Conveyor {
         }
     }
 
+    pub fn input(&self) -> ConveyorDirection {
+        self.inputs.single()
+    }
     pub fn inputs(&self) -> ConveyorDirections {
         self.inputs
     }

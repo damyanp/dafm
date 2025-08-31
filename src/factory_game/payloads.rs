@@ -199,12 +199,6 @@ impl PayloadTransportLine {
         }
     }
 
-    pub fn despawn_payloads(&self, mut commands: Commands) {
-        for p in &self.payloads {
-            commands.entity(p.entity).try_despawn();
-        }
-    }
-
     pub fn count(&self) -> usize {
         self.payloads.len()
     }

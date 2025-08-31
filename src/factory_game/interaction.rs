@@ -234,7 +234,7 @@ fn setup_tools(mut commands: Commands) {
     tools.add(2, Box::new(ConveyorBeltTool::default()));
     tools.add(3, Box::new(GeneratorTool));
     tools.add(4, Box::new(SinkTool));
-    tools.add(5, Box::new(DistributorTool));
+    tools.add(5, Box::new(DistributorTool::default()));
     tools.add(6, Box::new(BridgeTool));
     tools.add(7, Box::new(OperatorsTool::plus()));
     tools.add(8, Box::new(OperatorsTool::multiply()));

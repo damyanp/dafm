@@ -5,8 +5,7 @@ use smallvec::SmallVec;
 use crate::{
     factory_game::{
         BaseLayer, ConveyorSystems,
-        conveyor::{Conveyor, TilesToCheck},
-        conveyor_belts::find_incoming_directions,
+        conveyor::Conveyor,
         helpers::{ConveyorDirection, ConveyorDirections},
         interaction::{PlaceTileEvent, RegisterPlaceTileEvent, Tool},
         payload_handler::{AddPayloadHandler, PayloadHandler},
@@ -18,31 +17,40 @@ use crate::{
 
 pub fn distributor_plugin(app: &mut App) {
     app.register_place_tile_event::<PlaceDistributorEvent>()
-        .add_payload_handler::<DistributorConveyor>()
+        .add_payload_handler::<Distributor>()
         .add_systems(
             Update,
             (
                 update_distributor_payloads.in_set(ConveyorSystems::TransportLogic),
-                (update_distributor_conveyors, update_distributor_tiles)
-                    .in_set(ConveyorSystems::TileUpdater),
+                update_distributor_tiles.in_set(ConveyorSystems::TileUpdater),
                 update_distributor_payload_transforms.in_set(ConveyorSystems::PayloadTransforms),
             ),
         );
 }
 
-pub struct DistributorTool;
+pub struct DistributorTool(ConveyorDirection);
+impl Default for DistributorTool {
+    fn default() -> Self {
+        DistributorTool(ConveyorDirection::East)
+    }
+}
+
 impl Tool for DistributorTool {
     fn get_sprite_flip(&self) -> (GameSprite, TileFlip) {
-        (GameSprite::Distributor, TileFlip::default())
+        (GameSprite::ToolDistributor, self.0.tile_flip())
+    }
+
+    fn next_variant(&mut self) {
+        self.0 = self.0.next();
     }
 
     fn execute(&self, mut commands: Commands, tile_pos: &TilePos) {
-        commands.trigger(PlaceDistributorEvent(*tile_pos));
+        commands.trigger(PlaceDistributorEvent(*tile_pos, self.0));
     }
 }
 
 #[derive(Event, Debug)]
-pub struct PlaceDistributorEvent(TilePos);
+pub struct PlaceDistributorEvent(TilePos, ConveyorDirection);
 
 impl PlaceTileEvent for PlaceDistributorEvent {
     fn tile_pos(&self) -> TilePos {
@@ -50,23 +58,29 @@ impl PlaceTileEvent for PlaceDistributorEvent {
     }
 
     fn configure_new_entity(&self, mut commands: EntityCommands) {
-        commands.insert((Distributor, Name::new("Distributor")));
+        let input_direction = self.1.opposite();
+        let mut conveyor = Conveyor::default();
+        let inputs = ConveyorDirections::new(input_direction);
+        conveyor.set_inputs(inputs);
+        conveyor.set_outputs(ConveyorDirections::all_except(inputs));
+
+        commands.insert((
+            Distributor::new(input_direction, 5),
+            conveyor,
+            Name::new("Distributor"),
+        ));
     }
 }
 
-#[derive(Component)]
-#[require(Conveyor::new(ConveyorDirections::all()), DistributorConveyor::new(5))]
-struct Distributor;
-
 #[derive(Component, Debug, Reflect)]
-pub struct DistributorConveyor {
+pub struct Distributor {
     next_output: ConveyorDirection,
     input: PayloadTransportLine,
     outputs: SmallVec<[(ConveyorDirection, PayloadTransportLine); 3]>,
     capacity: u32,
 }
 
-impl PayloadHandler for DistributorConveyor {
+impl PayloadHandler for Distributor {
     fn try_transfer(
         &mut self,
         self_conveyor: &Conveyor,
@@ -94,12 +108,18 @@ impl PayloadHandler for DistributorConveyor {
     }
 }
 
-impl DistributorConveyor {
-    pub fn new(capacity: u32) -> Self {
+impl Distributor {
+    pub fn new(input: ConveyorDirection, capacity: u32) -> Self {
+        let outputs = ConveyorDirections::all_except(ConveyorDirections::new(input));
+        let outputs: SmallVec<_> = outputs
+            .iter()
+            .map(|dir| (dir, PayloadTransportLine::new(dir, capacity)))
+            .collect();
+
         Self {
             next_output: ConveyorDirection::default(),
             input: PayloadTransportLine::new_no_output(capacity),
-            outputs: SmallVec::default(),
+            outputs,
             capacity,
         }
     }
@@ -170,56 +190,8 @@ impl DistributorConveyor {
     }
 }
 
-fn update_distributor_conveyors(
-    mut commands: Commands,
-    to_check: Res<TilesToCheck>,
-    mut conveyors: Query<&mut Conveyor>,
-    mut distributors: Query<&mut DistributorConveyor>,
-    base: Single<(&TileStorage, &TilemapSize), With<BaseLayer>>,
-) {
-    let (tile_storage, map_size) = base.into_inner();
-
-    for tile_pos in &to_check.0 {
-        if let Some(entity) = tile_storage.get(tile_pos)
-            && let Ok(mut distributor) = distributors.get_mut(entity)
-        {
-            let inputs = find_incoming_directions(
-                tile_pos,
-                tile_storage,
-                map_size,
-                &conveyors.as_readonly(),
-            );
-
-            let outputs = ConveyorDirections::all_except(inputs);
-
-            if let Ok(mut conveyor) = conveyors.get_mut(entity) {
-                conveyor.set_inputs(inputs);
-                conveyor.set_outputs(outputs);
-
-                // Drop any output transport lines - and despawn any entities on them
-                distributor.outputs.retain(|(dir, ptl)| {
-                    if outputs.is_set(*dir) {
-                        return true;
-                    }
-
-                    ptl.despawn_payloads(commands.reborrow());
-                    false
-                });
-
-                // Add any new output lines
-                outputs.iter().for_each(|dir| {
-                    if distributor.outputs.iter().all(|(d, _)| *d != dir) {
-                        let ptl = PayloadTransportLine::new(dir, distributor.capacity);
-                        distributor.outputs.push((dir, ptl));
-                    }
-                });
-            }
-        }
-    }
-}
-
 fn update_distributor_payloads(
-    distributors: Query<(Entity, &mut DistributorConveyor, &TilePos)>,
+    distributors: Query<(Entity, &mut Distributor, &TilePos)>,
     conveyors: Query<&Conveyor>,
     time: Res<Time>,
     base: Single<(&TileStorage, &TilemapSize), With<BaseLayer>>,
@@ -262,20 +234,21 @@ fn update_distributor_payloads(
 
 fn update_distributor_tiles(
     mut commands: Commands,
-    new_distributors: Query<Entity, Added<Distributor>>,
+    new_distributors: Query<(Entity, &Conveyor), Added<Distributor>>,
     tilemap_entity: Single<Entity, (With<BaseLayer>, With<TilemapSize>)>,
 ) {
-    for e in new_distributors {
+    for (e, conveyor) in new_distributors {
         commands.entity(e).insert_if_new(TileBundle {
             tilemap_id: TilemapId(*tilemap_entity),
             texture_index: GameSprite::Distributor.tile_texture_index(),
+            flip: conveyor.input().opposite().tile_flip(),
             ..default()
         });
     }
 }
 
 fn update_distributor_payload_transforms(
-    distributors: Query<(&TilePos, &DistributorConveyor)>,
+    distributors: Query<(&TilePos, &Distributor)>,
     mut payloads: Query<&mut Transform, With<Payload>>,
     base: Single<TilemapQuery, With<BaseLayer>>,
 ) {
