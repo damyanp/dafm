@@ -9,9 +9,9 @@ use crate::{
         helpers::{ConveyorDirection, ConveyorDirections},
         interaction::{PlaceTileEvent, RegisterPlaceTileEvent, Tool},
         payload_handler::{AddPayloadHandler, PayloadHandler},
+        payload_outputs::{PayloadOutputs, update_payload_handler_transforms},
         payloads::{Payload, PayloadTransportLine, RequestPayloadTransferEvent},
     },
-    helpers::TilemapQuery,
     sprite_sheet::GameSprite,
 };
 
@@ -23,7 +23,7 @@ pub fn distributor_plugin(app: &mut App) {
             (
                 update_distributor_payloads.in_set(ConveyorSystems::TransportLogic),
                 update_distributor_tiles.in_set(ConveyorSystems::TileUpdater),
-                update_distributor_payload_transforms.in_set(ConveyorSystems::PayloadTransforms),
+                update_payload_handler_transforms::<Distributor>.in_set(ConveyorSystems::PayloadTransforms),
             ),
         );
 }
@@ -94,17 +94,52 @@ impl PayloadHandler for Distributor {
     }
 
     fn remove_payload(&mut self, payload: Entity) {
+        self.remove_payload_from_outputs(payload);
+    }
+
+    fn iter_payloads(&self) -> impl Iterator<Item = Entity> {
+        self.input.iter_payloads().chain(self.iter_output_payloads())
+    }
+}
+
+impl PayloadOutputs for Distributor {
+    fn update_payloads(&mut self, t: f32) {
+        self.input.update_payloads(t);
+        self.outputs
+            .iter_mut()
+            .for_each(|(_, ptl)| ptl.update_payloads(t));
+    }
+
+    fn get_payload_to_transfer(&self) -> Option<(ConveyorDirection, Entity)> {
+        for (dir, output) in &self.outputs {
+            let p = output.get_payload_to_transfer().map(|e| (*dir, e));
+            if p.is_some() {
+                return p;
+            }
+        }
+        None
+    }
+
+    fn update_all_payload_transforms(
+        &self,
+        tile_pos: &TilePos,
+        payloads: &mut Query<&mut Transform, With<Payload>>,
+        base: &crate::helpers::TilemapQueryItem,
+    ) {
+        self.input.update_payload_transforms(tile_pos, payloads, base);
+        for (_, ptl) in &self.outputs {
+            ptl.update_payload_transforms(tile_pos, payloads, base);
+        }
+    }
+
+    fn remove_payload_from_outputs(&mut self, payload: Entity) {
         self.outputs
             .iter_mut()
             .for_each(|(_, ptl)| ptl.remove_payload(payload));
     }
 
-    fn iter_payloads(&self) -> impl Iterator<Item = Entity> {
-        self.input.iter_payloads().chain(
-            self.outputs
-                .iter()
-                .flat_map(|(_, line)| line.iter_payloads()),
-        )
+    fn iter_output_payloads(&self) -> Box<dyn Iterator<Item = Entity> + '_> {
+        Box::new(self.outputs.iter().flat_map(|(_, line)| line.iter_payloads()))
     }
 }
 
@@ -132,13 +167,6 @@ impl Distributor {
                 .map(|(_, o)| o.count())
                 .reduce(|a, b| a + b)
                 .unwrap_or(0)
-    }
-
-    fn update_payloads(&mut self, t: f32) {
-        self.input.update_payloads(t);
-        self.outputs
-            .iter_mut()
-            .for_each(|(_, ptl)| ptl.update_payloads(t));
     }
 
     pub fn distribute<F>(
@@ -175,16 +203,6 @@ impl Distributor {
             self.next_output = destination.next();
 
             return payload;
-        }
-        None
-    }
-
-    fn get_payload_to_transfer(&self) -> Option<(ConveyorDirection, Entity)> {
-        for (dir, output) in &self.outputs {
-            let p = output.get_payload_to_transfer().map(|e| (*dir, e));
-            if p.is_some() {
-                return p;
-            }
         }
         None
     }
@@ -244,20 +262,5 @@ fn update_distributor_tiles(
             flip: conveyor.input().opposite().tile_flip(),
             ..default()
         });
-    }
-}
-
-fn update_distributor_payload_transforms(
-    distributors: Query<(&TilePos, &Distributor)>,
-    mut payloads: Query<&mut Transform, With<Payload>>,
-    base: Single<TilemapQuery, With<BaseLayer>>,
-) {
-    for (tile_pos, distributor) in distributors {
-        distributor
-            .input
-            .update_payload_transforms(tile_pos, &mut payloads, &base);
-        for (_, ptl) in &distributor.outputs {
-            ptl.update_payload_transforms(tile_pos, &mut payloads, &base);
-        }
     }
 }

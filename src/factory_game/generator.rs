@@ -9,9 +9,9 @@ use crate::{
         interaction::{PlaceTileEvent, RegisterPlaceTileEvent, Tool},
         operators::{Operand, operand_bundle},
         payload_handler::{AddPayloadHandler, PayloadHandler},
+        payload_outputs::{PayloadOutputs, update_payload_handler_transforms},
         payloads::{Payload, PayloadTransportLine, RequestPayloadTransferEvent},
     },
-    helpers::TilemapQuery,
     sprite_sheet::GameSprite,
 };
 
@@ -24,7 +24,7 @@ pub fn generator_plugin(app: &mut App) {
                 update_generator_payloads.in_set(ConveyorSystems::TransportLogic),
                 update_generator_tiles.in_set(ConveyorSystems::TileUpdater),
                 generate_payloads.in_set(ConveyorSystems::TransferPayloadsToHandlers),
-                update_generator_payload_transforms.in_set(ConveyorSystems::PayloadTransforms),
+                update_payload_handler_transforms::<Generator>.in_set(ConveyorSystems::PayloadTransforms),
             ),
         );
 }
@@ -84,17 +84,15 @@ impl PayloadHandler for Generator {
     }
 
     fn remove_payload(&mut self, payload: Entity) {
-        self.outputs
-            .iter_mut()
-            .for_each(|ptl| ptl.remove_payload(payload));
+        self.remove_payload_from_outputs(payload);
     }
 
     fn iter_payloads(&self) -> impl Iterator<Item = Entity> {
-        std::iter::empty().chain(self.outputs.iter().flat_map(|ptl| ptl.iter_payloads()))
+        std::iter::empty().chain(self.iter_output_payloads())
     }
 }
 
-impl Generator {
+impl PayloadOutputs for Generator {
     fn update_payloads(&mut self, t: f32) {
         self.outputs
             .iter_mut()
@@ -111,6 +109,30 @@ impl Generator {
         }
         None
     }
+
+    fn update_all_payload_transforms(
+        &self,
+        tile_pos: &TilePos,
+        payloads: &mut Query<&mut Transform, With<Payload>>,
+        base: &crate::helpers::TilemapQueryItem,
+    ) {
+        for ptl in &self.outputs {
+            ptl.update_payload_transforms(tile_pos, payloads, base);
+        }
+    }
+
+    fn remove_payload_from_outputs(&mut self, payload: Entity) {
+        self.outputs
+            .iter_mut()
+            .for_each(|ptl| ptl.remove_payload(payload));
+    }
+
+    fn iter_output_payloads(&self) -> Box<dyn Iterator<Item = Entity> + '_> {
+        Box::new(self.outputs.iter().flat_map(|ptl| ptl.iter_payloads()))
+    }
+}
+
+impl Generator {
 }
 
 fn update_generator_tiles(
@@ -185,18 +207,6 @@ fn update_generator_payloads(
                 };
                 send_payloads.write(e);
             }
-        }
-    }
-}
-
-fn update_generator_payload_transforms(
-    generators: Query<(&TilePos, &Generator)>,
-    mut payloads: Query<&mut Transform, With<Payload>>,
-    base: Single<TilemapQuery, With<BaseLayer>>,
-) {
-    for (tile_pos, generator) in generators {
-        for ptl in &generator.outputs {
-            ptl.update_payload_transforms(tile_pos, &mut payloads, &base);
         }
     }
 }
