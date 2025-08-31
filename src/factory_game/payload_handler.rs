@@ -1,4 +1,5 @@
 use bevy::{ecs::component::Mutable, prelude::*, reflect::GetTypeRegistration};
+use smallvec::SmallVec;
 
 use crate::factory_game::{
     ConveyorSystems,
@@ -14,6 +15,14 @@ pub trait PayloadHandler: GetTypeRegistration + Component<Mutability = Mutable> 
     ) -> Option<Entity>;
 
     fn remove_payload(&mut self, payload: Entity);
+
+    fn despawn_payloads(&mut self, mut commands: Commands) {
+        let payloads: SmallVec<[Entity; 4]> = self.iter_payloads().collect();
+        for e in payloads {
+            commands.entity(e).despawn();
+            self.remove_payload(e);
+        }
+    }
 
     fn iter_payloads(&self) -> impl Iterator<Item = Entity>;
 }
