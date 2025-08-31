@@ -9,7 +9,7 @@ use crate::{
         helpers::{ConveyorDirection, ConveyorDirections},
         interaction::{PlaceTileEvent, RegisterPlaceTileEvent, Tool},
         payload_handler::{AddPayloadHandler, PayloadHandler},
-        payload_outputs::{PayloadOutputs, update_payload_handler_transforms},
+        payload_transports::{PayloadTransports, update_payload_handler_transforms},
         payloads::{Payload, PayloadTransportLine, RequestPayloadTransferEvent},
     },
     sprite_sheet::GameSprite,
@@ -94,16 +94,16 @@ impl PayloadHandler for Distributor {
     }
 
     fn remove_payload(&mut self, payload: Entity) {
-        self.remove_payload_from_outputs(payload);
+        self.remove_payload_from_transports(payload);
     }
 
     fn iter_payloads(&self) -> impl Iterator<Item = Entity> {
-        self.input.iter_payloads().chain(self.iter_output_payloads())
+        self.input.iter_payloads().chain(self.iter_transport_payloads())
     }
 }
 
-impl PayloadOutputs for Distributor {
-    fn update_payloads(&mut self, t: f32) {
+impl PayloadTransports for Distributor {
+    fn update_transports(&mut self, t: f32) {
         self.input.update_payloads(t);
         self.outputs
             .iter_mut()
@@ -132,13 +132,13 @@ impl PayloadOutputs for Distributor {
         }
     }
 
-    fn remove_payload_from_outputs(&mut self, payload: Entity) {
+    fn remove_payload_from_transports(&mut self, payload: Entity) {
         self.outputs
             .iter_mut()
             .for_each(|(_, ptl)| ptl.remove_payload(payload));
     }
 
-    fn iter_output_payloads(&self) -> Box<dyn Iterator<Item = Entity> + '_> {
+    fn iter_transport_payloads(&self) -> Box<dyn Iterator<Item = Entity> + '_> {
         Box::new(self.outputs.iter().flat_map(|(_, line)| line.iter_payloads()))
     }
 }
@@ -219,7 +219,7 @@ fn update_distributor_payloads(
     let t = time.delta_secs();
 
     for (source, mut distributor, tile_pos) in distributors {
-        distributor.update_payloads(t);
+        distributor.update_transports(t);
 
         if let Ok(conveyor) = conveyors.get(source) {
             if let Some(payload) = distributor.input.get_payload_to_transfer() {

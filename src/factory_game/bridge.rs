@@ -9,9 +9,10 @@ use crate::{
         helpers::{ConveyorDirection, ConveyorDirections},
         interaction::{PlaceTileEvent, RegisterPlaceTileEvent, Tool},
         payload_handler::{AddPayloadHandler, PayloadHandler},
+        payload_transports::{PayloadTransports, update_payload_handler_transforms},
         payloads::{Payload, PayloadTransportLine, RequestPayloadTransferEvent},
     },
-    helpers::{TilemapQuery, TilemapQueryItem},
+    helpers::TilemapQuery,
     sprite_sheet::{GameSprite, SpriteSheet},
 };
 
@@ -23,7 +24,7 @@ pub fn bridge_plugin(app: &mut App) {
             (
                 (update_bridge_conveyors, update_bridge_tiles).in_set(ConveyorSystems::TileUpdater),
                 update_bridge_payloads.in_set(ConveyorSystems::TransportLogic),
-                update_bridge_payload_transforms.in_set(ConveyorSystems::PayloadTransforms),
+                update_payload_handler_transforms::<BridgeConveyor>.in_set(ConveyorSystems::PayloadTransforms),
             ),
         );
 }
@@ -88,27 +89,45 @@ impl PayloadHandler for BridgeConveyor {
     }
 
     fn remove_payload(&mut self, payload: Entity) {
-        if let Some(top) = &mut self.top {
-            top.remove_payload(payload);
-        }
-        if let Some(bottom) = &mut self.bottom {
-            bottom.remove_payload(payload);
-        }
+        self.remove_payload_from_transports(payload);
     }
 
     fn iter_payloads(&self) -> impl Iterator<Item = Entity> {
-        std::iter::empty()
-            .chain(self.top.iter().flat_map(|t| t.iter_payloads()))
-            .chain(self.bottom.iter().flat_map(|b| b.iter_payloads()))
+        self.iter_transport_payloads()
     }
 }
 
-impl BridgeConveyor {
-    fn update_payload_transforms(
+impl PayloadTransports for BridgeConveyor {
+    fn update_transports(&mut self, t: f32) {
+        if let Some(top) = &mut self.top {
+            top.update_payloads(t);
+        }
+        if let Some(bottom) = &mut self.bottom {
+            bottom.update_payloads(t);
+        }
+    }
+
+    fn get_payload_to_transfer(&self) -> Option<(ConveyorDirection, Entity)> {
+        // Bridges don't directly transfer payloads - they use events
+        // But we could implement this for completeness
+        if let Some(top) = &self.top {
+            if let Some(payload) = top.get_payload_to_transfer() {
+                return Some((top.output_direction(), payload));
+            }
+        }
+        if let Some(bottom) = &self.bottom {
+            if let Some(payload) = bottom.get_payload_to_transfer() {
+                return Some((bottom.output_direction(), payload));
+            }
+        }
+        None
+    }
+
+    fn update_all_payload_transforms(
         &self,
         tile_pos: &TilePos,
         payloads: &mut Query<&mut Transform, With<Payload>>,
-        base: &TilemapQueryItem,
+        base: &crate::helpers::TilemapQueryItem,
     ) {
         if let Some(top) = &self.top {
             top.update_payload_transforms(tile_pos, payloads, base);
@@ -118,6 +137,25 @@ impl BridgeConveyor {
         }
     }
 
+    fn remove_payload_from_transports(&mut self, payload: Entity) {
+        if let Some(top) = &mut self.top {
+            top.remove_payload(payload);
+        }
+        if let Some(bottom) = &mut self.bottom {
+            bottom.remove_payload(payload);
+        }
+    }
+
+    fn iter_transport_payloads(&self) -> Box<dyn Iterator<Item = Entity> + '_> {
+        Box::new(
+            std::iter::empty()
+                .chain(self.top.iter().flat_map(|t| t.iter_payloads()))
+                .chain(self.bottom.iter().flat_map(|b| b.iter_payloads()))
+        )
+    }
+}
+
+impl BridgeConveyor {
     fn current_bottom_output(&self) -> Option<ConveyorDirection> {
         self.bottom.as_ref().map(|bottom| bottom.output_direction())
     }
@@ -220,6 +258,9 @@ fn update_bridge_payloads(
     let t = time.delta_secs();
 
     for (source, mut bridge, tile_pos) in bridges {
+        bridge.update_transports(t);
+        
+        // Bridges still need custom logic for sending payloads via events
         if let Some(top) = &mut bridge.top {
             top.update(
                 source,
@@ -240,16 +281,6 @@ fn update_bridge_payloads(
                 &mut send_payloads,
             );
         }
-    }
-}
-
-fn update_bridge_payload_transforms(
-    bridges: Query<(&TilePos, &BridgeConveyor)>,
-    mut payloads: Query<&mut Transform, With<Payload>>,
-    base: Single<TilemapQuery, With<BaseLayer>>,
-) {
-    for (tile_pos, bridge) in bridges {
-        bridge.update_payload_transforms(tile_pos, &mut payloads, &base);
     }
 }
 

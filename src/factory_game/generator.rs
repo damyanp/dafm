@@ -9,7 +9,7 @@ use crate::{
         interaction::{PlaceTileEvent, RegisterPlaceTileEvent, Tool},
         operators::{Operand, operand_bundle},
         payload_handler::{AddPayloadHandler, PayloadHandler},
-        payload_outputs::{PayloadOutputs, update_payload_handler_transforms},
+        payload_transports::{PayloadTransports, update_payload_handler_transforms},
         payloads::{Payload, PayloadTransportLine, RequestPayloadTransferEvent},
     },
     sprite_sheet::GameSprite,
@@ -84,16 +84,16 @@ impl PayloadHandler for Generator {
     }
 
     fn remove_payload(&mut self, payload: Entity) {
-        self.remove_payload_from_outputs(payload);
+        self.remove_payload_from_transports(payload);
     }
 
     fn iter_payloads(&self) -> impl Iterator<Item = Entity> {
-        std::iter::empty().chain(self.iter_output_payloads())
+        std::iter::empty().chain(self.iter_transport_payloads())
     }
 }
 
-impl PayloadOutputs for Generator {
-    fn update_payloads(&mut self, t: f32) {
+impl PayloadTransports for Generator {
+    fn update_transports(&mut self, t: f32) {
         self.outputs
             .iter_mut()
             .for_each(|ptl| ptl.update_payloads(t));
@@ -121,13 +121,13 @@ impl PayloadOutputs for Generator {
         }
     }
 
-    fn remove_payload_from_outputs(&mut self, payload: Entity) {
+    fn remove_payload_from_transports(&mut self, payload: Entity) {
         self.outputs
             .iter_mut()
             .for_each(|ptl| ptl.remove_payload(payload));
     }
 
-    fn iter_output_payloads(&self) -> Box<dyn Iterator<Item = Entity> + '_> {
+    fn iter_transport_payloads(&self) -> Box<dyn Iterator<Item = Entity> + '_> {
         Box::new(self.outputs.iter().flat_map(|ptl| ptl.iter_payloads()))
     }
 }
@@ -193,7 +193,7 @@ fn update_generator_payloads(
     let t = time.delta_secs();
 
     for (source, mut generator, tile_pos) in generators {
-        generator.update_payloads(t);
+        generator.update_transports(t);
 
         if let Some((dir, payload)) = generator.get_payload_to_transfer() {
             let destination_pos = tile_pos.square_offset(&dir.into(), map_size);
