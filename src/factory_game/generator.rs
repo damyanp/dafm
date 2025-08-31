@@ -1,11 +1,12 @@
 use bevy::prelude::*;
 use bevy_ecs_tilemap::prelude::*;
+use smallvec::SmallVec;
 
 use crate::{
     factory_game::{
         BaseLayer, ConveyorSystems,
-        conveyor::Conveyor,
-        helpers::{CONVEYOR_DIRECTIONS, ConveyorDirection, ConveyorDirections},
+        conveyor::{Conveyor, ConveyorUpdated, TilesToCheck},
+        helpers::{ConveyorDirection, ConveyorDirections, get_neighbors_from_query},
         interaction::{PlaceTileEvent, RegisterPlaceTileEvent, Tool},
         operators::{Operand, operand_bundle},
         payload_handler::{AddPayloadHandler, PayloadHandler},
@@ -22,7 +23,7 @@ pub fn generator_plugin(app: &mut App) {
             Update,
             (
                 update_generator_payloads.in_set(ConveyorSystems::TransportLogic),
-                update_generator_tiles.in_set(ConveyorSystems::TileUpdater),
+                (update_generators, update_generator_tiles).in_set(ConveyorSystems::TileUpdater),
                 generate_payloads.in_set(ConveyorSystems::TransferPayloadsToHandlers),
                 update_generator_payload_transforms.in_set(ConveyorSystems::PayloadTransforms),
             ),
@@ -59,7 +60,7 @@ impl PlaceTileEvent for PlaceGeneratorEvent {
 struct Generator {
     next_generate_time: f32,
     time_between_generations: f32,
-    outputs: [PayloadTransportLine; 4],
+    outputs: SmallVec<[(ConveyorDirection, PayloadTransportLine); 4]>,
     next_output: ConveyorDirection,
 }
 
@@ -68,7 +69,7 @@ impl Default for Generator {
         Generator {
             next_generate_time: 0.0,
             time_between_generations: 1.0,
-            outputs: CONVEYOR_DIRECTIONS.map(|d| PayloadTransportLine::new(d, 1)),
+            outputs: SmallVec::default(),
             next_output: ConveyorDirection::default(),
         }
     }
@@ -80,17 +81,17 @@ impl PayloadHandler for Generator {
         _: &Conveyor,
         _: &super::payloads::RequestPayloadTransferEvent,
     ) -> Option<Entity> {
-        panic!("Nothing should ever try to transfer to a Generator!");
+        None
     }
 
     fn remove_payload(&mut self, payload: Entity) {
         self.outputs
             .iter_mut()
-            .for_each(|ptl| ptl.remove_payload(payload));
+            .for_each(|(_, ptl)| ptl.remove_payload(payload));
     }
 
     fn iter_payloads(&self) -> impl Iterator<Item = Entity> {
-        std::iter::empty().chain(self.outputs.iter().flat_map(|ptl| ptl.iter_payloads()))
+        std::iter::empty().chain(self.outputs.iter().flat_map(|(_, ptl)| ptl.iter_payloads()))
     }
 }
 
@@ -98,18 +99,74 @@ impl Generator {
     fn update_payloads(&mut self, t: f32) {
         self.outputs
             .iter_mut()
-            .for_each(|ptl| ptl.update_payloads(t));
+            .for_each(|(_, ptl)| ptl.update_payloads(t));
     }
 
     fn get_payload_to_transfer(&self) -> Option<(ConveyorDirection, Entity)> {
-        for (dir, output) in self.outputs.iter().enumerate() {
-            let dir = ConveyorDirection::from(dir);
-            let p = output.get_payload_to_transfer().map(|e| (dir, e));
+        for (dir, output) in self.outputs.iter() {
+            let p = output.get_payload_to_transfer().map(|e| (*dir, e));
             if p.is_some() {
                 return p;
             }
         }
         None
+    }
+}
+
+fn update_generators(
+    mut commands: Commands,
+    to_check: Res<TilesToCheck>,
+    mut generators: Query<&mut Generator>,
+    mut conveyors: Query<&mut Conveyor>,
+    base: Single<(&TileStorage, &TilemapSize), With<BaseLayer>>,
+    mut conveyor_updated: EventWriter<ConveyorUpdated>,
+) {
+    let (tile_storage, map_size) = base.into_inner();
+
+    for tile_pos in &to_check.0 {
+        if let Some(entity) = tile_storage.get(tile_pos)
+            && let Ok(mut generator) = generators.get_mut(entity)
+        {
+            let neighbors = get_neighbors_from_query(tile_storage, tile_pos, map_size, &conveyors);
+
+            let output_directions =
+                ConveyorDirections::from(neighbors.iter_with_direction().filter_map(
+                    |(dir, conveyor)| {
+                        let dir = ConveyorDirection::from(dir);
+                        if conveyor.outputs().is_set(dir.opposite()) {
+                            None
+                        } else {
+                            Some(dir)
+                        }
+                    },
+                ));
+
+            if let Ok(mut conveyor) = conveyors.get_mut(entity) {
+                let old_outputs = conveyor.outputs();
+                conveyor.set_outputs(output_directions);
+
+                if old_outputs != output_directions {
+                    conveyor_updated.write(ConveyorUpdated(*tile_pos));
+                }
+
+                generator.outputs.retain_mut(|(dir, ptl)| {
+                    if output_directions.is_set(*dir) {
+                        true
+                    } else {
+                        ptl.despawn_payloads(commands.reborrow());
+                        false
+                    }
+                });
+
+                for direction in output_directions.iter() {
+                    if generator.outputs.iter().all(|(dir, _)| *dir != direction) {
+                        generator
+                            .outputs
+                            .push((direction, PayloadTransportLine::new(direction, 1)));
+                    }
+                }
+            }
+        }
     }
 }
 
@@ -146,16 +203,21 @@ fn generate_payloads(
                 &conveyors,
             )
         {
-            let ptl = &mut generator.outputs[destination.index()];
-            let payload = ptl.try_transfer_onto_with_mu(ConveyorDirection::default(), 0.5, || {
-                commands.spawn(operand_bundle(Operand(1))).id()
-            });
+            if let Some((_, ptl)) = generator
+                .outputs
+                .iter_mut()
+                .find(|(dir, _)| *dir == destination)
+            {
+                let payload =
+                    ptl.try_transfer_onto_with_mu(ConveyorDirection::default(), 0.5, || {
+                        commands.spawn(operand_bundle(Operand(1))).id()
+                    });
 
-            if payload.is_some() {
-                generator.next_generate_time =
-                    time.elapsed_secs() + generator.time_between_generations;
+                if payload.is_some() {
+                    generator.next_generate_time =
+                        time.elapsed_secs() + generator.time_between_generations;
+                }
             }
-
             generator.next_output = generator.next_output.next();
         }
     }
@@ -195,7 +257,7 @@ fn update_generator_payload_transforms(
     base: Single<TilemapQuery, With<BaseLayer>>,
 ) {
     for (tile_pos, generator) in generators {
-        for ptl in &generator.outputs {
+        for (_, ptl) in &generator.outputs {
             ptl.update_payload_transforms(tile_pos, &mut payloads, &base);
         }
     }
